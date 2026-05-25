@@ -1,0 +1,36 @@
+version: '3.9'
+
+services:
+  php:
+    build: .
+
+    container_name: website_prof_php
+
+    ports:
+    - "9000:9000"
+
+    volumes:
+      - /var/www/html/website_prof:/var/www/html
+
+    working_dir: /var/www/html
+
+    restart: unless-stopped
+
+  db:
+    image: mariadb:11
+
+    container_name: website_prof_db
+
+    restart: unless-stopped
+
+    environment:
+      MYSQL_ROOT_PASSWORD: sija2024
+      MYSQL_DATABASE: db_website_pribadi
+      MYSQL_USER: willy
+      MYSQL_PASSWORD: RahasiaPro2026!
+
+    volumes:
+      - mariadb_data:/var/lib/mysql
+
+volumes:
+  mariadb_data:
