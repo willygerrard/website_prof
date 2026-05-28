@@ -16,12 +16,17 @@ services:
 
     restart: unless-stopped
 
+    networks:          
+      - sija_net
   db:
     image: mariadb:11
 
     container_name: website_prof_db
 
     restart: unless-stopped
+    
+    ports:
+        - "3307:3306"
 
     environment:
       MYSQL_ROOT_PASSWORD: sija2024
@@ -31,6 +36,11 @@ services:
 
     volumes:
       - mariadb_data:/var/lib/mysql
-
+    
+    networks: 
+      - sija_net
 volumes:
   mariadb_data:
+networks:             
+  sija_net:
+    driver: bridge
