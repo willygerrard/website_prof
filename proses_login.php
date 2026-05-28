@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['is_login'] = true;
         $_SESSION['username'] = $user['username'];
         // Setelah password_verify sukses
-        $_SESSION['role']     = $user_data['role']; // <-- Catat status admin/siswa di sini
+        $_SESSION['role']     = $user['role']; // <-- Catat status admin/siswa di sini
         // Oper langsung masuk ke halaman utama Bootstrap (index.php)
         header("Location: index.php");
         exit();

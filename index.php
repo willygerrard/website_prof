@@ -52,7 +52,7 @@ try {
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
         <meta name="description" content="" />
         <meta name="author" content="" />
-        <title>Shop Homepage - Start Bootstrap Template</title>
+        <title>Pusat Pembelajaran SIJA</title>
         <!-- Favicon-->
         <link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
         <!-- Bootstrap icons-->
@@ -104,7 +104,12 @@ try {
     <div class="container px-4 px-lg-5 my-5">
         <div class="text-center text-white">
             <h1 class="display-4 fw-bolder">
-                <?php echo $kategori_pilihan === 'Semua' ? 'Modul Pembelajaran SIJA' : 'Materi: ' . htmlspecialchars($kategori_pilihan); ?>
+            <?php if ($_SESSION['role'] === 'admin'): ?>
+    <div class="container mt-3 text-end">
+        <a href="tambah_modul.php" class="btn btn-success"> Tambah Modul Baru</a>
+    </div>
+<?php endif; ?>
+                <?php echo $kategori_pilihan === 'Semua' ? 'Pusat Pembelajaran SIJA' : 'Materi: ' . htmlspecialchars($kategori_pilihan); ?>
             </h1>
             <p class="lead fw-normal text-white-50 mb-0">
                 <?php echo $kategori_pilihan === 'Semua' ? 'Selamat datang di portal lab kendali materi mandiri.' : 'Menampilkan modul khusus kategori ' . htmlspecialchars($kategori_pilihan); ?>
