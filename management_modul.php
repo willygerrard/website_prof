@@ -1,121 +1,119 @@
 <?php
-// 1. Amankan halaman dengan satpam session yang kemarin
+// Pastikan koneksi database dan session start sudah aman di paling atas
+include 'koneksi.php';
 session_start();
 if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
     header("Location: login.php");
     exit();
 }
-
-// 2. Hubungkan ke database MariaDB internal Docker Bapak
-$host = 'db';       // Menggunakan nama service di docker-compose
-$db   = 'db_website_pribadi'; // Sesuaikan dengan nama DB Bapak
-$user = 'willy';     // Sesuaikan dengan user DB Bapak
-$pass = 'RahasiaPro2026!'; // Sesuaikan dengan password DB Bapak
-$port = '3306';     // Wajib port internal karena sesama container
-
-$dsn = "mysql:host=$host;dbname=$db;port=$port;charset=utf8mb4";
-$options = [
-    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-    PDO::ATTR_EMULATE_PREPARES   => false,
-];
-
-try {
-     $pdo = new PDO($dsn, $user, $pass, $options);
-     
-     // --- BAGIAN YANG DIGANTI/DITAMBAH ---
-     // Tangkap kiriman kategori dari URL menu dropdown, kalau kosong set ke 'Semua'
-     $kategori_pilihan = $_GET['kategori'] ?? 'Semua';
-
-     if ($kategori_pilihan !== 'Semua') {
-         // Jika siswa memilih kategori tertentu, saring pake query WHERE (Aman dari SQL Injection)
-         $stmt = $pdo->prepare("SELECT * FROM modules WHERE category = ?");
-         $stmt->execute([$kategori_pilihan]);
-     } else {
-         // Jika tidak memilih atau klik "Semua Materi", tampilkan semua
-         $stmt = $pdo->query("SELECT * FROM modules");
-     }
-     
-     $all_modules = $stmt->fetchAll();
-     // ------------------------------------
-     
-} catch (\PDOException $e) {
-     die("Aduh Pak, koneksi database gagal lagi: " . $e->getMessage());
-}
-
-// 1. Pastikan koneksi database sudah di-include di paling atas file
-// include 'koneksi.php'; 
-
-// 2. Query untuk mengambil semua data modul dari MariaDB
+// Query ambil data untuk tabel
 $query = $pdo->query("SELECT * FROM modules ORDER BY id DESC");
 ?>
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Manajemen Modul - SIJA</title>
-    <!-- Kita panggil Bootstrap via CDN biar tabel langsung otomatis rapi dan estetik -->
+    <title>Manage Module - Pusat Pembelajaran SIJA</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        /* Style Jumbotron/Hero Banner penunjang gambar background server rack */
+        .hero-banner {
+            background: linear-gradient(rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.85)), url('path_gambar_server_bapak.jpg') no-repeat center center;
+            background-size: cover;
+            color: white;
+            padding: 80px 0;
+            text-align: center;
+        }
+    </style>
 </head>
 <body class="bg-light">
 
-<div class="container mt-5">
-    <!-- Judul Atas -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h4 class="fw-bold m-0 text-dark">📋 Daftar Modul Pembelajaran</h4>
-        
-        <!-- Grup Tombol di Pojok Kanan: Kembali (Panah) dan Tambah (+) -->
-        <div class="btn-group gap-2">
-            <!-- Tombol Kembali Ke Index pake panah putar balik minimalis -->
-            <a href="index.php" class="btn btn-outline-secondary btn-md rounded-circle fw-bold shadow-sm d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;" title="Kembali ke Beranda">
-                ↶
-            </a>
-            <!-- Tombol Tambah Data -->
-            <a href="tambah_modul.php" class="btn btn-success btn-md rounded-circle fw-bold shadow-sm d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;" title="Tambah Modul Baru">
-                ＋
-            </a>
+    <!-- 1. NAVBAR (Sama persis seperti index.php Bapak) -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <div class="container px-4 px-lg-5">
+                <a class="navbar-brand" href="index.php">Modul Pembelajaran SIJA</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
+                <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4">
+                    
+                </ul>
+                <div class="d-flex align-items-center gap-3">
+                    <?php if (isset($_SESSION['username'])) : ?>
+                     <span class="text-secondary fw-medium d-none d-md-inline small">
+                         👋 Hai, <strong class="text-dark"><?= htmlspecialchars($_SESSION['username']); ?></strong>
+                    </span>
+                 <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+        <!-- Header-->
+ <header class="py-5" style="
+    background: linear-gradient(to bottom, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.9)), 
+                url('https://images.unsplash.com/photo-1558494949-ef010cbdcc31?q=80&w=800'); 
+    background-size: cover; 
+    background-position: center;">
+    
+    <div class="container px-4 px-lg-5 my-5">
+        <div class="text-center text-white">
+            <h1 class="display-4 fw-bolder"> 
+                Pusat Pembelajaran SIJA
+            </h1>
+            <p class="lead fw-normal text-white-50 mb-0">
+               Selamat datang di portal lab kendali materi mandiri</p>
+            </div>
+    </div>
+</header>
+    <!-- 3. KONTEN UTAMA (Kartu materi hilang, ganti MENU TABEL MANAJEMEN) -->
+    <div class="container mt-5 mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4 class="fw-bold m-0 text-dark">📋 Daftar Modul Pembelajaran</h4>
+            <div class="btn-group gap-2">
+                <a href="index.php" class="btn btn-outline-secondary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Kembali ke Beranda">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </a>
+                <a href="tambah_modul.php" class="btn btn-success rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Tambah Modul Baru">
+                    <i class="bi bi-plus-lg"></i>
+                </a>
+            </div>
+        </div>
+
+        <div class="table-responsive bg-white p-4 rounded-3 shadow-sm border">
+            <table class="table table-hover align-middle m-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 8%">No</th>
+                        <th style="width: 57%">Nama Modul</th>
+                        <th style="width: 20%">Kategori</th>
+                        <th style="width: 15%" class="text-center">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php $no = 1; while ($row = $query->fetch(PDO::FETCH_ASSOC)) : ?>
+                    <tr>
+                        <td><?= $no++; ?></td>
+                        <td class="fw-semibold text-secondary"><?= htmlspecialchars($row['title'] ?? ''); ?></td>
+                        <td><span class="badge bg-info text-dark px-2.5 py-1.5"><?= htmlspecialchars($row['category'] ?? ''); ?></span></td>
+                        <td class="text-center">
+                            <div class="btn-group btn-group-sm">
+                                <a href="edit_modul.php?id=<?= $row['id']; ?>" class="btn btn-warning fw-bold text-dark px-2.5">E</a>
+                                <a href="proses_hapus.php?id=<?= $row['id']; ?>" class="btn btn-danger fw-bold px-2.5" onclick="return confirm('Yakin hapus, Pak?')">－</a>
+                            </div>
+                        </td>
+                    </tr>
+                    <?php endwhile; ?>
+                </tbody>
+            </table>
         </div>
     </div>
-
-    <!-- Tabel Data Modul yang Lebar dan Plong -->
-    <div class="table-responsive bg-white p-4 rounded-3 shadow-sm border">
-        <table class="table table-hover align-middle m-0">
-            <thead class="table-light">
-                <tr>
-                    <th style="width: 8%">No</th>
-                    <th style="width: 57%">Nama Modul</th>
-                    <th style="width: 20%">Kategori</th>
-                    <th style="width: 15%" class="text-center">Aksi</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php 
-                $no = 1;
-                // Looping data asli dari database
-                while ($row = $query->fetch(PDO::FETCH_ASSOC)) : 
-                ?>
-                <tr>
-                    <td><?= $no++; ?></td>
-                    <td class="fw-semibold text-secondary"><?= htmlspecialchars($row['title'] ?? $row['title'] ?? ''); ?></td>
-                    <td>
-                        <span class="badge bg-info text-dark px-2 py-1.5"><?= htmlspecialchars($row['category'] ?? $row['category'] ?? ''); ?></span>
-                    </td>
-                    <td class="text-center">
-                        <div class="btn-group btn-group-sm">
-                            <a href="edit_modul.php?id=<?= $row['id']; ?>" class="btn btn-warning fw-bold px-2.5 text-dark" title="Edit">E</a>
-                            <a href="proses_hapus.php?id=<?= $row['id']; ?>" class="btn btn-danger fw-bold px-2.5" onclick="return confirm('Yakin mau hapus modul ini, Pak?')" title="Hapus">－</a>
-                        </div>
-                    </td>
-                </tr>
-                <?php endwhile; ?>
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- Bootstrap JS Bundle (bila nanti Bapak butuh dropdown/modal) -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+     <!-- Footer-->
+        <footer class="py-5 bg-dark">
+            <div class="container"><p class="m-0 text-center text-white">Copyright &copy; SIJA Website 2026</p></div>
+        </footer>
+        <!-- Bootstrap core JS-->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

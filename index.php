@@ -1,28 +1,12 @@
 <?php
 // 1. Amankan halaman dengan satpam session yang kemarin
+include 'koneksi.php';
 session_start();
 if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
     header("Location: login.php");
     exit();
 }
-
-// 2. Hubungkan ke database MariaDB internal Docker Bapak
-$host = 'db';       // Menggunakan nama service di docker-compose
-$db   = 'db_website_pribadi'; // Sesuaikan dengan nama DB Bapak
-$user = 'willy';     // Sesuaikan dengan user DB Bapak
-$pass = 'RahasiaPro2026!'; // Sesuaikan dengan password DB Bapak
-$port = '3306';     // Wajib port internal karena sesama container
-
-$dsn = "mysql:host=$host;dbname=$db;port=$port;charset=utf8mb4";
-$options = [
-    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-    PDO::ATTR_EMULATE_PREPARES   => false,
-];
-
-try {
-     $pdo = new PDO($dsn, $user, $pass, $options);
-     
+    
      // --- BAGIAN YANG DIGANTI/DITAMBAH ---
      // Tangkap kiriman kategori dari URL menu dropdown, kalau kosong set ke 'Semua'
      $kategori_pilihan = $_GET['kategori'] ?? 'Semua';
@@ -38,10 +22,6 @@ try {
      
      $all_modules = $stmt->fetchAll();
      // ------------------------------------
-     
-} catch (\PDOException $e) {
-     die("Aduh Pak, koneksi database gagal lagi: " . $e->getMessage());
-}
 ?>
 
 
@@ -68,10 +48,8 @@ try {
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
                 <div class="collapse navbar-collapse" id="navbarSupportedContent">
                     <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4">
-                        <li class="nav-item"><a class="nav-link active" aria-current="page" href="#!">Home</a></li>
                         <li class="nav-item"><a class="nav-link" href="profile.php">Profile</a></li>
-               
-                        <li class="nav-item dropdown">
+                           <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" id="navbarDropdown" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Materi</a>
                             <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
                                 <li><a class="dropdown-item" href="index.php?kategori=Cloud computing">Cloud computing</a></li>
@@ -86,16 +64,20 @@ try {
                         </li>
                            <?php if ($_SESSION['role'] === 'admin'): ?>
                           <li class="nav-item"><a class="nav-link" href="management_modul.php">Manage Module</a></li>
-                            <?php endif; ?>
-                          <li class="nav-item"><a class="nav-link" href="logout.php">Logout</a></li> 
+                            <?php endif; ?> 
                     </ul>
-                    <form class="d-flex">
-                        <button class="btn btn-outline-dark" type="submit">
-                            <i class="bi-cart-fill me-1"></i>
-                            Cart
-                            <span class="badge bg-dark text-white ms-1 rounded-pill">0</span>
-                        </button>
-                    </form>
+                    <div class="d-flex align-items-center gap-3">
+    <?php if (isset($_SESSION['username'])) : ?>
+        <span class="text-secondary fw-medium d-none d-md-inline small">
+            👋 Hai, <strong class="text-dark"><?= htmlspecialchars($_SESSION['username']); ?></strong>
+        </span>
+    <?php endif; ?>
+
+    <a href="logout.php" class="btn btn-outline-danger d-flex align-items-center gap-2 fw-semibold px-3 py-1.5 shadow-sm rounded-3" title="Keluar dari Sistem">
+        <i class="bi bi-box-arrow-right"></i> 
+        <span>Exit</span>
+    </a>
+</div>
                 </div>
             </div>
         </nav>
