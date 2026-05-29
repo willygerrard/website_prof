@@ -79,10 +79,15 @@ try {
                                 <li><a class="dropdown-item" href="index.php?kategori=Internet of Things">Internet of Things</a></li>
                                 <li><hr class="dropdown-divider" /></li>
                                 <li><a class="dropdown-item" href="index.php?kategori=Network">Network</a></li>
-                            </ul>
+                                <li><hr class="dropdown-divider" /></li>
                                 <li><a class="dropdown-item" href="index.php">Semua Materi</a></li>
+                            </ul>
+                                
                         </li>
-                          <li class="nav-item"><a class="nav-link" href="logout.php">Logout</a></li>
+                           <?php if ($_SESSION['role'] === 'admin'): ?>
+                          <li class="nav-item"><a class="nav-link" href="management_modul.php">Manage Module</a></li>
+                            <?php endif; ?>
+                          <li class="nav-item"><a class="nav-link" href="logout.php">Logout</a></li> 
                     </ul>
                     <form class="d-flex">
                         <button class="btn btn-outline-dark" type="submit">
@@ -103,12 +108,7 @@ try {
     
     <div class="container px-4 px-lg-5 my-5">
         <div class="text-center text-white">
-            <h1 class="display-4 fw-bolder">
-            <?php if ($_SESSION['role'] === 'admin'): ?>
-    <div class="container mt-3 text-end">
-        <a href="tambah_modul.php" class="btn btn-success"> Tambah Modul Baru</a>
-    </div>
-<?php endif; ?>
+            <h1 class="display-4 fw-bolder"> 
                 <?php echo $kategori_pilihan === 'Semua' ? 'Pusat Pembelajaran SIJA' : 'Materi: ' . htmlspecialchars($kategori_pilihan); ?>
             </h1>
             <p class="lead fw-normal text-white-50 mb-0">
@@ -129,7 +129,7 @@ try {
                 <p class="text-muted">Belum ada modul yang dimasukkan ke database nih, Pak.</p>
             </div>
         <?php else: ?>
-            
+                        
             <!-- MULAI LOOPING KARTU DARI DATABASE -->
             <?php foreach ($all_modules as $modul): ?>
             <div class="col mb-5">
@@ -155,7 +155,7 @@ try {
                     <!-- Bagian Tombol Aksi -->
                     <div class="card-footer p-4 pt-0 border-top-0 bg-transparent">
                         <div class="text-center">
-                            <!-- Tombol ini langsung mengarah ke Link Google Drive Bapak -->
+                            <!-- Tombol ini langsung mengarah ke Link Google Drive -->
                             <a class="btn btn-outline-dark mt-auto w-100" href="<?php echo htmlspecialchars($modul['file_path']); ?>" target="_blank">
                                 📂 Buka Modul
                             </a>
