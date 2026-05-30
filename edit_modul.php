@@ -29,50 +29,69 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $description       = trim($_POST['description'] ?? '');
     $file_path = trim($_POST['file_path'] ?? '');
     
-    $nama_file_gambar = $data['image_path']; // Default pake foto lama dulu
+    // 1. Ambil data lama dari database terlebih dahulu (Asumsi Bapak sudah melakukan SELECT dan disimpan di variabel $data)
+    // Defaultnya, pakai nama file gambar lama yang ada di DB saat ini (isinya sudah mengandung 'img/...')
+    $nama_file_db = $data['image_path'] ?? 'img/default_icon.png';
     
     
-    // Cek apakah admin mengupload ikon baru untuk mengganti ikon lama
-    if (isset($_FILES['image_path']) && $_FILES['image_path']['error'] === UPLOAD_ERR_OK) {
-        $file_tmp  = $_FILES['image_path']['tmp_name'];
-        $file_name = $_FILES['image_path']['name'];
-        $file_ext  = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
-        $ekstensi_boleh = ['png', 'jpg', 'jpeg'];
+ // 2. Cek apakah user mengupload file gambar baru lewat input file
+if (isset($_FILES['image_path']) && !empty($_FILES['image_path']['name'])) {
+    $file_tmp  = $_FILES['image_path']['tmp_name'];
+    $file_name = $_FILES['image_path']['name'];
+    $file_ext  = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+    $ekstensi_boleh = ['png', 'jpg', 'jpeg'];
 
-        if (in_array($file_ext, $ekstensi_boleh)) {
-            // Hapus ikon lama dari server (asal bukan ikon bawaan)
-            if ($data['image_path'] !== 'default_icon.png' && file_exists('img/' . $data['image_path'])) {
-                unlink('img/' . $data['image_path']);
-            }
-            // Generate nama ikon baru
-            $nama_file_gambar = 'icon_' . time() . '_' . uniqid() . '.' . $file_ext;
-            move_uploaded_file($file_tmp, 'img/' . $nama_file_gambar);
-        }
-    }
-
-    // Eksekusi UPDATE Query ke MariaDB via PDO
-    try {
-        $sql = "UPDATE modules 
-                SET title = :title, category = :category, `description` = :deskripsi, file_path = :file_path, image_path = :image_path 
-                WHERE id = :id";
+    if (in_array($file_ext, $ekstensi_boleh)) {
         
-        $stmt_update = $pdo->prepare($sql);
-        $stmt_update->execute([
-            ':title' => $title,
-            ':category'   => $category,
-            ':deskripsi'  => $description,
-            ':file_path' => $file_path,
-            ':image_path'   => $nama_file_gambar,
-            ':id'         => $id
-        ]);
+        // --- REM DARURAT HAPUS FILE LAMA ---
+        // Karena di DB string-nya sudah rapi mengandung 'img/nama_file.png', 
+        // KITA LANGSUNG cek file_exists($nama_file_db) TANPA perlu menggandeng 'img/' lagi!
+        if (!empty($nama_file_db) && $nama_file_db !== 'img/default_icon.png' && file_exists($nama_file_db)) {
+            unlink($nama_file_db); // Sikat file gambar lama di server biar gak jadi sampah penyimpanan Linux
+        }
 
-        echo "<script>
-                alert('Perubahan modul sukses disimpan!');
-                window.location.href = 'management_modul.php';
-              </script>";
-        exit();
+        // Generate nama ikon baru agar unik
+        $nama_file_baru = 'icon_' . time() . '_' . uniqid() . '.' . $file_ext;
+        
+        // Pindahkan file fisik baru ke folder img/
+        if (move_uploaded_file($file_tmp, 'img/' . $nama_file_baru)) {
+            // Trik Hulu: Isinya kita perbarui dengan format lengkap teks 'img/'
+            $nama_file_db = 'img/' . $nama_file_baru;
+        }
+    } else {
+        echo "<script>alert('Format file salah Pak! Harus png, jpg, atau jpeg.');</script>";
+    }
+}
+
+// 3. EKSEKUSI UPDATE QUERY KE MARIADB VIA PDO
+try {
+    // Pastikan kolom image_path ikut di-SET di dalam query UPDATE Bapak
+    $sql = "UPDATE modules 
+            SET title = :title, 
+                category = :category, 
+                `description` = :description, 
+                image_path = :image_path, 
+                file_path = :file_path 
+            WHERE id = :id";
+
+    $stmt_update = $pdo->prepare($sql);
+    $stmt_update->execute([
+        ':title'       => $title,       // Ambil dari trim($_POST['title']) Bapak
+        ':category'    => $category,    // Ambil dari trim($_POST['category']) Bapak
+        ':description' => $description, // Ambil dari trim($_POST['description']) Bapak
+        ':image_path'  => $nama_file_db, // <-- Masuk DB: Tetap aman 'img/icon_xxx.png' baik ganti maupun tidak
+        ':file_path'   => $file_path,   // Ambil dari trim($_POST['file_path']) Bapak
+        ':id'          => $id           // Ambil dari $_GET['id'] atau $_POST['id'] Bapak
+    ]);
+
+    echo "<script>
+            alert('Data modul resmi diperbarui!');
+            window.location.href = 'index.php';
+          </script>";
+    exit();
+
     } catch (PDOException $e) {
-        die("Gagal update data Pak! Karena: " . $e->getMessage());
+    die("Gagal Update ke MariaDB karena: " . $e->getMessage());
     }
 }
 ?>
@@ -101,7 +120,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="container">
             <a class="navbar-brand fw-bold text-dark" href="index.php">Modul Pembelajaran SIJA</a>
             <div class="ms-auto d-flex align-items-center gap-3">
-                <span class="text-secondary fw-medium small">👋 Hai, <strong class="text-dark">willy</strong></span>
+                 <?php if (isset($_SESSION['username'])) : ?>
+        <span class="text-secondary fw-medium d-none d-md-inline small">
+            👋 Hai, <strong class="text-dark"><?= htmlspecialchars($_SESSION['username']); ?></strong>
+        </span>
+    <?php endif; ?>
             </div>
         </div>
     </nav>
@@ -144,12 +167,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label fw-semibold text-secondary">Ikon Modul Saat Ini</label>
+                    <label class="form-label">Icon Saat Ini:</label>
                     <div class="mb-2">
-                      <img src="assets/img/<?= !empty($data['image_path']) ? htmlspecialchars($data['image_path']) : 'default_icon.png'; ?>" alt="Icon" class="img-thumbnail" style="width: 60px; height: 60px;">
+                        <img src="<?php echo !empty($data['image_path']) ? htmlspecialchars($data['image_path']) : 'img/default_icon.png'; ?>" 
+                            alt="Current Icon" 
+                            style="max-height: 120px; object-fit: contain; border: 1px solid #ddd; padding: 5px; background-color: #f8f9fa;">
                     </div>
-                    <label for="image_path" class="form-label small text-muted">Ganti Ikon (Kosongkan jika tidak ingin diubah)</label>
-                    <input type="file" class="form-control p-2" id="image_path" name="image_path" accept="image/png, image/jpeg, image/jpg">
+                    <input type="file" name="image_path" class="form-control">
+                    <small class="text-muted">Biarkan kosong jika tidak ingin mengubah icon, Pak.</small>
                 </div>
 
                 <div class="mb-4">

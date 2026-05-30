@@ -85,8 +85,8 @@
                         </div>
                         
                         <div class="mb-3">
-                            <label for="img_path" class="form-label fw-semibold text-secondary">Icon Modul Pembelajaran (.png / .jpg)</label>
-                            <input type="file" class="form-control p-2" id="img_path" name="img_path" accept="image/png, image/jpeg, image/jpg" required>
+                            <label for="image_path" class="form-label fw-semibold text-secondary">Icon Modul Pembelajaran (.png / .jpg)</label>
+                            <input type="file" class="form-control p-2" id="image_path" name="image_path" accept="image/png, image/jpeg, image/jpg" required>
                             <div class="form-text text-muted small">💡 Rekomendasi: Gunakan logo transparan berformat PNG agar menyatu dengan card menu.</div>
                         </div>
 
