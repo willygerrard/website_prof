@@ -6,6 +6,14 @@ if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
     header("Location: login.php");
     exit();
 }
+
+// Cek apakah user mlebu lewat URL samaran /gerbang-rahasia-sija
+if (strpos($_SERVER['REQUEST_URI'], 'gerbang-rahasia-sija') === false) {
+    // Nek nekat ngetik management_modul.php langsung, usir nggae 404!
+    header("HTTP/1.1 404 Not Found");
+    exit();
+}
+
 // Query ambil data untuk tabel
 $query = $pdo->query("SELECT * FROM modules ORDER BY id DESC");
 ?>

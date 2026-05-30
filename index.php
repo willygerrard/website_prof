@@ -1,6 +1,8 @@
 <?php
 // 1. Amankan halaman dengan satpam session yang kemarin
 include 'koneksi.php';
+ini_set('session.cookie_httponly', 1); // Anti diintip skrip jahat
+ini_set('session.cookie_use_only_cookies', 1);
 session_start();
 if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
     header("Location: login.php");
@@ -63,7 +65,7 @@ if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
                                 
                         </li>
                            <?php if ($_SESSION['role'] === 'admin'): ?>
-                          <li class="nav-item"><a class="nav-link" href="management_modul.php">Manage Module</a></li>
+                          <li class="nav-item"><a class="nav-link" href="gerbang-rahasia-sija">Manage Module</a></li>
                             <?php endif; ?> 
                     </ul>
                     <div class="d-flex align-items-center gap-3">
