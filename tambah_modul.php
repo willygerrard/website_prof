@@ -70,6 +70,15 @@
                         </div>
                         
                         <div class="mb-3">
+                        <label for="jenis" class="form-label fw-semibold">Jenis Materi:</label>
+                            <select class="form-select" id="jenis" name="jenis" required >
+                                <option value="modul">Modul Pembelajaran (PDF)</option>
+                                <option value="media">Media Pembelajaran (PPT/PPTX)</option>
+                                <option value="video">Video Tutorial (Link YouTube)</option>
+                            </select>
+                            </div>
+
+                        <div class="mb-3">
                             <label for="kategori" class="form-label fw-semibold">Kategori Pembelajaran</label>
                             <select class="form-select" id="kategori" name="kategori" required>
                                 <option value="" selected disabled>-- Pilih Kategori --</option>
@@ -86,7 +95,7 @@
                         
                         <div class="mb-3">
                             <label for="image_path" class="form-label fw-semibold text-secondary">Icon Modul Pembelajaran (.png / .jpg)</label>
-                            <input type="file" class="form-control p-2" id="image_path" name="image_path" accept="image/png, image/jpeg, image/jpg" required>
+                            <input type="file" class="form-control p-2" id="image_path" name="image_path" accept="image/png, image/jpeg, image/jpg">
                             <div class="form-text text-muted small">💡 Rekomendasi: Gunakan logo transparan berformat PNG agar menyatu dengan card menu.</div>
                         </div>
 

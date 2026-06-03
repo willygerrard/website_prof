@@ -8,24 +8,34 @@ if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
     header("Location: login.php");
     exit();
 }
-    
-     // --- BAGIAN YANG DIGANTI/DITAMBAH ---
-     // Tangkap kiriman kategori dari URL menu dropdown, kalau kosong set ke 'Semua'
-     $kategori_pilihan = $_GET['kategori'] ?? 'Semua';
+$search           = trim($_GET['keyword'] ?? '');
+$filter_jenis     = $_GET['jenis'] ?? 'semua';                 
+$kategori_pilihan = $_GET['kategori'] ?? 'Semua Materi';       
 
-     if ($kategori_pilihan !== 'Semua') {
-         // Jika siswa memilih kategori tertentu, saring pake query WHERE (Aman dari SQL Injection)
-         $stmt = $pdo->prepare("SELECT * FROM modules WHERE category = ?");
-         $stmt->execute([$kategori_pilihan]);
-     } else {
-         // Jika tidak memilih atau klik "Semua Materi", tampilkan semua
-         $stmt = $pdo->query("SELECT * FROM modules");
-     }
-     
-     $all_modules = $stmt->fetchAll();
-     // ------------------------------------
+$query_str = "SELECT * FROM modules WHERE 1=1";
+$params    = [];
+
+if (!empty($search)) {
+    $query_str .= " AND ('title' LIKE :search OR `description` LIKE :search)";
+    $params['search'] = "%" . $search . "%";
+}
+
+if ($filter_jenis !== 'semua') {
+    $query_str .= " AND jenis_Resource = :jenis"; 
+    $params['jenis'] = $filter_jenis;
+}
+
+if ($kategori_pilihan !== 'Semua' && $kategori_pilihan !== 'Semua Materi') {
+    $query_str .= " AND category = :kategori";
+    $params['kategori'] = $kategori_pilihan;
+}
+
+$query_str .= " ORDER BY id DESC";
+
+$stmt = $pdo->prepare($query_str);
+$stmt->execute($params);
+$all_modules = $stmt->fetchAll(PDO::FETCH_ASSOC); // Variabel penampung looping kartu
 ?>
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -46,7 +56,7 @@ if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
         <!-- Navigation-->
         <nav class="navbar navbar-expand-lg navbar-light bg-light">
             <div class="container px-4 px-lg-5">
-                <a class="navbar-brand" href="#!">Modul Pembelajaran SIJA</a>
+                <a class="navbar-brand" href="#!">Pusat Pembelajaran SIJA</a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
                 <div class="collapse navbar-collapse" id="navbarSupportedContent">
                     <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4">
@@ -62,7 +72,7 @@ if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
                                 <li><hr class="dropdown-divider" /></li>
                                 <li><a class="dropdown-item" href="index.php">Semua Materi</a></li>
                             </ul>
-                                
+
                         </li>
                            <?php if ($_SESSION['role'] === 'admin'): ?>
                           <li class="nav-item"><a class="nav-link" href="gerbang-rahasia-sija">Manage Module</a></li>
@@ -93,7 +103,7 @@ if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
     <div class="container px-4 px-lg-5 my-5">
         <div class="text-center text-white">
             <h1 class="display-4 fw-bolder"> 
-                <?php echo $kategori_pilihan === 'Semua' ? 'Pusat Pembelajaran SIJA' : 'Materi: ' . htmlspecialchars($kategori_pilihan); ?>
+                <?php echo $kategori_pilihan === 'Semua' ? 'Pusat Pembelajaran SIJA' : '' . htmlspecialchars($kategori_pilihan); ?>
             </h1>
             <p class="lead fw-normal text-white-50 mb-0">
                 <?php echo $kategori_pilihan === 'Semua' ? 'Selamat datang di portal lab kendali materi mandiri.' : 'Menampilkan modul khusus kategori ' . htmlspecialchars($kategori_pilihan); ?>
@@ -103,7 +113,46 @@ if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
 </header>
         <!-- Section-->
         <section class="py-5">
-            <div class="container px-4 px-lg-5 mt-5">
+            <div class="container mt-1 mb-1">
+                <div class="row justify-content-center">
+            <div class="col-md-8 text-center mb-2">
+                <form action="index.php" method="GET" class="d-flex gap-2 shadow-sm p-2 bg-white rounded-3 mb-3">
+                    <input type="hidden" name="kategori" value="<?= htmlspecialchars($kategori_pilihan) ?>">
+                    <input type="hidden" name="jenis" value="<?= htmlspecialchars($filter_jenis) ?>">
+                    <input type="text" name="keyword" class="form-control border-0" placeholder="Ketik kata kunci materi (misal: Wifi, Mikrotik, Debian)..." value="<?= htmlspecialchars($search) ?>">
+                    <button type="submit" class="btn btn-primary px-4 rounded-2">Cari</button>
+                    <?php if (!empty($search)): ?>
+                        <a href="index.php?kategori=<?= urlencode($kategori_pilihan) ?>&jenis=<?= urlencode($filter_jenis) ?>" class="btn btn-outline-secondary">Reset</a>
+                    <?php endif; ?>
+                </form>
+            </div>
+        </div>
+
+    <div class="text-center">
+    <div class="btn-group shadow-sm bg-white p-1 rounded-3" role="group" aria-label="Filter Materi">
+        
+        <a href="index.php?jenis=semua&kategori=<?= urlencode($kategori_pilihan) ?>&keyword=<?= urlencode($search) ?>" 
+           class="btn btn-light filter-btn px-3 py-2 text-dark fw-semibold rounded-2 <?= $filter_jenis == 'semua' ? 'active' : '' ?>">
+           Semua Materi
+        </a>
+        
+        <a href="index.php?jenis=modul&kategori=<?= urlencode($kategori_pilihan) ?>&keyword=<?= urlencode($search) ?>" 
+           class="btn btn-light filter-btn px-3 py-2 text-dark fw-semibold rounded-2 <?= $filter_jenis == 'modul' ? 'active' : '' ?>">
+           Modul (PDF)
+        </a>
+        
+        <a href="index.php?jenis=media&kategori=<?= urlencode($kategori_pilihan) ?>&keyword=<?= urlencode($search) ?>" 
+           class="btn btn-light filter-btn px-3 py-2 text-dark fw-semibold rounded-2 <?= $filter_jenis == 'media' ? 'active' : '' ?>">
+           Media (PPT)
+        </a>
+        
+        <a href="index.php?jenis=video&kategori=<?= urlencode($kategori_pilihan) ?>&keyword=<?= urlencode($search) ?>" 
+           class="btn btn-light filter-btn px-3 py-2 text-dark fw-semibold rounded-2 <?= $filter_jenis == 'video' ? 'active' : '' ?>">
+           Video
+        </a>
+        
+    </div>
+</div>
     <!-- Bagian Row Bungkus Kartu -->
     <div class="row gx-4 gx-lg-5 row-cols-2 row-cols-md-3 row-cols-xl-4 justify-content-center">
         

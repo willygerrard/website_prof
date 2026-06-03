@@ -12,14 +12,18 @@ if (!empty($id)) {
         $stmt_select->execute([':id' => $id]);
         $modul = $stmt_select->fetch(PDO::FETCH_ASSOC);
 
-        if ($modul) {
-            $file_gambar = $modul['image_path']; // Isinya sudah otomatis: img/icon_xxxx.png
+       if ($modul) {
+        $file_gambar = $modul['image_path']; // Isinya sudah otomatis: img/icon_xxxx.png
 
-            // 3. Eksekusi Penghapusan File Fisik di Server Linux
-            // Karena di DB sudah ada teks 'img/', kita tidak perlu gandeng teks 'img/' lagi di fungsi unlink!
-            if (!empty($file_gambar) && $file_gambar !== 'img/default_icon.png' && file_exists($file_gambar)) {
+        // 🎯 3. Eksekusi Penghapusan File Fisik di Server Linux (PENGAMAN BARU)
+        // Cek dulu apakah nama file-nya TIDAK mengandung kata 'default'
+        if (strpos($file_gambar, 'default') === false) {
+            
+            // JALUR MODUL ASLI: Kalau murni hasil upload acak, baru boleh di-unlink
+            if (!empty($file_gambar) && file_exists($file_gambar)) {
                 unlink($file_gambar); // Langsung menghapus file fisik di dalam folder img/
             }
+        }
 
             // 4. Hapus Data Modul dari Database MariaDB
             $sql_delete = "DELETE FROM modules WHERE id = :id";
@@ -27,12 +31,12 @@ if (!empty($id)) {
             $stmt_delete->execute([':id' => $id]);
 
             echo "<script>
-                    alert('Modul dan file ikonnya berhasil dihapus, Pak!');
-                    window.location.href = 'management_modul.php';
+                    alert('Modul berhasil dihapus, Pak!');
+                    window.location.href = 'gerbang-rahasia-sija';
                   </script>";
             exit();
         } else {
-            echo "<script>alert('Data modul tidak ditemukan, Pak!'); window.location.href = 'management_modul.php';</script>";
+            echo "<script>alert('Data modul tidak ditemukan, Pak!'); window.location.href = 'gerbang-rahasia-sija';</script>";
         }
 
     } catch (PDOException $e) {
