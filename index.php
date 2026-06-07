@@ -77,6 +77,10 @@ $all_modules = $stmt->fetchAll(PDO::FETCH_ASSOC); // Variabel penampung looping 
                            <?php if ($_SESSION['role'] === 'admin'): ?>
                           <li class="nav-item"><a class="nav-link" href="gerbang-rahasia-sija">Manage Module</a></li>
                             <?php endif; ?> 
+                                          </li>
+                           <?php if ($_SESSION['role'] === 'admin'): ?>
+                          <li class="nav-item"><a class="nav-link" href="management_user.php">Manage User</a></li>
+                            <?php endif; ?> 
                     </ul>
                     <div class="d-flex align-items-center gap-3">
     <?php if (isset($_SESSION['username'])) : ?>
@@ -117,8 +121,9 @@ $all_modules = $stmt->fetchAll(PDO::FETCH_ASSOC); // Variabel penampung looping 
                 <div class="row justify-content-center">
             <div class="col-md-8 text-center mb-2">
                 <form action="index.php" method="GET" class="d-flex gap-2 shadow-sm p-2 bg-white rounded-3 mb-3">
-                    <input type="hidden" name="kategori" value="<?= htmlspecialchars($kategori_pilihan) ?>">
-                    <input type="hidden" name="jenis" value="<?= htmlspecialchars($filter_jenis) ?>">
+                  <!-- Searching berdasarkan Sorting, sementara dimatikan -->
+                  <!--   <input type="hidden" name="kategori" value="<?= htmlspecialchars($kategori_pilihan) ?>"> -->
+                  <!--   <input type="hidden" name="jenis" value="<?= htmlspecialchars($filter_jenis) ?>"> -->
                     <input type="text" name="keyword" class="form-control border-0" placeholder="Ketik kata kunci materi (misal: Wifi, Mikrotik, Debian)..." value="<?= htmlspecialchars($search) ?>">
                     <button type="submit" class="btn btn-primary px-4 rounded-2">Cari</button>
                     <?php if (!empty($search)): ?>

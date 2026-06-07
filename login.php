@@ -100,10 +100,28 @@ if (isset($_SESSION['is_login']) && $_SESSION['is_login'] === true) {
             <label for="password">Password:</label>
             <input type="password" id="password" name="password" required placeholder="******">
         </div>
-        
+     
         <button type="submit" class="btn-submit">Connect</button>
+          <p style="color: #aaa; font-size: 14px;">Belum punya akun siswa?</p>
+      <a href="signup.php" style="
+    display: block;
+    width: 100%;
+    padding: 12px 0;
+    background-color: #0056b3; /* Werna biru sing padha karo tombol Connect */
+    color: white;
+    text-align: center;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 16px;
+    border-radius: 4px;
+    box-sizing: border-box;
+    transition: background 0.2s;
+" onmouseover="this.style.backgroundColor='#004085'" onmouseout="this.style.backgroundColor='#0056b3'">
+    Sign Up
+</a>
     </form>
 </div>
+  
 
 </body>
 </html>
