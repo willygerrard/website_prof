@@ -25,14 +25,29 @@ if (isset($_SESSION['is_login']) && $_SESSION['is_login'] === true) {
             align-items: center;
             height: 100vh;
             margin: 0;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            /* Campuran warna ireng rodo ijo peteng sing super adem */
+            background-color: #0b0f19;
+            background-image: 
+            radial-gradient(at 0% 0%, rgba(0, 204, 102, 0.15) 0px, transparent 50%),
+            radial-gradient(at 100% 100%, rgba(11, 15, 25, 1) 0px, transparent 50%),
+            radial-gradient(at 100% 0%, rgba(24, 28, 41, 1) 0px, transparent 50%);
         }
         .login-box {
-            background-color: #ffffff;
-            padding: 25px;
-            border: 1px solid #cccccc;
-            border-radius: 4px;
-            box-shadow: 0px 2px 5px rgba(0,0,0,0.1);
-            width: 280px;
+            background: rgba(255, 255, 255, 0.03); /* Transparan tipis pol */
+            backdrop-filter: blur(12px); /* Efek blur koyo kaca es */
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08); /* Garis tepi tipis */
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            width: 100%;
+            max-width: 400px;
         }
         .login-box h3 {
             margin-top: 0;

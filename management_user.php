@@ -8,6 +8,11 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'admin') {
     exit();
 }
 
+if (strpos($_SERVER['REQUEST_URI'], 'pintu-belakang-sija') === false) {
+    header("HTTP/1.1 404 Not Found");
+    exit();
+}
+
 $pesan = "";
 
 // --- AKSI 1: PROSES DELETE USER (PROSES HAPUS) ---

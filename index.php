@@ -8,6 +8,7 @@ if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
     header("Location: login.php");
     exit();
 }
+
 $search           = trim($_GET['keyword'] ?? '');
 $filter_jenis     = $_GET['jenis'] ?? 'semua';                 
 $kategori_pilihan = $_GET['kategori'] ?? 'Semua Materi';       
@@ -79,7 +80,7 @@ $all_modules = $stmt->fetchAll(PDO::FETCH_ASSOC); // Variabel penampung looping 
                             <?php endif; ?> 
                                           </li>
                            <?php if ($_SESSION['role'] === 'admin'): ?>
-                          <li class="nav-item"><a class="nav-link" href="management_user.php">Manage User</a></li>
+                          <li class="nav-item"><a class="nav-link" href="pintu-belakang-sija">Manage User</a></li>
                             <?php endif; ?> 
                     </ul>
                     <div class="d-flex align-items-center gap-3">
