@@ -82,6 +82,10 @@ $all_modules = $stmt->fetchAll(PDO::FETCH_ASSOC); // Variabel penampung looping 
                            <?php if ($_SESSION['role'] === 'admin'): ?>
                           <li class="nav-item"><a class="nav-link" href="pintu-belakang-sija">Manage User</a></li>
                             <?php endif; ?> 
+
+                            <?php if ($_SESSION['role'] === 'admin'): ?>
+                          <li class="nav-item"><a class="nav-link" href="pintu-rahasia-sija">Manage Kuis</a></li>  <!-- ← tambah ini -->
+                            <?php endif; ?>
                     </ul>
                     <div class="d-flex align-items-center gap-3">
     <?php if (isset($_SESSION['username'])) : ?>
