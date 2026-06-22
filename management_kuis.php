@@ -20,7 +20,32 @@ if (isset($_GET['hapus'])) {
     exit();
 }
 
-$query = $pdo->query("SELECT * FROM kuis_soal ORDER BY id DESC");
+// Filter kategori & level
+$kategori_filter = $_GET['kategori'] ?? '';
+$level_filter     = $_GET['level'] ?? '';
+
+$sql = "SELECT * FROM kuis_soal WHERE 1=1";
+$params = [];
+
+if ($kategori_filter) {
+    $sql .= " AND kategori = ?";
+    $params[] = $kategori_filter;
+}
+if ($level_filter) {
+    $sql .= " AND level = ?";
+    $params[] = $level_filter;
+}
+$sql .= " ORDER BY id DESC";
+
+$stmt = $pdo->prepare($sql);
+$stmt->execute($params);
+$query = $stmt;
+
+$level_badge = [
+    'pemula'   => ['🟢 Pemula', 'success'],
+    'menengah' => ['🟡 Menengah', 'warning'],
+    'mahir'    => ['🔴 Mahir', 'danger'],
+];
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -52,9 +77,9 @@ $query = $pdo->query("SELECT * FROM kuis_soal ORDER BY id DESC");
 
     <!-- HEADER -->
     <header class="py-5" style="
-        background: linear-gradient(to bottom, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.9)), 
-                    url('https://images.unsplash.com/photo-1558494949-ef010cbdcc31?q=80&w=800'); 
-        background-size: cover; 
+        background: linear-gradient(to bottom, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.9)),
+                    url('https://images.unsplash.com/photo-1558494949-ef010cbdcc31?q=80&w=800');
+        background-size: cover;
         background-position: center;">
         <div class="container px-4 px-lg-5 my-5">
             <div class="text-center text-white">
@@ -72,23 +97,44 @@ $query = $pdo->query("SELECT * FROM kuis_soal ORDER BY id DESC");
                 <a href="index.php" class="btn btn-outline-secondary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Kembali ke Beranda">
                     <i class="bi bi-arrow-counterclockwise"></i>
                 </a>
+                <a href="deploy_kuis.php" class="btn btn-primary rounded-circle ..." title="Deploy Kuis">
+                    <i class="bi bi-rocket-takeoff"></i>
+                </a>
                 <a href="tambah_soal.php" class="btn btn-success rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Tambah Soal Baru">
                     <i class="bi bi-plus-lg"></i>
+                </a>
+                <a href="rekap_nilai.php" class="btn btn-success rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Lihat Rekap Nilai">
+                    <i class="bi bi-bar-chart"></i>
                 </a>
             </div>
         </div>
 
         <!-- Filter Kategori -->
-        <div class="mb-3 d-flex gap-2 flex-wrap">
-            <a href="?" class="btn btn-sm btn-outline-dark">Semua</a>
+        <div class="mb-2 d-flex gap-2 flex-wrap align-items-center">
+            <span class="text-muted small fw-semibold me-1">Kategori:</span>
+            <a href="?level=<?= urlencode($level_filter) ?>" class="btn btn-sm <?= !$kategori_filter ? 'btn-dark' : 'btn-outline-dark' ?>">Semua</a>
             <?php
             $kategori_list = $pdo->query("SELECT DISTINCT kategori FROM kuis_soal ORDER BY kategori");
             while ($kat = $kategori_list->fetch(PDO::FETCH_ASSOC)) :
+                $active = $kategori_filter === $kat['kategori'] ? 'btn-info text-white' : 'btn-outline-info';
             ?>
-            <a href="?kategori=<?= urlencode($kat['kategori']) ?>" class="btn btn-sm btn-outline-info">
+            <a href="?kategori=<?= urlencode($kat['kategori']) ?>&level=<?= urlencode($level_filter) ?>" class="btn btn-sm <?= $active ?>">
                 <?= htmlspecialchars($kat['kategori']) ?>
             </a>
             <?php endwhile; ?>
+        </div>
+
+        <!-- Filter Level -->
+        <div class="mb-3 d-flex gap-2 flex-wrap align-items-center">
+            <span class="text-muted small fw-semibold me-1">Level:</span>
+            <a href="?kategori=<?= urlencode($kategori_filter) ?>" class="btn btn-sm <?= !$level_filter ? 'btn-dark' : 'btn-outline-dark' ?>">Semua</a>
+            <?php foreach ($level_badge as $key => $val):
+                $active = $level_filter === $key ? 'btn-' . $val[1] . ' text-white' : 'btn-outline-' . $val[1];
+            ?>
+            <a href="?kategori=<?= urlencode($kategori_filter) ?>&level=<?= $key ?>" class="btn btn-sm <?= $active ?>">
+                <?= $val[0] ?>
+            </a>
+            <?php endforeach; ?>
         </div>
 
         <div class="table-responsive bg-white p-4 rounded-3 shadow-sm border">
@@ -96,18 +142,22 @@ $query = $pdo->query("SELECT * FROM kuis_soal ORDER BY id DESC");
                 <thead class="table-light">
                     <tr>
                         <th style="width: 5%">No</th>
-                        <th style="width: 45%">Pertanyaan</th>
-                        <th style="width: 20%">Kategori</th>
+                        <th style="width: 35%">Pertanyaan</th>
+                        <th style="width: 15%">Kategori</th>
+                        <th style="width: 15%">Level</th>
                         <th style="width: 15%">Jawaban</th>
                         <th style="width: 15%" class="text-center">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php $no = 1; while ($row = $query->fetch(PDO::FETCH_ASSOC)) : ?>
+                    <?php $no = 1; while ($row = $query->fetch(PDO::FETCH_ASSOC)) :
+                        $lvl = $level_badge[$row['level']] ?? ['-', 'secondary'];
+                    ?>
                     <tr>
                         <td><?= $no++; ?></td>
                         <td class="fw-semibold text-secondary"><?= htmlspecialchars($row['pertanyaan'] ?? ''); ?></td>
                         <td><span class="badge bg-info text-dark px-2 py-1"><?= htmlspecialchars($row['kategori'] ?? ''); ?></span></td>
+                        <td><span class="badge bg-<?= $lvl[1] ?>"><?= $lvl[0] ?></span></td>
                         <td>
                             <span class="badge bg-success">
                                 <?php
@@ -124,6 +174,11 @@ $query = $pdo->query("SELECT * FROM kuis_soal ORDER BY id DESC");
                         </td>
                     </tr>
                     <?php endwhile; ?>
+                    <?php if ($no === 1): ?>
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">Belum ada soal untuk filter ini.</td>
+                    </tr>
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>

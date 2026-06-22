@@ -75,6 +75,7 @@ $all_modules = $stmt->fetchAll(PDO::FETCH_ASSOC); // Variabel penampung looping 
                             </ul>
 
                         </li>
+                            <li class="nav-item"><a class="nav-link" href="kuis.php">Kuis</a></li>  <!-- ← tambah ini -->
                            <?php if ($_SESSION['role'] === 'admin'): ?>
                           <li class="nav-item"><a class="nav-link" href="gerbang-rahasia-sija">Manage Module</a></li>
                             <?php endif; ?> 
