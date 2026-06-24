@@ -10,33 +10,36 @@ if (isset($_POST['register'])) {
     
     $username    = trim($_POST['username']);
     $password    = $_POST['password'];
-    $token_input = trim($_POST['token']); // Njupuk inputan token soko arek-arek
+    $no_wa_ortu  = trim($_POST['no_wa_ortu']);
+    $token_input = trim($_POST['token']);
     $role        = 'siswa'; 
 
-    // VALIDASI 1: Cek opo token sing dilebokno arek cocok karo kunci rahasia
+    // Normalisasi nomor WA (hapus spasi, strip, dst)
+    $no_wa_bersih = preg_replace('/[^0-9]/', '', $no_wa_ortu);
+
     if ($token_input !== $token_sah) {
         $pesan = "<div style='color: #ff3333; margin-bottom: 15px;'>Gagal! Token salah!</div>";
+    } elseif (!preg_match('/^(08|62)[0-9]{8,12}$/', $no_wa_bersih)) {
+        $pesan = "<div style='color: #ff3333; margin-bottom: 15px;'>Format nomor WA tidak valid. Contoh: 081234567890</div>";
     } else {
         try {
-            // VALIDASI 2: Cek username opo wis ono sing duwe
             $stmt_cek = $pdo->prepare("SELECT username FROM users WHERE username = :username");
             $stmt_cek->execute(['username' => $username]);
             
             if ($stmt_cek->rowCount() > 0) {
                 $pesan = "<div style='color: #ff3333; margin-bottom: 15px;'>Username sudah terdaftar!</div>";
             } else {
-                // VALIDASI 3: Enkripsi password
                 $password_aman = password_hash($password, PASSWORD_DEFAULT);
 
-                // VALIDASI 4: Eksekusi SQL Insert
-                $sql_insert = "INSERT INTO users (username, password, role, created_at) 
-                               VALUES (:username, :password, :role, NOW())";
+                $sql_insert = "INSERT INTO users (username, password, no_wa_ortu, role, created_at) 
+                               VALUES (:username, :password, :no_wa_ortu, :role, NOW())";
                 
                 $stmt_insert = $pdo->prepare($sql_insert);
                 $eksekusi = $stmt_insert->execute([
-                    'username' => $username,
-                    'password' => $password_aman,
-                    'role'     => $role
+                    'username'    => $username,
+                    'password'    => $password_aman,
+                    'no_wa_ortu'  => $no_wa_bersih,
+                    'role'        => $role
                 ]);
 
                 if ($eksekusi) {
@@ -44,7 +47,7 @@ if (isset($_POST['register'])) {
                 }
             }
         } catch (PDOException $e) {
-            $pesan = "<div style='color: #ff3333; margin-bottom: 15px;'>Gagal Error: " . $e->getMessage() . "</div>";
+            $pesan = "<div style='color: #ff3333; margin-bottom: 15px;'>Gagal Error: " . htmlspecialchars($e->getMessage()) . "</div>";
         }
     }
 }
@@ -67,6 +70,7 @@ if (isset($_POST['register'])) {
         .back-link { text-align: center; margin-top: 15px; font-size: 14px; }
         .back-link a { color: #aaa; text-decoration: none; }
         .back-link a:hover { color: #fff; }
+        .hint { font-size: 12px; color: #888; margin-top: -16px; margin-bottom: 16px; display: block; }
     </style>
 </head>
 <body>
@@ -84,8 +88,12 @@ if (isset($_POST['register'])) {
         <label>Password:</label>
         <input type="password" name="password" placeholder="******" required>
 
-<label style="color: #ffcc00; font-weight: bold;">Token Akses Pendaftaran:</label>
-<input type="text" name="token" placeholder="Ketik kode dari papan tulis lab..." required autocomplete="off">
+        <label>No. WhatsApp Orang Tua/Wali:</label>
+        <input type="text" name="no_wa_ortu" placeholder="Contoh: 081234567890" required>
+        <span class="hint">Untuk notifikasi progress belajar ke orang tua.</span>
+
+        <label style="color: #ffcc00; font-weight: bold;">Token Akses Pendaftaran:</label>
+        <input type="text" name="token" placeholder="Ketik kode dari papan tulis lab..." required autocomplete="off">
         <button type="submit" name="register">GASS DAFTAR AKUN</button>
     </form>
 

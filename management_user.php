@@ -36,7 +36,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])
 // --- AKSI 2: PROSES READ USER (TAMPILNO DAFTAR SISWA) ---
 try {
     // Mung nampilno user sing role-ne siswa wae, dadi luwih rapi
-    $stmt_read = $pdo->query("SELECT id, username, role, created_at FROM users WHERE role = 'siswa' ORDER BY id DESC");
+    $stmt_read = $pdo->query("SELECT id, username, role, no_wa_ortu, created_at FROM users WHERE role = 'siswa' ORDER BY id DESC");
     $daftar_siswa = $stmt_read->fetchAll();
 } catch (PDOException $e) {
     die("Gagal njupuk data siswa: " . $e->getMessage());
@@ -61,7 +61,8 @@ try {
         .btn-delete:hover { background: #cc0000; }
         .back-link { margin-top: 20px; display: block; color: #aaa; text-decoration: none; font-size: 14px; }
         .back-link:hover { color: #fff; }
-        
+        .wa-kosong { color: #ff9933; font-style: italic; font-size: 13px; }
+
         /* Tambahno kelas iki nggo nahan tabel ben gak offside */
 .table-responsive {
     width: 100%;
@@ -96,6 +97,7 @@ try {
                 <th>ID</th>
                 <th>Username Siswa</th>
                 <th>Role</th>
+                <th>No. WA Ortu</th>
                 <th>Tanggal Registrasi</th>
                 <th>Aksi</th>
             </tr>
@@ -107,9 +109,16 @@ try {
                         <td><?= $siswa['id']; ?></td>
                         <td><?= htmlspecialchars($siswa['username']); ?></td>
                         <td><span style="color: #00cc66; background: #003311; padding: 2px 6px; border-radius: 4px; font-size: 12px;"><?= $siswa['role']; ?></span></td>
+                        <td>
+                            <?php if (!empty($siswa['no_wa_ortu'])): ?>
+                                <?= htmlspecialchars($siswa['no_wa_ortu']); ?>
+                            <?php else: ?>
+                                <span class="wa-kosong">belum diisi</span>
+                            <?php endif; ?>
+                        </td>
                         <td><?= $siswa['created_at']; ?></td>
                         <td>
-                            <a href="management_user.php?action=delete&id=<?= $siswa['id']; ?>" 
+                            <a href="?action=delete&id=<?= $siswa['id']; ?>" 
                                class="btn-delete" 
                                onclick="return confirm('Yakin hapus user?')">
                                DEL
@@ -119,7 +128,7 @@ try {
                 <?php endforeach; ?>
             <?php else: ?>
                 <tr>
-                    <td colspan="5" style="text-align: center; color: #aaa;">Belum ada siswa yang mendaftar.</td>
+                    <td colspan="6" style="text-align: center; color: #aaa;">Belum ada siswa yang mendaftar.</td>
                 </tr>
             <?php endif; ?>
         </tbody>

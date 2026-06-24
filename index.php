@@ -73,19 +73,23 @@ $all_modules = $stmt->fetchAll(PDO::FETCH_ASSOC); // Variabel penampung looping 
                                 <li><hr class="dropdown-divider" /></li>
                                 <li><a class="dropdown-item" href="index.php">Semua Materi</a></li>
                             </ul>
-
-                        </li>
+                             <?php if ($_SESSION['role'] === 'siswa'): ?>
+                                <li class="nav-item"><a class="nav-link" href="akun_saya.php">Akun Saya</a></li>
+                                <li class="nav-item"><a class="nav-link" href="rapor_siswa.php">Rapor Saya</a></li>
+                                <?php endif; ?> 
+                            </li>
                             <li class="nav-item"><a class="nav-link" href="kuis.php">Kuis</a></li>  <!-- ← tambah ini -->
-                           <?php if ($_SESSION['role'] === 'admin'): ?>
-                          <li class="nav-item"><a class="nav-link" href="gerbang-rahasia-sija">Manage Module</a></li>
-                            <?php endif; ?> 
-                                          </li>
-                           <?php if ($_SESSION['role'] === 'admin'): ?>
-                          <li class="nav-item"><a class="nav-link" href="pintu-belakang-sija">Manage User</a></li>
-                            <?php endif; ?> 
-
                             <?php if ($_SESSION['role'] === 'admin'): ?>
-                          <li class="nav-item"><a class="nav-link" href="pintu-rahasia-sija">Manage Kuis</a></li>  <!-- ← tambah ini -->
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" id="adminDropdown" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Admin Panel</a>
+                                <ul class="dropdown-menu" aria-labelledby="adminDropdown">
+                                    <li><a class="dropdown-item" href="gerbang-rahasia-sija">Manage Module</a></li>
+                                    <li><hr class="dropdown-divider" /></li>
+                                    <li><a class="dropdown-item" href="pintu-belakang-sija">Manage User</a></li>
+                                    <li><hr class="dropdown-divider" /></li>
+                                    <li><a class="dropdown-item" href="pintu-rahasia-sija">Manage Kuis</a></li>
+                                </ul>
+                            </li>
                             <?php endif; ?>
                     </ul>
                     <div class="d-flex align-items-center gap-3">
@@ -200,7 +204,7 @@ $all_modules = $stmt->fetchAll(PDO::FETCH_ASSOC); // Variabel penampung looping 
                     <div class="card-footer p-4 pt-0 border-top-0 bg-transparent">
                         <div class="text-center">
                             <!-- Tombol ini langsung mengarah ke Link Google Drive -->
-                            <a class="btn btn-outline-dark mt-auto w-100" href="<?php echo htmlspecialchars($modul['file_path']); ?>" target="_blank">
+                            <a class="btn btn-outline-dark mt-auto w-100" href="buka_modul.php?id=<?= $modul['id'] ?>" target="_blank">
                                 📂 Buka Modul
                             </a>
                         </div>

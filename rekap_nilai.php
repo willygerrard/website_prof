@@ -43,8 +43,8 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $hasil_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Ringkasan per siswa (nilai terbaik per kategori+level)
-$ringkasan_sql = "SELECT users.username, kuis_hasil.kategori, kuis_hasil.level,
+// Ringkasan per siswa (nilai terbaik per kategori+level) — tambah users.id
+$ringkasan_sql = "SELECT users.id as user_id, users.username, kuis_hasil.kategori, kuis_hasil.level,
                           MAX(kuis_hasil.skor) as nilai_terbaik,
                           COUNT(*) as total_attempt
                    FROM kuis_hasil
@@ -58,6 +58,12 @@ $level_badge = [
     'menengah' => ['🟡 Menengah', 'warning'],
     'mahir'    => ['🔴 Mahir', 'danger'],
 ];
+
+// Daftar unik siswa untuk tombol akses cepat rapor
+$siswa_unik = [];
+foreach ($ringkasan as $r) {
+    $siswa_unik[$r['user_id']] = $r['username'];
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -122,11 +128,12 @@ $level_badge = [
                         <th>Nilai Terbaik</th>
                         <th>Attempt</th>
                         <th>Status</th>
+                        <th class="text-center">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (empty($ringkasan)): ?>
-                    <tr><td colspan="6" class="text-center text-muted py-4">Belum ada data kuis.</td></tr>
+                    <tr><td colspan="7" class="text-center text-muted py-4">Belum ada data kuis.</td></tr>
                     <?php endif; ?>
                     <?php foreach ($ringkasan as $r): 
                         $lvl = $level_badge[$r['level']] ?? ['-', 'secondary'];
@@ -146,6 +153,11 @@ $level_badge = [
                             <?php else: ?>
                                 <span class="badge bg-secondary">⏳ Belum Tuntas</span>
                             <?php endif; ?>
+                        </td>
+                        <td class="text-center">
+                            <a href="rapor_siswa.php?id=<?= $r['user_id'] ?>" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-file-text"></i> Rapor
+                            </a>
                         </td>
                     </tr>
                     <?php endforeach; ?>
