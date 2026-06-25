@@ -39,7 +39,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // 5. Baru lakukan verifikasi Password Hash BCRYPT
     if ($user && password_verify($pass_input, $user['password'])) {
-        
+        if (($user['status'] ?? 'aktif') === 'nonaktif') {
+        header("Location: login.php?error=nonaktif");
+        exit();
+    }
         // LOGIN SUKSES! Buat tanda bukti session
         $_SESSION['is_login'] = true;
         $_SESSION['username'] = $user['username'];

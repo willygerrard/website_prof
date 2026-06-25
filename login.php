@@ -7,6 +7,7 @@ if (isset($_SESSION['is_login']) && $_SESSION['is_login'] === true) {
     header("Location: index.php");
     exit();
 }
+$error = $_GET['error'] ?? '';
 ?>
 
 <!DOCTYPE html>
@@ -95,6 +96,12 @@ if (isset($_SESSION['is_login']) && $_SESSION['is_login'] === true) {
     </style>
 </head>
 <body>
+
+<?php if ($error === 'nonaktif'): ?>
+<script>
+    alert('Akun ini sudah tidak aktif. Hubungi guru pembimbing.');
+</script>
+<?php endif; ?>
 
 <div class="login-box">
     <h3>SYSTEM AUTH</h3>

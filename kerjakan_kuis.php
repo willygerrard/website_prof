@@ -75,6 +75,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_kuis'])) {
         $stmt = $pdo->prepare("INSERT INTO kuis_hasil (user_id, kategori, level, skor, total_soal, attempt, dikerjakan_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
         $stmt->execute([$user_id, $sesi['kategori'], $sesi['level'], $skor, $total_soal, $total_attempt + 1]);
 
+        // Kirim notifikasi WA ke ortu
+        $stmt_wa = $pdo->prepare("SELECT no_wa_ortu FROM users WHERE id = ?");
+        $stmt_wa->execute([$user_id]);
+        $no_wa = $stmt_wa->fetchColumn();
+
+        if ($no_wa) {
+            require_once 'fonnte.php';
+            $tanggal = date('d M Y, H:i');
+            $status_lulus = $skor >= KKM ? 'LULUS ✅' : 'belum lulus, KKM 75';
+            $pesan_wa = "📝 *Pusat Pembelajaran SIJA*\n\n"
+                    . htmlspecialchars($_SESSION['username']) . " mengerjakan kuis:\n"
+                    . "*" . htmlspecialchars($sesi['kategori']) . " - " . ucfirst($sesi['level']) . "*\n\n"
+                    . "Percobaan ke-" . ($total_attempt + 1) . " dari 4\n"
+                    . "Nilai: *$skor* ($benar dari $total_soal soal benar)\n"
+                    . "Status: $status_lulus\n\n"
+                    . "Pada: $tanggal";
+            kirimWA($no_wa, $pesan_wa);
+        }
+
         // Redirect ke halaman hasil
         header("Location: hasil_kuis.php?skor=$skor&benar=$benar&total=$total_soal&lulus=" . ($skor >= KKM ? '1' : '0'));
         exit();
