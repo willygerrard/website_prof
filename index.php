@@ -71,6 +71,8 @@ $all_modules = $stmt->fetchAll(PDO::FETCH_ASSOC); // Variabel penampung looping 
                                 <li><hr class="dropdown-divider" /></li>
                                 <li><a class="dropdown-item" href="index.php?kategori=Network">Network</a></li>
                                 <li><hr class="dropdown-divider" /></li>
+                                <li><a class="dropdown-item" href="index.php?kategori=DevOps">DevOps</a></li>
+                                <li><hr class="dropdown-divider" /></li>
                                 <li><a class="dropdown-item" href="index.php">Semua Materi</a></li>
                             </ul>
                              <?php if ($_SESSION['role'] === 'siswa'): ?>
@@ -88,6 +90,8 @@ $all_modules = $stmt->fetchAll(PDO::FETCH_ASSOC); // Variabel penampung looping 
                                     <li><a class="dropdown-item" href="pintu-belakang-sija">Manage User</a></li>
                                     <li><hr class="dropdown-divider" /></li>
                                     <li><a class="dropdown-item" href="pintu-rahasia-sija">Manage Kuis</a></li>
+                                    <li><hr class="dropdown-divider" /></li>
+                                    <li><a class="dropdown-item" href="toggle_notif.php">Toggle Notifikasi WA</a></li>
                                 </ul>
                             </li>
                             <?php endif; ?>

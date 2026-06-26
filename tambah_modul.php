@@ -85,6 +85,7 @@
                                 <option value="Network">Network</option>
                                 <option value="IoT">Internet of Things (IoT)</option>
                                 <option value="Cloud Computing">Cloud Computing</option>
+                                <option value="DevOps">DevOps</option>
                             </select>
                         </div>
 

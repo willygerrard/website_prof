@@ -158,6 +158,7 @@ try {
                         <option value="Network" <?= $data['category'] === 'Network' ? 'selected' : ''; ?>>Network</option>
                         <option value="IoT" <?= $data['category'] === 'IoT' ? 'selected' : ''; ?>>Internet of Things (IoT)</option>
                         <option value="Cloud Computing" <?= $data['category'] === 'Cloud Computing' ? 'selected' : ''; ?>>Cloud Computing</option>
+                        <option value="DevOps" <?= $data['category'] === 'DevOps' ? 'selected' : ''; ?>>DevOps</option>
                     </select>
                 </div>
 

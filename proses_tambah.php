@@ -50,7 +50,7 @@ if ($jenis == 'video') {
 } else {
     // 3. JALUR UTAMA MODUL (PDF): Default awal diset dadi debian.webp yen gak upload gambar
     $nama_file_db = 'img/debian.webp'; 
-
+}
     // Proses upload file custom mung mlaku KANDHI KHUSUS ing njero kene wae!
     if (isset($_FILES['image_path']) && $_FILES['image_path']['error'] === UPLOAD_ERR_OK) {
         $file_tmp       = $_FILES['image_path']['tmp_name'];
@@ -67,7 +67,7 @@ if ($jenis == 'video') {
             }
         }
     }
-} // <--- TUTUP WADAH UTAMA
+// <--- TUTUP WADAH UTAMA
 
 // =========================================================================
 

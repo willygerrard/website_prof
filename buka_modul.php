@@ -27,6 +27,11 @@ if (!$modul || empty($modul['file_path'])) {
     exit();
 }
 
+$cek_sesi = $pdo->query("SELECT status FROM notifikasi_sesi ORDER BY id DESC LIMIT 1")->fetchColumn();
+
+if ($cek_sesi === 'aktif') {
+    // kirim WA seperti biasa
+
 // Cek apakah notifikasi untuk modul ini sudah pernah dikirim ke siswa ini
 $cek = $pdo->prepare("SELECT id FROM notifikasi_modul WHERE user_id = ? AND modul_id = ?");
 $cek->execute([$user_id, $modul_id]);
@@ -53,6 +58,7 @@ if (!$cek->fetch()) {
     }
 }
 
+}
 // Redirect ke link asli modul
 header("Location: " . $modul['file_path']);
 exit();
