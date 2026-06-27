@@ -48,7 +48,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'aktifkan' && isset($_GET['id'
 
 // --- READ USER (TAMPILNO DAFTAR SISWA) ---
 try {
-    $stmt_read = $pdo->query("SELECT id, username, role, no_wa_ortu, status, created_at FROM users WHERE role = 'siswa' ORDER BY status ASC, id DESC");
+    $stmt_read = $pdo->query("SELECT id, username, kelas, role, no_wa_ortu, status, created_at FROM users WHERE role = 'siswa' ORDER BY status ASC, id DESC");
     $daftar_siswa = $stmt_read->fetchAll();
 } catch (PDOException $e) {
     die("Gagal njupuk data siswa: " . $e->getMessage());
@@ -98,6 +98,7 @@ try {
             <tr>
                 <th>ID</th>
                 <th>Username Siswa</th>
+                <th>Kelas</th>
                 <th>No. WA Ortu</th>
                 <th>Status</th>
                 <th>Tanggal Registrasi</th>
@@ -113,12 +114,20 @@ try {
                         <td><?= $siswa['id']; ?></td>
                         <td><?= htmlspecialchars($siswa['username']); ?></td>
                         <td>
+                            <?php if (!empty($siswa['kelas'])): ?>
+                                <?= htmlspecialchars($siswa['kelas']); ?>
+                            <?php else: ?>
+                                <span class="wa-kosong">belum diisi</span>
+                            <?php endif; ?>
+                        </td>
+                        <td>
                             <?php if (!empty($siswa['no_wa_ortu'])): ?>
                                 <?= htmlspecialchars($siswa['no_wa_ortu']); ?>
                             <?php else: ?>
                                 <span class="wa-kosong">belum diisi</span>
                             <?php endif; ?>
                         </td>
+                          
                         <td>
                             <span class="badge-status <?= $is_nonaktif ? 'badge-nonaktif' : 'badge-aktif' ?>">
                                 <?= $is_nonaktif ? 'Nonaktif' : 'Aktif' ?>

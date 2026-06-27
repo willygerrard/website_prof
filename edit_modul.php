@@ -46,10 +46,12 @@ if (isset($_FILES['image_path']) && !empty($_FILES['image_path']['name'])) {
         // --- REM DARURAT HAPUS FILE LAMA ---
         // Karena di DB string-nya sudah rapi mengandung 'img/nama_file.png', 
         // KITA LANGSUNG cek file_exists($nama_file_db) TANPA perlu menggandeng 'img/' lagi!
-        if (!empty($nama_file_db) && $nama_file_db !== 'img/default_icon.png' && file_exists($nama_file_db)) {
-            unlink($nama_file_db); // Sikat file gambar lama di server biar gak jadi sampah penyimpanan Linux
+        if (strpos($nama_file_db, 'default') === false && strpos($nama_file_db, 'debian') === false) {
+    
+            if (!empty($nama_file_db) && file_exists($nama_file_db)) {
+                unlink($nama_file_db); // Aman satus persen, file master gak bakal ilang!
+            }
         }
-
         // Generate nama ikon baru agar unik
         $nama_file_baru = 'icon_' . time() . '_' . uniqid() . '.' . $file_ext;
         

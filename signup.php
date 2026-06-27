@@ -12,6 +12,7 @@ if (isset($_POST['register'])) {
     $password    = $_POST['password'];
     $no_wa_ortu  = trim($_POST['no_wa_ortu']);
     $token_input = trim($_POST['token']);
+    $kelas       = trim($_POST['kelas']);
     $role        = 'siswa'; 
 
     // Normalisasi nomor WA (hapus spasi, strip, dst)
@@ -31,14 +32,15 @@ if (isset($_POST['register'])) {
             } else {
                 $password_aman = password_hash($password, PASSWORD_DEFAULT);
 
-                $sql_insert = "INSERT INTO users (username, password, no_wa_ortu, role, created_at) 
-                               VALUES (:username, :password, :no_wa_ortu, :role, NOW())";
+                $sql_insert = "INSERT INTO users (username, password, no_wa_ortu, kelas, role, created_at) 
+                               VALUES (:username, :password, :no_wa_ortu, :kelas, :role, NOW())";
                 
                 $stmt_insert = $pdo->prepare($sql_insert);
                 $eksekusi = $stmt_insert->execute([
                     'username'    => $username,
                     'password'    => $password_aman,
                     'no_wa_ortu'  => $no_wa_bersih,
+                    'kelas'       => $kelas,
                     'role'        => $role
                 ]);
 
@@ -87,6 +89,24 @@ if (isset($_POST['register'])) {
 
         <label>Password:</label>
         <input type="password" name="password" placeholder="******" required>
+
+        <label for="kelas">Kelas:</label>
+        <select name="kelas" id="kelas" required>
+            <option value="">-- Pilih Kelas --</option>
+            <!-- Kelas X -->
+            <option value="X TKJ 1">X TKJ 1</option>
+            <option value="X TKJ 2">X TKJ 2</option>
+            <option value="X SIJA">X SIJA</option>
+            
+            <!-- Kelas XI -->
+            <option value="XI TKJ 1">XI TKJ 1</option>
+            <option value="XI TKJ 2">XI TKJ 2</option>
+            <option value="XI SIJA">XI SIJA</option>
+            
+            <!-- Kelas XII -->
+            <option value="XII TKJ 1">XII TKJ 1</option>
+            <option value="XII SIJA">XII SIJA</option>
+        </select>
 
         <label>No. WhatsApp Orang Tua/Wali:</label>
         <input type="text" name="no_wa_ortu" placeholder="Contoh: 081234567890" required>

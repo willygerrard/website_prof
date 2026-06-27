@@ -12,12 +12,14 @@ if ($_SESSION['role'] !== 'admin') {
 
 const KKM = 75;
 
-// Filter
+// Filter - Tambah filter kelas
 $kategori_filter = $_GET['kategori'] ?? '';
-$level_filter     = $_GET['level'] ?? '';
-$status_filter    = $_GET['status'] ?? '';
+$level_filter    = $_GET['level'] ?? '';
+$status_filter   = $_GET['status'] ?? '';
+$kelas_filter    = $_GET['kelas'] ?? ''; // 🔥 Filter kelas baru
 
-$sql = "SELECT kuis_hasil.*, users.username 
+// Query 1: Riwayat Attempt (Tambah users.kelas)
+$sql = "SELECT kuis_hasil.*, users.username, users.kelas 
         FROM kuis_hasil 
         JOIN users ON kuis_hasil.user_id = users.id 
         WHERE 1=1";
@@ -31,6 +33,10 @@ if ($level_filter) {
     $sql .= " AND kuis_hasil.level = ?";
     $params[] = $level_filter;
 }
+if ($kelas_filter) { // 🔥 Inject filter kelas ke query
+    $sql .= " AND users.kelas = ?";
+    $params[] = $kelas_filter;
+}
 if ($status_filter === 'lulus') {
     $sql .= " AND kuis_hasil.skor >= " . KKM;
 } elseif ($status_filter === 'belum') {
@@ -43,14 +49,14 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $hasil_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Ringkasan per siswa (nilai terbaik per kategori+level) — tambah users.id
-$ringkasan_sql = "SELECT users.id as user_id, users.username, kuis_hasil.kategori, kuis_hasil.level,
+// Query 2: Ringkasan per siswa (Tambah users.kelas)
+$ringkasan_sql = "SELECT users.id as user_id, users.username, users.kelas, kuis_hasil.kategori, kuis_hasil.level,
                           MAX(kuis_hasil.skor) as nilai_terbaik,
                           COUNT(*) as total_attempt
                    FROM kuis_hasil
                    JOIN users ON kuis_hasil.user_id = users.id
                    GROUP BY users.id, kuis_hasil.kategori, kuis_hasil.level
-                   ORDER BY users.username, kuis_hasil.kategori, kuis_hasil.level";
+                   ORDER BY users.kelas ASC, users.username ASC, kuis_hasil.kategori ASC, kuis_hasil.level ASC"; // 🔥 Urutkan berdasarkan kelas dhisik
 $ringkasan = $pdo->query($ringkasan_sql)->fetchAll(PDO::FETCH_ASSOC);
 
 $level_badge = [
@@ -58,6 +64,10 @@ $level_badge = [
     'menengah' => ['🟡 Menengah', 'warning'],
     'mahir'    => ['🔴 Mahir', 'danger'],
 ];
+
+// Ambil daftar unik kelas yang ada di database untuk opsi filter dropdown otomatis
+$list_kelas_sql = "SELECT DISTINCT kelas FROM users WHERE kelas IS NOT NULL AND kelas != '' ORDER BY kelas ASC";
+$daftar_kelas = $pdo->query($list_kelas_sql)->fetchAll(PDO::FETCH_COLUMN);
 
 // Daftar unik siswa untuk tombol akses cepat rapor
 $siswa_unik = [];
@@ -115,13 +125,81 @@ foreach ($ringkasan as $r) {
                 <i class="bi bi-arrow-counterclockwise"></i>
             </a>
         </div>
+<h5 class="fw-bold mb-3">📁 Pilih Rekap Per Kelas</h5>
+        <div class="mb-4">
+            <a href="rekap_nilai.php" class="btn btn-sm <?= empty($kelas_filter) ? 'btn-dark' : 'btn-outline-dark' ?> me-2">
+                🌍 Semua Kelas
+            </a>
+            <?php foreach ($daftar_kelas as $k): ?>
+                <a href="rekap_nilai.php?kelas=<?= urlencode($k) ?>" class="btn btn-sm <?= $kelas_filter === $k ? 'btn-dark' : 'btn-outline-dark' ?> me-2">
+                    📦 Kelas <?= htmlspecialchars($k) ?>
+                </a>
+            <?php endforeach; ?>
+        </div>
 
+        <h5 class="fw-bold mb-3">🏆 Ringkasan Nilai Terbaik <?= $kelas_filter ? 'Kelas ' . htmlspecialchars($kelas_filter) : 'Semua Siswa' ?></h5>
+        <div class="table-responsive bg-white p-4 rounded-3 shadow-sm border mb-5">
+            <table class="table table-hover align-middle m-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Kelas</th>
+                        <th>Siswa</th>
+                        <th>Kategori</th>
+                        <th>Level</th>
+                        <th>Nilai Terbaik</th>
+                        <th>Attempt</th>
+                        <th>Status</th>
+                        <th class="text-center">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php 
+                    $ada_data_ringkasan = false;
+                    foreach ($ringkasan as $r): 
+                        // 🔥 FILTER RINGKASAN AGAR MENGIKUTI SELEKSI KELAS
+                        if ($kelas_filter && $r['kelas'] !== $kelas_filter) continue;
+                        
+                        $ada_data_ringkasan = true;
+                        $lvl = $level_badge[$r['level']] ?? ['-', 'secondary'];
+                        $lulus = $r['nilai_terbaik'] >= KKM;
+                    ?>
+                    <tr>
+                        <td><span class="badge bg-secondary"><?= htmlspecialchars($r['kelas'] ?? '-') ?></span></td>
+                        <td class="fw-semibold"><?= htmlspecialchars($r['username']) ?></td>
+                        <td><span class="badge bg-info text-dark"><?= htmlspecialchars($r['kategori']) ?></span></td>
+                        <td><span class="badge bg-<?= $lvl[1] ?>"><?= $lvl[0] ?></span></td>
+                        <td class="fw-bold"><?= $r['nilai_terbaik'] ?></td>
+                        <td><?= $r['total_attempt'] ?> / 4</td>
+                        <td>
+                            <?php if ($lulus): ?>
+                                <span class="badge bg-success">✅ Lulus</span>
+                            <?php elseif ($r['total_attempt'] >= 4): ?>
+                                <span class="badge bg-danger">❌ Tidak Lulus</span>
+                            <?php else: ?>
+                                <span class="badge bg-secondary">⏳ Belum Tuntas</span>
+                            <?php endif; ?>
+                        </td>
+                        <td class="text-center">
+                            <a href="rapor_siswa.php?id=<?= $r['user_id'] ?>" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-file-text"></i> Rapor
+                            </a>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                    
+                    <?php if (!$ada_data_ringkasan): ?>
+                    <tr><td colspan="8" class="text-center text-muted py-4">Tidak ada data untuk kelas ini.</td></tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
         <!-- RINGKASAN PER SISWA -->
         <h5 class="fw-bold mb-3">🏆 Ringkasan Nilai Terbaik per Siswa</h5>
         <div class="table-responsive bg-white p-4 rounded-3 shadow-sm border mb-5">
             <table class="table table-hover align-middle m-0">
                 <thead class="table-light">
                     <tr>
+                        <th>Kelas</th> <!-- 🔥 Kolom Kelas Baru -->
                         <th>Siswa</th>
                         <th>Kategori</th>
                         <th>Level</th>
@@ -133,13 +211,15 @@ foreach ($ringkasan as $r) {
                 </thead>
                 <tbody>
                     <?php if (empty($ringkasan)): ?>
-                    <tr><td colspan="7" class="text-center text-muted py-4">Belum ada data kuis.</td></tr>
+                    <tr><td colspan="8" class="text-center text-muted py-4">Belum ada data kuis.</td></tr>
                     <?php endif; ?>
                     <?php foreach ($ringkasan as $r): 
                         $lvl = $level_badge[$r['level']] ?? ['-', 'secondary'];
                         $lulus = $r['nilai_terbaik'] >= KKM;
                     ?>
                     <tr>
+                        <!-- 🔥 Tampilkan Kelas -->
+                        <td><span class="badge bg-secondary"><?= htmlspecialchars($r['kelas'] ?? '-') ?></span></td>
                         <td class="fw-semibold"><?= htmlspecialchars($r['username']) ?></td>
                         <td><span class="badge bg-info text-dark"><?= htmlspecialchars($r['kategori']) ?></span></td>
                         <td><span class="badge bg-<?= $lvl[1] ?>"><?= $lvl[0] ?></span></td>
@@ -170,12 +250,22 @@ foreach ($ringkasan as $r) {
 
         <!-- Filter -->
         <form method="GET" class="row g-2 mb-3">
+            <!-- 🔥 Dropdown Filter Kelas Baru -->
+            <div class="col-md-3">
+                <select name="kelas" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">Semua Kelas</option>
+                    <?php foreach ($daftar_kelas as $k): ?>
+                        <option value="<?= htmlspecialchars($k) ?>" <?= $kelas_filter === $k ? 'selected' : '' ?>><?= htmlspecialchars($k) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
             <div class="col-md-3">
                 <select name="kategori" class="form-select form-select-sm" onchange="this.form.submit()">
                     <option value="">Semua Kategori</option>
                     <option value="Network" <?= $kategori_filter === 'Network' ? 'selected' : '' ?>>Network</option>
                     <option value="IoT" <?= $kategori_filter === 'IoT' ? 'selected' : '' ?>>IoT</option>
                     <option value="Cloud Computing" <?= $kategori_filter === 'Cloud Computing' ? 'selected' : '' ?>>Cloud Computing</option>
+                    <option value="DevOps" <?= $kategori_filter === 'DevOps' ? 'selected' : '' ?>>DevOps</option>
                 </select>
             </div>
             <div class="col-md-3">
@@ -199,6 +289,7 @@ foreach ($ringkasan as $r) {
             <table class="table table-sm table-hover align-middle m-0">
                 <thead class="table-light">
                     <tr>
+                        <th>Kelas</th> <!-- 🔥 Kolom Kelas Baru -->
                         <th>Siswa</th>
                         <th>Kategori</th>
                         <th>Level</th>
@@ -209,12 +300,14 @@ foreach ($ringkasan as $r) {
                 </thead>
                 <tbody>
                     <?php if (empty($hasil_list)): ?>
-                    <tr><td colspan="6" class="text-center text-muted py-4">Tidak ada data untuk filter ini.</td></tr>
+                    <tr><td colspan="7" class="text-center text-muted py-4">Tidak ada data untuk filter ini.</td></tr>
                     <?php endif; ?>
                     <?php foreach ($hasil_list as $h): 
                         $lvl = $level_badge[$h['level']] ?? ['-', 'secondary'];
                     ?>
                     <tr>
+                        <!-- 🔥 Tampilkan Kelas -->
+                        <td><span class="badge bg-secondary"><?= htmlspecialchars($h['kelas'] ?? '-') ?></span></td>
                         <td><?= htmlspecialchars($h['username']) ?></td>
                         <td><span class="badge bg-info text-dark"><?= htmlspecialchars($h['kategori']) ?></span></td>
                         <td><span class="badge bg-<?= $lvl[1] ?>"><?= $lvl[0] ?></span></td>
@@ -233,6 +326,7 @@ foreach ($ringkasan as $r) {
         <div class="container"><p class="m-0 text-center text-white">Copyright &copy; SIJA Website 2026</p></div>
     </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- 🔥 Perbaikan versi Bootstrap JS biar sinkron (dari 5.2.3 ke 5.3.0) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
