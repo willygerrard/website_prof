@@ -61,7 +61,6 @@ $all_modules = $stmt->fetchAll(PDO::FETCH_ASSOC); // Variabel penampung looping 
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
                 <div class="collapse navbar-collapse" id="navbarSupportedContent">
                     <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4">
-                        <li class="nav-item"><a class="nav-link" href="profile.php">Profile</a></li>
                            <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" id="navbarDropdown" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Materi</a>
                             <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
@@ -80,7 +79,7 @@ $all_modules = $stmt->fetchAll(PDO::FETCH_ASSOC); // Variabel penampung looping 
                                 <li class="nav-item"><a class="nav-link" href="rapor_siswa.php">Rapor Saya</a></li>
                                 <?php endif; ?> 
                             </li>
-                            <li class="nav-item"><a class="nav-link" href="kuis.php">Kuis</a></li>  <!-- ← tambah ini -->
+                            
                             <?php if ($_SESSION['role'] === 'admin'): ?>
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" id="adminDropdown" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Admin Panel</a>
@@ -95,6 +94,7 @@ $all_modules = $stmt->fetchAll(PDO::FETCH_ASSOC); // Variabel penampung looping 
                                 </ul>
                             </li>
                             <?php endif; ?>
+                            <li class="nav-item"><a class="nav-link" href="kuis.php">Kuis</a></li>  <!-- ← tambah ini -->
                     </ul>
                     <div class="d-flex align-items-center gap-3">
     <?php if (isset($_SESSION['username'])) : ?>
