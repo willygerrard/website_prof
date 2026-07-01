@@ -79,7 +79,7 @@ $all_modules = $stmt->fetchAll(PDO::FETCH_ASSOC); // Variabel penampung looping 
                                 <li class="nav-item"><a class="nav-link" href="rapor_siswa.php">Rapor Saya</a></li>
                                 <?php endif; ?> 
                             </li>
-                            
+                             <li class="nav-item"><a class="nav-link" href="https://acesse.one/umdz1td">Pengumpulan Tugas</a></li>
                             <?php if ($_SESSION['role'] === 'admin'): ?>
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" id="adminDropdown" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Admin Panel</a>
