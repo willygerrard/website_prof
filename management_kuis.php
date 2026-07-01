@@ -106,6 +106,9 @@ $level_badge = [
                 <a href="rekap_nilai.php" class="btn btn-success rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Lihat Rekap Nilai">
                     <i class="bi bi-bar-chart"></i>
                 </a>
+                <button type="submit" form="bulkDeleteForm" class="btn btn-success rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Hapus Masal Soal Terpilih">
+                    <i class="bi bi-trash"></i>
+                </button>
             </div>
         </div>
 
@@ -137,15 +140,17 @@ $level_badge = [
             <?php endforeach; ?>
         </div>
 
+        <form id="bulkDeleteForm" action="bulkdelete.php" method="POST" onsubmit="return confirmBulkDelete(this)">
         <div class="table-responsive bg-white p-4 rounded-3 shadow-sm border">
             <table class="table table-hover align-middle m-0">
                 <thead class="table-light">
                     <tr>
-                        <th style="width: 5%">No</th>
-                        <th style="width: 35%">Pertanyaan</th>
+                        <th style="width: 4%"><input type="checkbox" class="form-check-input" id="checkAll" title="Pilih semua"></th>
+                        <th style="width: 4%">No</th>
+                        <th style="width: 33%">Pertanyaan</th>
                         <th style="width: 15%">Kategori</th>
-                        <th style="width: 15%">Level</th>
-                        <th style="width: 15%">Jawaban</th>
+                        <th style="width: 13%">Level</th>
+                        <th style="width: 16%">Jawaban</th>
                         <th style="width: 15%" class="text-center">Aksi</th>
                     </tr>
                 </thead>
@@ -154,6 +159,9 @@ $level_badge = [
                         $lvl = $level_badge[$row['level']] ?? ['-', 'secondary'];
                     ?>
                     <tr>
+                        <td>
+                            <input type="checkbox" class="form-check-input soal-check" name="ids[]" value="<?= (int)$row['id']; ?>">
+                        </td>
                         <td><?= $no++; ?></td>
                         <td class="fw-semibold text-secondary"><?= htmlspecialchars($row['pertanyaan'] ?? ''); ?></td>
                         <td><span class="badge bg-info text-dark px-2 py-1"><?= htmlspecialchars($row['kategori'] ?? ''); ?></span></td>
@@ -176,12 +184,13 @@ $level_badge = [
                     <?php endwhile; ?>
                     <?php if ($no === 1): ?>
                     <tr>
-                        <td colspan="6" class="text-center text-muted py-4">Belum ada soal untuk filter ini.</td>
+                        <td colspan="7" class="text-center text-muted py-4">Belum ada soal untuk filter ini.</td>
                     </tr>
                     <?php endif; ?>
                 </tbody>
             </table>
         </div>
+        </form>
     </div>
 
     <!-- FOOTER -->
@@ -190,5 +199,32 @@ $level_badge = [
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Centang / hilangkan centang semua checkbox soal
+        document.getElementById('checkAll').addEventListener('change', function () {
+            document.querySelectorAll('.soal-check').forEach(function (cb) {
+                cb.checked = this.checked;
+            }.bind(this));
+        });
+
+        // Jika salah satu checkbox baris diubah, sinkronkan status "Pilih semua"
+        document.querySelectorAll('.soal-check').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                var all = document.querySelectorAll('.soal-check');
+                var checked = document.querySelectorAll('.soal-check:checked');
+                document.getElementById('checkAll').checked = all.length === checked.length;
+            });
+        });
+
+        // Validasi sebelum submit bulk delete
+        function confirmBulkDelete(form) {
+            var checked = form.querySelectorAll('.soal-check:checked');
+            if (checked.length === 0) {
+                alert('Pilih minimal 1 soal terlebih dahulu untuk dihapus.');
+                return false;
+            }
+            return confirm('Yakin ingin menghapus ' + checked.length + ' soal terpilih?');
+        }
+    </script>
 </body>
 </html>

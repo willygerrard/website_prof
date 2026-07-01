@@ -161,7 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori'])) {
 
                         <div class="alert alert-info py-2 px-3 small">
                         <i class="bi bi-info-circle-fill"></i> <strong>Cara Pakai:</strong><br>
-                        Paste format: Pertanyaan [enter] Pilihan A, B, C, D [enter] Answer: [Jawaban]. 
+                        Pilih kategori dan level terlebih dahulu, lalu paste format: Pertanyaan [enter] Pilihan A, B, C, D [enter] Answer: [Jawaban]. 
                         Pastikan ada 1 baris kosong antar soal.
                         </div>
 
