@@ -1,6 +1,8 @@
 <?php
 include 'koneksi.php';
 session_start();
+include 'csrf_helper.php';
+
 if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
     header("Location: login.php");
     exit();
@@ -15,6 +17,8 @@ $pesan_type = '';
 
 // Toggle status
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle'])) {
+    csrf_require_valid_post();
+    
     $status_baru = $_POST['toggle'] === 'aktif' ? 'aktif' : 'nonaktif';
 
     if ($status_baru === 'aktif') {

@@ -1,6 +1,7 @@
 <?php
 include 'koneksi.php';
 session_start();
+include 'csrf_helper.php';
 if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
     header("Location: login.php");
     exit();
@@ -15,6 +16,7 @@ $pesan_type = '';
 
 // Deploy sesi baru
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
+    csrf_require_valid_post();
     $kategori = trim($_POST['kategori'] ?? '');
     $level    = trim($_POST['level'] ?? '');
     $durasi   = (int)($_POST['durasi_menit'] ?? 30);
@@ -41,6 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
 
 // Tutup sesi
 if (isset($_GET['tutup'])) {
+    csrf_require_valid_get();
     $id = (int)$_GET['tutup'];
     $stmt = $pdo->prepare("UPDATE kuis_sesi SET status = 'nonaktif', ditutup_at = NOW() WHERE id = ?");
     $stmt->execute([$id]);

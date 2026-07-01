@@ -1,6 +1,7 @@
 <?php
 include 'koneksi.php';
 session_start();
+include 'csrf_helper.php';
 if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
     header("Location: login.php");
     exit();
@@ -15,6 +16,7 @@ $pesan = '';
 $pesan_type = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_require_valid_post();
     $no_wa_ortu = trim($_POST['no_wa_ortu'] ?? '');
     $no_wa_bersih = preg_replace('/[^0-9]/', '', $no_wa_ortu);
 

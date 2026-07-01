@@ -1,6 +1,7 @@
 <?php
 session_start();
 include 'koneksi.php';
+include 'csrf_helper.php';
 
 if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
     header("Location: login.php");
@@ -27,6 +28,7 @@ if (!$data) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_require_valid_post();
     $kategori   = trim($_POST['kategori'] ?? '');
     $level      = trim($_POST['level'] ?? '');
     $pertanyaan = trim($_POST['pertanyaan'] ?? '');

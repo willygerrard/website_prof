@@ -1,6 +1,7 @@
 <?php
 session_start();
 include 'koneksi.php';
+include 'csrf_helper.php';
 // 1. Proteksi Halaman
 if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
     header("Location: login.php");
@@ -24,6 +25,7 @@ if (!$data) {
 
 // 3. Proses Update Data saat Form di-Submit (POST)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_require_valid_post();
     $title = trim($_POST['title'] ?? '');
     $category   = trim($_POST['category'] ?? '');
     $description       = trim($_POST['description'] ?? '');

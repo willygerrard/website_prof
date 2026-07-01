@@ -1,5 +1,6 @@
 <?php
 include 'koneksi.php';
+include 'csrf_helper.php';
 session_start();
 if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
     header("Location: login.php");
@@ -11,6 +12,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header("Location: /pintu-rahasia-sija");
     exit();
 }
+
+csrf_require_valid_post();
 
 // Ambil id-id yang dicentang dari checkbox
 $ids = $_POST['ids'] ?? [];

@@ -1,5 +1,6 @@
 <?php
 include 'koneksi.php';
+include 'csrf_helper.php';
 session_start();
 if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
     header("Location: login.php");
@@ -106,7 +107,10 @@ $level_badge = [
                 <a href="rekap_nilai.php" class="btn btn-success rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Lihat Rekap Nilai">
                     <i class="bi bi-bar-chart"></i>
                 </a>
-                <button type="submit" form="bulkDeleteForm" class="btn btn-success rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Hapus Masal Soal Terpilih">
+                <button type="submit" form="bulkDeleteForm" formaction="bulk_edit.php" class="btn btn-warning rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Edit Massal Soal Terpilih">
+                    <i class="bi bi-pencil-square"></i>
+                </button>
+                <button type="submit" form="bulkDeleteForm" formaction="bulkdelete.php" class="btn btn-success rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Hapus Masal Soal Terpilih">
                     <i class="bi bi-trash"></i>
                 </button>
             </div>
@@ -140,7 +144,7 @@ $level_badge = [
             <?php endforeach; ?>
         </div>
 
-        <form id="bulkDeleteForm" action="bulkdelete.php" method="POST" onsubmit="return confirmBulkDelete(this)">
+        <form id="bulkDeleteForm" method="POST">
         <div class="table-responsive bg-white p-4 rounded-3 shadow-sm border">
             <table class="table table-hover align-middle m-0">
                 <thead class="table-light">
@@ -216,15 +220,26 @@ $level_badge = [
             });
         });
 
-        // Validasi sebelum submit bulk delete
-        function confirmBulkDelete(form) {
-            var checked = form.querySelectorAll('.soal-check:checked');
+        // Validasi sebelum submit bulk action (baik edit maupun hapus)
+        document.getElementById('bulkDeleteForm').addEventListener('submit', function (e) {
+            var checked = this.querySelectorAll('.soal-check:checked');
             if (checked.length === 0) {
-                alert('Pilih minimal 1 soal terlebih dahulu untuk dihapus.');
-                return false;
+                e.preventDefault();
+                alert('Pilih minimal 1 soal terlebih dahulu.');
+                return;
             }
-            return confirm('Yakin ingin menghapus ' + checked.length + ' soal terpilih?');
-        }
+
+            var submitter = e.submitter; // tombol yang dipencet (edit / hapus)
+            var isDelete = submitter && submitter.formAction.indexOf('bulkdelete.php') !== -1;
+
+            var pesan = isDelete
+                ? 'Yakin ingin menghapus ' + checked.length + ' soal terpilih?'
+                : 'Lanjut edit massal untuk ' + checked.length + ' soal terpilih?';
+
+            if (!confirm(pesan)) {
+                e.preventDefault();
+            }
+        });
     </script>
 </body>
 </html>

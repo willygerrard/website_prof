@@ -1,6 +1,7 @@
 <?php
 // 1. Amankan session dan include koneksi database
 session_start();
+include 'csrf_helper.php';
 include 'koneksi.php'; // $pdo otomatis aktif
 
 // Cek autentikasi login admin
@@ -11,7 +12,8 @@ if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
 
 // 2. Cek kiriman form via POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-   
+    csrf_require_valid_post();
+
     // Ambil data teks dan link dari form input
     $nama_modul = trim($_POST['nama_modul'] ?? '');
     $kategori   = trim($_POST['kategori'] ?? '');

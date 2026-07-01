@@ -1,7 +1,9 @@
 <?php
+session_start();
 // Pastikan koneksi database dan session start sudah aman di paling atas
 include 'koneksi.php';
-session_start();
+include 'csrf_helper.php';
+
 if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
     header("Location: login.php");
     exit();

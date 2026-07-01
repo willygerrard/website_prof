@@ -1,8 +1,9 @@
 <?php
 
 // 2. KONEKSI KE MARIADB (Sesuaikan konfigurasi database Anda)
-session_start();
 include 'koneksi.php'; 
+include 'csrf_helper.php';
+session_start();
 
 // =========================
 // AMBIL JSON
@@ -20,6 +21,7 @@ if (!$data || !isset($data['questions'])) {
 // kategori & level
 $kategori  = $_POST['kategori'] ?? 'Network'; // Default fallback
 $level     = $_POST['level'] ?? 'pemula';    // Default fallback
+
 
 // =========================
 // PREPARE INSERT
