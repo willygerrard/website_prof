@@ -90,6 +90,8 @@ $all_modules = $stmt->fetchAll(PDO::FETCH_ASSOC); // Variabel penampung looping 
                                     <li><hr class="dropdown-divider" /></li>
                                     <li><a class="dropdown-item" href="pintu-rahasia-sija">Manage Kuis</a></li>
                                     <li><hr class="dropdown-divider" /></li>
+                                    <li><a class="dropdown-item" href="pintu-rahasia-modul">Manage Cekpoint</a></li>
+                                    <li><hr class="dropdown-divider" /></li>
                                     <li><a class="dropdown-item" href="toggle_notif.php">Toggle Notifikasi WA</a></li>
                                 </ul>
                             </li>

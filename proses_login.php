@@ -2,7 +2,6 @@
 // 1. Hidupkan Session di baris paling atas
 session_start();
 include 'koneksi.php';
-include 'csrf_helper.php';
 
 // 2. Konfigurasi Koneksi MariaDB Docker Bapak (Port 3307)
 $host = 'db';
@@ -27,7 +26,6 @@ try {
 
 // 3. Pastikan data dikirim lewat Method POST dari form login
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    csrf_require_valid_post();
     // Ambil input dan bersihkan (Proteksi XSS Dasar)
     $user_input = htmlspecialchars(trim($_POST['username'] ?? ''));
     $pass_input = trim($_POST['password'] ?? '');

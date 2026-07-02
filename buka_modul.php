@@ -29,36 +29,98 @@ if (!$modul || empty($modul['file_path'])) {
 
 $cek_sesi = $pdo->query("SELECT status FROM notifikasi_sesi ORDER BY id DESC LIMIT 1")->fetchColumn();
 
+// Notifikasi WA (tetap seperti sebelumnya)
 if ($cek_sesi === 'aktif') {
-    // kirim WA seperti biasa
+    $cek = $pdo->prepare("SELECT id FROM notifikasi_modul WHERE user_id = ? AND modul_id = ?");
+    $cek->execute([$user_id, $modul_id]);
 
-// Cek apakah notifikasi untuk modul ini sudah pernah dikirim ke siswa ini
-$cek = $pdo->prepare("SELECT id FROM notifikasi_modul WHERE user_id = ? AND modul_id = ?");
-$cek->execute([$user_id, $modul_id]);
+    if (!$cek->fetch()) {
+        try {
+            $insert = $pdo->prepare("INSERT INTO notifikasi_modul (user_id, modul_id, terkirim_at) VALUES (?, ?, NOW())");
+            $insert->execute([$user_id, $modul_id]);
 
-if (!$cek->fetch()) {
-    // Belum pernah notif, catat dulu (anti race-condition kalau user klik 2x cepat)
-    try {
-        $insert = $pdo->prepare("INSERT INTO notifikasi_modul (user_id, modul_id, terkirim_at) VALUES (?, ?, NOW())");
-        $insert->execute([$user_id, $modul_id]);
+            $stmt_wa = $pdo->prepare("SELECT no_wa_ortu FROM users WHERE id = ?");
+            $stmt_wa->execute([$user_id]);
+            $no_wa = $stmt_wa->fetchColumn();
 
-        // Kirim WA hanya kalau insert berhasil (mencegah double-send kalau ada race condition)
-        $stmt_wa = $pdo->prepare("SELECT no_wa_ortu FROM users WHERE id = ?");
-        $stmt_wa->execute([$user_id]);
-        $no_wa = $stmt_wa->fetchColumn();
-
-        if ($no_wa) {
-            $tanggal = date('d M Y, H:i');
-            $pesan = "📚 *Pusat Pembelajaran SIJA*\n\n" . htmlspecialchars($username) . " membuka modul:\n*" . htmlspecialchars($modul['title']) . "*\n\nPada: $tanggal";
-            kirimWA($no_wa, $pesan);
+            if ($no_wa) {
+                $tanggal = date('d M Y, H:i');
+                $pesan = "📚 *Pusat Pembelajaran SIJA*\n\n" . htmlspecialchars($username) . " membuka modul:\n*" . htmlspecialchars($modul['title']) . "*\n\nPada: $tanggal";
+                kirimWA($no_wa, $pesan);
+            }
+        } catch (PDOException $e) {
+            error_log("Notifikasi modul gagal: " . $e->getMessage());
         }
-    } catch (PDOException $e) {
-        // Kalau gagal insert (misal race condition unique key), abaikan saja, lanjut redirect
-        error_log("Notifikasi modul gagal: " . $e->getMessage());
     }
 }
 
-}
-// Redirect ke link asli modul
-header("Location: " . $modul['file_path']);
+// Solusi tanpa iframe: buka modul di tab baru, tetap tampilkan tombol cek point.
+$fileUrl = trim($modul['file_path']);
+?>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?= htmlspecialchars($modul['title'] ?? 'Modul') ?> - SIJA</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <div class="container px-4 px-lg-5">
+        <a class="navbar-brand" href="index.php">Pusat Pembelajaran SIJA</a>
+        <div class="d-flex gap-3 align-items-center">
+            <?php if (isset($_SESSION['username'])) : ?>
+                <span class="text-secondary fw-medium d-none d-md-inline small">
+                    👋 Hai, <strong class="text-dark"><?= htmlspecialchars($_SESSION['username']); ?></strong>
+                </span>
+            <?php endif; ?>
+        </div>
+    </div>
+</nav>
+
+<div class="container py-4" style="max-width: 760px;">
+    <div class="mb-3">
+        <a href="index.php" class="btn btn-outline-secondary btn-sm">← Kembali</a>
+    </div>
+
+    <div class="card shadow-sm border-0 rounded-3 mb-3">
+        <div class="card-body">
+            <div class="fw-bold fs-5"><?= htmlspecialchars($modul['title'] ?? '') ?></div>
+            <div class="text-muted small"><?= htmlspecialchars($modul['description'] ?? '') ?></div>
+            <div class="text-muted small mt-2">
+                Status: <span class="fw-semibold">Terbuka</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-grid gap-2">
+        <a
+            class="btn btn-primary btn-lg fw-bold"
+            href="<?= htmlspecialchars($fileUrl) ?>"
+            target="_blank"
+            rel="noopener noreferrer"
+        >
+            📂 Buka Modul di Tab Baru
+        </a>
+
+        <a
+            class="btn btn-success btn-lg fw-bold"
+            href="checkpoint_quiz.php?modul_id=<?= (int)$modul_id ?>"
+        >
+            ✅ Cek Point (1 Pertanyaan)
+        </a>
+    </div>
+
+    <div class="alert alert-warning mt-4 mb-0 small">
+        Catatan: modul dibuka di tab baru agar ukuran & tampilan tetap nyaman dibaca/simak.
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+<?php
 exit();
+
