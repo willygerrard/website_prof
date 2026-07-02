@@ -7,6 +7,11 @@ if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
     exit();
 }
 
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
+    header("HTTP/1.1 404 Not Found");
+    exit();
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($_POST['update_json'])) {
     header("Location: /pintu-rahasia-sija");
     exit();

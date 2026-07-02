@@ -7,19 +7,26 @@ if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
     exit();
 }
 
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
+    header("HTTP/1.1 404 Not Found");
+    exit();
+}
+
 if (strpos($_SERVER['REQUEST_URI'], 'pintu-rahasia-sija') === false) {
     header("HTTP/1.1 404 Not Found");
     exit();
 }
 
-// Handle hapus soal
-if (isset($_GET['hapus'])) {
-    $id = (int)$_GET['hapus'];
+// Handle hapus soal (POST + CSRF)
+if (isset($_POST['hapus'])) {
+    csrf_require_valid_post();
+    $id = (int)$_POST['hapus'];
     $stmt = $pdo->prepare("DELETE FROM kuis_soal WHERE id = ?");
     $stmt->execute([$id]);
     header("Location: /pintu-rahasia-sija");
     exit();
 }
+
 
 // Filter kategori & level
 $kategori_filter = $_GET['kategori'] ?? '';
@@ -181,7 +188,12 @@ $level_badge = [
                         <td class="text-center">
                             <div class="btn-group btn-group-sm">
                                 <a href="edit-soal-sija?id=<?= $row['id']; ?>" class="btn btn-warning fw-bold text-dark px-2">E</a>
-                                <a href="?hapus=<?= $row['id']; ?>" class="btn btn-danger fw-bold px-2" onclick="return confirm('Yakin hapus soal ini?')">－</a>
+                                <form method="POST" action="" style="display:inline-block;">
+                                    <input type="hidden" name="hapus" value="<?= (int)$row['id']; ?>">
+                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()); ?>">
+                                    <button type="submit" class="btn btn-danger fw-bold px-2" onclick="return confirm('Yakin hapus soal ini?')">－</button>
+                                </form>
+
                             </div>
                         </td>
                     </tr>
