@@ -97,6 +97,7 @@ $fileUrl = trim($modul['file_path']);
 
     <div class="d-grid gap-2">
         <a
+            id="bukaModulBtn"
             class="btn btn-primary btn-lg fw-bold"
             href="<?= htmlspecialchars($fileUrl) ?>"
             target="_blank"
@@ -106,10 +107,12 @@ $fileUrl = trim($modul['file_path']);
         </a>
 
         <a
-            class="btn btn-success btn-lg fw-bold"
-            href="checkpoint_quiz.php?modul_id=<?= (int)$modul_id ?>"
+            id="checkpointBtn"
+            class="btn btn-success btn-lg fw-bold disabled"
+            style="pointer-events:none;"
+            href="#"
         >
-            ✅ Cek Point (1 Pertanyaan)
+            ⏳ Buka dan Baca Modul Terlebih Dahulu  
         </a>
     </div>
 
@@ -119,8 +122,44 @@ $fileUrl = trim($modul['file_path']);
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const bukaBtn = document.getElementById("bukaModulBtn");
+const checkpointBtn = document.getElementById("checkpointBtn");
+
+let timerBerjalan = false;
+
+checkpointBtn.style.pointerEvents = "none";
+
+bukaBtn.addEventListener("click", function () {
+
+    // Supaya timer tidak dimulai dua kali
+    if (timerBerjalan) return;
+
+    timerBerjalan = true;
+
+    let waktu = 100;
+    checkpointBtn.innerHTML = "⏳ Tunggu " + waktu + " detik...";
+
+    const hitung = setInterval(() => {
+
+        waktu--;
+
+        if (waktu > 0) {
+            checkpointBtn.innerHTML = "⏳ Tunggu " + waktu + " detik...";
+        } else {
+            clearInterval(hitung);
+
+            checkpointBtn.classList.remove("disabled");
+            checkpointBtn.style.pointerEvents = "auto";
+            checkpointBtn.href = "checkpoint_quiz.php?modul_id=<?= (int)$modul_id ?>";
+            checkpointBtn.innerHTML = "✅ Cek Point (1 Pertanyaan)";
+        }
+
+    }, 1000);
+
+});
+</script>
 </body>
 </html>
 <?php
 exit();
-
