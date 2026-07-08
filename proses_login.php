@@ -49,6 +49,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Setelah password_verify sukses
         $_SESSION['role']     = $user['role']; // <-- Catat status admin/siswa di sini
         $_SESSION['user_id'] = $user['id'];  // tambah ini
+        
+        // Simpan kelas asli siswa (misal "X TKJ 1") ke session
+        $_SESSION['kelas']   = $user['kelas'] ?? '';
+        // Ambil tingkatnya aja ("X TKJ 1" -> "X") dan simpan juga, biar index.php tinggal pakai langsung
+        $_SESSION['tingkat'] = explode(' ', trim($_SESSION['kelas']))[0];
+
         // Oper langsung masuk ke halaman utama Bootstrap (index.php)
         header("Location: index.php");
         exit();

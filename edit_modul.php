@@ -35,6 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $category   = trim($_POST['category'] ?? '');
     $description       = trim($_POST['description'] ?? '');
     $file_path = trim($_POST['file_path'] ?? '');
+    $kelas_target = trim($_POST['kelas_target'] ?? 'semua');
     
     // 1. Ambil data lama dari database terlebih dahulu (Asumsi Bapak sudah melakukan SELECT dan disimpan di variabel $data)
     // Defaultnya, pakai nama file gambar lama yang ada di DB saat ini (isinya sudah mengandung 'img/...')
@@ -80,7 +81,8 @@ try {
                 category = :category, 
                 `description` = :description, 
                 image_path = :image_path, 
-                file_path = :file_path 
+                file_path = :file_path, 
+                kelas_target = :kelas_target 
             WHERE id = :id";
 
     $stmt_update = $pdo->prepare($sql);
@@ -90,6 +92,7 @@ try {
         ':description' => $description, // Ambil dari trim($_POST['description']) Bapak
         ':image_path'  => $nama_file_db, // <-- Masuk DB: Tetap aman 'img/icon_xxx.png' baik ganti maupun tidak
         ':file_path'   => $file_path,   // Ambil dari trim($_POST['file_path']) Bapak
+        ':kelas_target'=> $kelas_target, // Target tingkat kelas: 'semua', 'X', 'XI', atau 'XII'
         ':id'          => $id           // Ambil dari $_GET['id'] atau $_POST['id'] Bapak
     ]);
 
@@ -155,6 +158,7 @@ try {
 
         <div class="card border-0 shadow-sm rounded-3 p-4 bg-white">
             <form action="" method="POST" enctype="multipart/form-data">
+                <?= csrf_field() ?>
                 
                 <div class="mb-3">
                     <label for="title" class="form-label fw-semibold text-secondary">Nama Modul Praktik</label>
@@ -169,6 +173,20 @@ try {
                         <option value="Cloud Computing" <?= $data['category'] === 'Cloud Computing' ? 'selected' : ''; ?>>Cloud Computing</option>
                         <option value="DevOps" <?= $data['category'] === 'DevOps' ? 'selected' : ''; ?>>DevOps</option>
                     </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="kelas_target" class="form-label fw-semibold text-secondary">Target Tingkat Kelas</label>
+                    <select class="form-select p-2.5" id="kelas_target" name="kelas_target" required>
+                        <?php
+                        $pilihan_kelas = ['semua' => 'Semua Tingkat', 'X' => 'Kelas X', 'XI' => 'Kelas XI', 'XII' => 'Kelas XII'];
+                        $kelas_saat_ini = $data['kelas_target'] ?? 'semua';
+                        foreach ($pilihan_kelas as $val => $label):
+                        ?>
+                            <option value="<?= $val ?>" <?= $kelas_saat_ini === $val ? 'selected' : ''; ?>><?= $label ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <small class="text-muted">Pilih "Semua Tingkat" kalau modul ini boleh diakses semua kelas.</small>
                 </div>
 
                 <div class="mb-3">

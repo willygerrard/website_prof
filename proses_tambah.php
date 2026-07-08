@@ -20,6 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $link_drive = trim($_POST['link_drive'] ?? ''); // Menangkap inputan URL link Google Drive
     $desc       = trim($_POST['desc'] ?? '');
     $jenis      = trim($_POST['jenis'] ?? '');
+    $kelas_target = trim($_POST['kelas_target'] ?? 'semua');
 
     // Validasi: Pastikan tidak ada data penting yang kosong
     if (empty($nama_modul) || empty($kategori) || empty($jenis) || empty($link_drive) || empty($desc)) {
@@ -75,8 +76,8 @@ if ($jenis == 'video') {
 
     // 3. Eksekusi INSERT ke database MariaDB via PDO Prepared Statements
     try {
-        $sql = "INSERT INTO modules (title, category, description, image_path, file_path, jenis_resource) 
-                VALUES (:nama_modul, :kategori, :desc, :image_path, :link_drive, :jenis)";
+        $sql = "INSERT INTO modules (title, category, description, image_path, file_path, jenis_resource, kelas_target) 
+                VALUES (:nama_modul, :kategori, :desc, :image_path, :link_drive, :jenis, :kelas_target)";
         
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
@@ -85,7 +86,8 @@ if ($jenis == 'video') {
             ':desc'       => $desc,
             ':image_path' => $nama_file_db, // <-- Masuk ke DB: img/icon_xxx.png
             ':link_drive' => $link_drive,
-            ':jenis'      => $jenis
+            ':jenis'      => $jenis,
+            ':kelas_target' => $kelas_target // 'semua', 'X', 'XI', atau 'XII'
         ]);
 
         echo "<script>alert('Mantap Pak Komandan! Modul baru berhasil dicatat!'); window.location.href = 'gerbang-rahasia-sija';</script>";

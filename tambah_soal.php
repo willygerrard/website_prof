@@ -117,6 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori'])) {
                     <div class="card-header bg-primary text-white">Tambah Soal Manual</div>
                     <div class="card-body">
                         <form method="POST">
+                            <?= csrf_field() ?>
                             <div class="mb-2">
                                 <label class="form-label">Kategori</label>
                                 <select class="form-select" name="kategori" required>
@@ -183,6 +184,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori'])) {
                         <div id="previewSection" style="display:none;">
                             <div id="previewContainer" class="border p-2 mb-2 bg-light"></div>
                             <form action="save_quiz.php" method="POST">
+                                <?= csrf_field() ?>
                                 <input type="hidden" id="finalJsonData" name="quiz_json">
                                 <input type="hidden" id="inputKategori" name="kategori">
                                 <input type="hidden" id="inputLevel" name="level">

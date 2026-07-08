@@ -105,6 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <div class="card border-0 shadow-sm rounded-3 p-4 bg-white">
             <form method="POST">
+                <?= csrf_field() ?>
 
                 <div class="mb-3">
                     <label class="form-label fw-semibold text-secondary">Kategori</label>

@@ -31,6 +31,12 @@ if ($kategori_pilihan !== 'Semua' && $kategori_pilihan !== 'Semua Materi') {
     $params['kategori'] = $kategori_pilihan;
 }
 
+if ($_SESSION['role'] === 'siswa') {
+    $tingkat_siswa = $_SESSION['tingkat'] ?? '';
+    $query_str .= " AND (kelas_target = 'semua' OR FIND_IN_SET(:tingkat, kelas_target))";
+    $params['tingkat'] = $tingkat_siswa;
+}
+
 $query_str .= " ORDER BY id DESC";
 
 $stmt = $pdo->prepare($query_str);
@@ -208,10 +214,22 @@ $all_modules = $stmt->fetchAll(PDO::FETCH_ASSOC); // Variabel penampung looping 
                     
                     <!-- Bagian Tombol Aksi -->
                     <div class="card-footer p-4 pt-0 border-top-0 bg-transparent">
-                        <div class="text-center">
-                            <!-- Tombol ini langsung mengarah ke Link Google Drive -->
-                            <a class="btn btn-outline-dark mt-auto w-100" href="buka_modul.php?id=<?= $modul['id'] ?>" target="_blank">
+                        <div class="d-grid gap-2">
+                            <!-- Tombol buka modul: langsung ke link file, sekaligus memicu timer cek point -->
+                            <a class="btn btn-outline-dark fw-bold buka-modul-btn"
+                               href="<?= htmlspecialchars($modul['file_path']) ?>"
+                               target="_blank"
+                               rel="noopener noreferrer"
+                               data-id="<?= (int) $modul['id'] ?>">
                                 📂 Buka Modul
+                            </a>
+
+                            <!-- Tombol cek point: nonaktif sampai timer 100 detik selesai -->
+                            <a class="btn btn-success fw-bold cekpoint-btn disabled"
+                               id="cekpoint-<?= (int) $modul['id'] ?>"
+                               style="pointer-events:none;"
+                               href="#">
+                                ⏳ Buka dan Baca Modul Terlebih Dahulu
                             </a>
                         </div>
                     </div>
@@ -233,5 +251,40 @@ $all_modules = $stmt->fetchAll(PDO::FETCH_ASSOC); // Variabel penampung looping 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
         <!-- Core theme JS-->
         <script src="js/scripts.js"></script>
+
+        <!-- Script Buka Modul + Cek Point (pindahan dari buka_modul.php) -->
+        <script>
+        document.querySelectorAll('.buka-modul-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var modulId    = this.dataset.id;
+                var cekpointBtn = document.getElementById('cekpoint-' + modulId);
+
+                // Cegah timer dobel kalau tombol diklik berkali-kali
+                if (this.dataset.started === '1') return;
+                this.dataset.started = '1';
+
+                // Kirim notifikasi WA ke ortu di background, tanpa reload halaman
+                fetch('notify_buka.php?id=' + encodeURIComponent(modulId))
+                    .catch(function (err) { console.error('Gagal kirim notifikasi:', err); });
+
+                var waktu = 100;
+                cekpointBtn.innerHTML = '⏳ Tunggu ' + waktu + ' detik...';
+
+                var hitung = setInterval(function () {
+                    waktu--;
+
+                    if (waktu > 0) {
+                        cekpointBtn.innerHTML = '⏳ Tunggu ' + waktu + ' detik...';
+                    } else {
+                        clearInterval(hitung);
+                        cekpointBtn.classList.remove('disabled');
+                        cekpointBtn.style.pointerEvents = 'auto';
+                        cekpointBtn.href = 'checkpoint_quiz.php?modul_id=' + modulId;
+                        cekpointBtn.innerHTML = '✅ Cek Point (1 Pertanyaan)';
+                    }
+                }, 1000);
+            });
+        });
+        </script>
     </body>
 </html>

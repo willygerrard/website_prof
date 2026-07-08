@@ -1,3 +1,7 @@
+<?php
+session_start();
+include 'csrf_helper.php';
+?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -63,6 +67,7 @@
                 
                 <div class="card-body p-4">
                     <form action="proses_tambah.php" method="POST" enctype="multipart/form-data">
+                        <?= csrf_field() ?>
                         
                         <div class="mb-3">
                             <label for="nama_modul" class="form-label fw-semibold">Nama / Judul Modul</label>
@@ -87,6 +92,17 @@
                                 <option value="Cloud Computing">Cloud Computing</option>
                                 <option value="DevOps">DevOps</option>
                             </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="kelas_target" class="form-label fw-semibold">Target Tingkat Kelas</label>
+                            <select class="form-select" id="kelas_target" name="kelas_target" required>
+                                <option value="semua" selected>Semua Tingkat</option>
+                                <option value="X">Kelas X</option>
+                                <option value="XI">Kelas XI</option>
+                                <option value="XII">Kelas XII</option>
+                            </select>
+                            <div class="form-text text-muted small">Pilih "Semua Tingkat" kalau modul ini boleh diakses semua kelas.</div>
                         </div>
 
                         <div class="mb-3">
