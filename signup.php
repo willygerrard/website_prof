@@ -96,15 +96,13 @@ if (isset($_POST['register'])) {
             <!-- Kelas X -->
             <option value="X TKJ 1">X TKJ 1</option>
             <option value="X TKJ 2">X TKJ 2</option>
-            <option value="X SIJA">X SIJA</option>
-            
+            <option value="X TKJ 3">X TKJ 3</option>
+            <option value="X TKJ 4">X TKJ 4</option>
+                        
             <!-- Kelas XI -->
-            <option value="XI TKJ 1">XI TKJ 1</option>
-            <option value="XI TKJ 2">XI TKJ 2</option>
             <option value="XI SIJA">XI SIJA</option>
             
             <!-- Kelas XII -->
-            <option value="XII TKJ 1">XII TKJ 1</option>
             <option value="XII SIJA">XII SIJA</option>
         </select>
 

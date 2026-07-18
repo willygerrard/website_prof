@@ -231,8 +231,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori'])) {
                 let correctAnswer = "";
 
                 lines.forEach(line => {
-                    if (line.match(/^(ans|answer|correct|key)\s*:\s*/i)) {
-                        correctAnswer = line.replace(/^(ans|answer|correct|key)\s*:\s*/i, '').trim();
+                    if (line.match(/^(ans|answer|correct|key|jawaban)\s*[:=-]\s*/i)) {
+                        correctAnswer = line.replace(/^(ans|answer|correct|key|jawaban)\s*[:=-]\s*/i, '').trim();
                     } else if (line.match(/^[A-E][\)|\]\.]\s*/i)) {
                         options.push(line.replace(/^[A-E][\)|\]\.]\s*/i, '').trim());
                     } else if (line.match(/^\d+[\.\)]\s*/)) {
@@ -248,10 +248,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori'])) {
                 if (options[idx]) correctAnswer = options[idx];
             }
 
-            if (questionText && options.length > 0) {
-                questionsArray.push({ question_text: questionText, options: options, correct_answer: correctAnswer });
+            if (
+                questionText &&
+                options.length === 4 &&
+                correctAnswer
+            ) {
+                questionsArray.push({
+                    question_text: questionText,
+                    options: options,
+                    correct_answer: correctAnswer
+                });
             }
-        }
+             }
+
+            if (questionsArray.length === 0) {
+            alert("Tidak ada soal yang berhasil diparse.\n\nPastikan format:\n\nQuestion\nA)\nB)\nC)\nD)\nAnswer: A");
+            return;
+            }
 
         // Tampilkan ke Preview
         previewContainer.innerHTML = "";
