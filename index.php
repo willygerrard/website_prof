@@ -98,11 +98,14 @@ $all_modules = $stmt->fetchAll(PDO::FETCH_ASSOC); // Variabel penampung looping 
                                     <li><hr class="dropdown-divider" /></li>
                                     <li><a class="dropdown-item" href="pintu-rahasia-modul">Manage Cekpoint</a></li>
                                     <li><hr class="dropdown-divider" /></li>
+                                    <li><a class="dropdown-item" href="management_game.php">Manage Game</a></li>
+                                    <li><hr class="dropdown-divider" /></li>
                                     <li><a class="dropdown-item" href="toggle_notif.php">Toggle Notifikasi WA</a></li>
                                 </ul>
                             </li>
                             <?php endif; ?>
                             <li class="nav-item"><a class="nav-link" href="kuis.php">Kuis</a></li>  <!-- ← tambah ini -->
+                            <li class="nav-item"><a class="nav-link fw-bold text-primary" href="game_edukasi.php">🎮 Game Edukasi</a></li>
                     </ul>
                     <div class="d-flex align-items-center gap-3">
     <?php if (isset($_SESSION['username'])) : ?>

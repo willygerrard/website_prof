@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Edukasi TKJ - Pasang WiFi</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .main-wrapper {
+            display: flex;
+            gap: 30px;
+            max-width: 950px;
+            width: 100%;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            padding: 30px;
+            flex: 2;
+        }
+        .sidebar {
+            flex: 1;
+            background: #ffffff;
+            padding: 25px 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            min-width: 260px;
+        }
+        .device-row {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            justify-content: space-between;
+            background: #f8f9fa;
+            padding: 12px 15px;
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+            box-sizing: border-box;
+        }
+        .device-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .device-svg {
+            width: 45px;
+            height: 45px;
+            fill: #4a5568;
+        }
+        .device-label {
+            font-weight: 600;
+            font-size: 14px;
+            color: #2d3748;
+        }
+        .status-badge {
+            font-size: 20px;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #edf2f7;
+            border-radius: 50%;
+            font-weight: bold;
+        }
+        .badge-success { background-color: #d4edda; color: #28a745; }
+        .badge-error { background-color: #f8d7da; color: #dc3545; }
+        
+        .arrow-down {
+            font-size: 18px;
+            color: #a0aec0;
+            margin: 2px 0;
+        }
+        
+        h1 { color: #1a73e8; margin-bottom: 5px; font-size: 24px; }
+        .story { font-style: italic; background-color: #e8f0fe; padding: 15px; border-left: 5px solid #1a73e8; margin-bottom: 25px; border-radius: 0 6px 6px 0; font-size: 14px; line-height: 1.5; }
+        .draggable { background-color: #f8f9fa; border: 2px dashed #b0bec5; padding: 12px; margin: 8px 0; border-radius: 6px; cursor: grab; font-weight: 500; transition: background 0.2s; }
+        .draggable:hover { background-color: #f1f3f4; }
+        .btn-check { background-color: #1a73e8; color: white; border: none; padding: 14px 30px; border-radius: 6px; cursor: pointer; width: 100%; font-size: 16px; font-weight: bold; transition: background 0.2s; margin-top: 15px; }
+        .btn-check:hover { background-color: #1557b0; }
+        .notification { margin-top: 20px; padding: 15px; border-radius: 6px; display: none; font-weight: bold; text-align: center; }
+    </style>
+</head>
+<body>
+
+<div class="main-wrapper">
+    <!-- Panel Kiri: Konten Game -->
+    <div class="container">
+        <h1>Sebuah Perusahaan ISP Ingin Memasang WiFi di Rumah Anda</h1>
+        <div class="story">
+            <strong>Cerita:</strong> Anda baru saja berlangganan internet dari ISP lokal agar bisa mabar game online dan kuliah daring tanpa kuota habis. Urutkan proses bisnis TKJ di bawah ini dari awal (analisis kebutuhan) hingga HP Anda sukses terhubung ke internet!
+        </div>
+        <p style="color: #666; font-size: 13px; margin-bottom: 15px;">💡 <em>Petunjuk: Geser (drag) kotak di bawah untuk mengurutkan langkah yang benar!</em></p>
+        <div id="sortable-list"></div>
+        <button class="btn-check" onclick="checkOrder()">Cek Urutan Proses!</button>
+        <div id="notification" class="notification"></div>
+    </div>
+
+    <!-- Panel Kanan: Topologi Simulasi Jaringan -->
+    <div class="sidebar">
+        <h3 style="margin-top: 0; color: #4a5568; font-size: 16px;">Status Koneksi Jaringan</h3>
+        
+        <!-- Server ISP -->
+        <div class="device-row" id="d1">
+            <div class="device-info">
+                <!-- SVG Icon Server -->
+                <svg class="device-svg" viewBox="0 0 24 24">
+                    <path d="M19,3H5C3.9,3,3,3.9,3,5v4c0,1.1,0.9,2,2,2h14c1.1,0,2-0.9,2-2V5C21,3.9,20.1,3,19,3z M7,8H5V6h2V8z M11,8H9V6h2V8z M19,13H5 c-1.1,0-2,0.9-2,2v4c0,1.1,0.9,2,2,2h14c1.1,0,2-0.9,2-2v-4C21,13.9,20.1,13,19,13z M7,18H5v-2h2V18z M11,18H9v-2h2V18z"/>
+                </svg>
+                <span class="device-label">Server ISP</span>
+            </div>
+            <div class="status-badge" id="s1">?</div>
+        </div>
+        
+        <div class="arrow-down">⬇️</div>
+        
+        <!-- Wireless Router / AP -->
+        <div class="device-row" id="d2">
+            <div class="device-info">
+                <!-- SVG Icon Router / AP -->
+                <svg class="device-svg" viewBox="0 0 24 24">
+                    <path d="M4.93,4.93,6.34,6.34A8,8,0,0,1,17.66,6.34l1.41-1.41A10,10,0,0,0,4.93,4.93M7.76,7.76,9.17,9.17a4,4,0,0,1,5.66,0l1.41-1.41a6,6,0,0,0-8.48,0M12,11a2,2,0,1,0,2,2A2,2,0,0,0,12,11Z"/>
+                    <path d="M2,19V21H22V19H21V16H3v3ZM5,17H19v2H5Z"/>
+                </svg>
+                <span class="device-label">Wireless Router</span>
+            </div>
+            <div class="status-badge" id="s2">?</div>
+        </div>
+        
+        <div class="arrow-down">⬇️</div>
+        
+        <!-- HP Siswa -->
+        <div class="device-row" id="d3">
+            <div class="device-info">
+                <!-- SVG Icon Smartphone -->
+                <svg class="device-svg" viewBox="0 0 24 24">
+                    <path d="M17,1H7C5.9,1,5,1.9,5,3v18c0,1.1,0.9,2,2,2h10c1.1,0,2-0.9,2-2V3C19,1.9,18.1,1,17,1z M12,21c-0.55,0-1-0.45-1-1s0.45-1,1-1 s1,0.45,1,1S12.55,21,12,21z M17,18H7V4h10V18z"/>
+                </svg>
+                <span class="device-label">HP Siswa</span>
+            </div>
+            <div class="status-badge" id="s3">?</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Urutan baku proses bisnis TKJ
+    const correctOrder = [
+        "Analisis Kebutuhan Pelanggan (Survey kuota, budget, dan denah rumah)",
+        "Perencanaan & Desain Jaringan (Menentukan jenis kabel, router, dan topologi)",
+        "Pengadaan Barang & Alat Jaringan (Membeli router, modem, kabel FO, dll)",
+        "Pemasangan & Instalasi Fisik (Menarik kabel luar dan memasang modem/router di rumah)",
+        "Konfigurasi Perangkat (Setting PPPoE, nama WiFi, dan password)",
+        "Pengujian / Testing Jaringan (Ping test, speedtest, dan cek koneksi HP)"
+    ];
+
+    let currentItems = [...correctOrder];
+
+    // Mengacak list saat game dimulai
+    function shuffleList() {
+        do {
+            currentItems.sort(() => Math.random() - 0.5);
+        } while (JSON.stringify(currentItems) === JSON.stringify(correctOrder));
+    }
+
+    function renderList() {
+        const list = document.getElementById('sortable-list');
+        list.innerHTML = '';
+        currentItems.forEach((item, index) => {
+            const div = document.createElement('div');
+            div.className = 'draggable';
+            div.draggable = true;
+            div.innerText = `${index + 1}. ${item}`;
+            div.dataset.value = item;
+
+            // Event handler Drag and Drop
+            div.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('text/plain', index);
+            });
+            div.addEventListener('dragover', (e) => e.preventDefault());
+            div.addEventListener('drop', (e) => {
+                const fromIndex = e.dataTransfer.getData('text/plain');
+                const toIndex = index;
+                // Swap posisi array
+                [currentItems[fromIndex], currentItems[toIndex]] = [currentItems[toIndex], currentItems[fromIndex]];
+                renderList();
+            });
+
+            list.appendChild(div);
+        });
+    }
+
+    function checkOrder() {
+        const isCorrect = JSON.stringify(currentItems) === JSON.stringify(correctOrder);
+        const notif = document.getElementById('notification');
+        notif.style.display = 'block';
+        
+        // Update ikon centang / silang di sebelah kanan perangkat
+        for(let i = 1; i <= 3; i++) {
+            const badge = document.getElementById('s' + i);
+            if (isCorrect) {
+                badge.innerHTML = '✓';
+                badge.className = 'status-badge badge-success';
+            } else {
+                badge.innerHTML = '✗';
+                badge.className = 'status-badge badge-error';
+            }
+        }
+        
+        // Update teks notifikasi di panel kiri
+        if (isCorrect) {
+            notif.innerHTML = '🎉 Sukses! Internet sudah bisa diakses.';
+            notif.style.backgroundColor = '#d4edda';
+            notif.style.color = '#155724';
+            notif.style.border = '1px solid #c3e6cb';
+        } else {
+            notif.innerHTML = '❌ Belum terhubung. Perbaiki urutan prosesnya!';
+            notif.style.backgroundColor = '#f8d7da';
+            notif.style.color = '#721c24';
+            notif.style.border = '1px solid #f5c6cb';
+        }
+    }
+
+    // Inisialisasi Game
+    shuffleList();
+    renderList();
+</script>
+</body>
+</html>

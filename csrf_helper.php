@@ -24,13 +24,26 @@ function csrf_verify($token) {
  * Panggil di awal script yang menerima POST, sebelum proses data apapun.
  * Otomatis 403 + exit kalau token tidak valid.
  */
-function csrf_require_valid_post() {
+function csrf_require_valid_post($param_name = 'csrf_token') {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        $token = $_POST['csrf_token'] ?? '';
+        $token = $_POST[$param_name] ?? '';
         if (!csrf_verify($token)) {
             header("HTTP/1.1 403 Forbidden");
-            echo "Invalid CSRF token. Silakan kembali dan coba lagi.";
+            echo "❌ 403 Forbidden: Invalid CSRF token. Silakan kembali dan coba lagi.";
             exit();
         }
+    }
+}
+
+/**
+ * Panggil di DALAM blok kondisi aksi sensitif via GET (misal: hapus data, ubah status).
+ * Otomatis 403 + exit kalau parameter token di URL tidak valid.
+ */
+function csrf_require_valid_get($param_name = 'token') {
+    $token = $_GET[$param_name] ?? '';
+    if (!csrf_verify($token)) {
+        header("HTTP/1.1 403 Forbidden");
+        echo "❌ 403 Forbidden: Invalid CSRF token untuk aksi ini. Permintaan diblokir.";
+        exit();
     }
 }

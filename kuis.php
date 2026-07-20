@@ -14,8 +14,26 @@ if (!$user_id) {
 const MAX_ATTEMPT = 4; // 1 awal + 3 remidi
 const KKM = 75;
 
-// Ambil semua sesi yang sedang aktif
-$sesi_list = $pdo->query("SELECT * FROM kuis_sesi WHERE status = 'aktif' ORDER BY kategori, level")->fetchAll(PDO::FETCH_ASSOC);
+// Ambil kelas siswa langsung dari DB (bukan session) supaya selalu akurat
+// walau session belum menyimpan kelas.
+$stmtKelas = $pdo->prepare("SELECT kelas FROM users WHERE id = ?");
+$stmtKelas->execute([$user_id]);
+$kelas_siswa = $stmtKelas->fetchColumn();
+
+if (!$kelas_siswa) {
+    die("Data kelas kamu belum diisi oleh admin. Hubungi guru/admin untuk melengkapi data kelas.");
+}
+
+// Ambil sesi aktif yang ditujukan untuk kelas siswa ini saja
+$stmt = $pdo->prepare("
+    SELECT ks.*
+    FROM kuis_sesi ks
+    JOIN kuis_sesi_kelas ksk ON ks.id = ksk.sesi_id
+    WHERE ks.status = 'aktif' AND ksk.kelas = ?
+    ORDER BY ks.kategori, ks.level
+");
+$stmt->execute([$kelas_siswa]);
+$sesi_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $level_badge = [
     'pemula'   => ['🟢 Pemula', 'success'],
@@ -80,12 +98,15 @@ unset($sesi);
 
     <!-- KONTEN -->
     <div class="container mt-5 mb-5">
-        <h4 class="fw-bold mb-4 text-dark">📝 Kuis yang Sedang Berlangsung</h4>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4 class="fw-bold m-0 text-dark">📝 Kuis yang Sedang Berlangsung</h4>
+            <span class="badge bg-dark"><?= htmlspecialchars($kelas_siswa) ?></span>
+        </div>
 
         <?php if (empty($sesi_list)): ?>
         <div class="alert alert-secondary text-center py-5">
             <i class="bi bi-hourglass-split fs-1 d-block mb-2"></i>
-            Belum ada kuis yang dibuka oleh guru. Cek lagi nanti ya!
+            Belum ada kuis yang dibuka untuk kelas kamu. Cek lagi nanti ya!
         </div>
         <?php else: ?>
 

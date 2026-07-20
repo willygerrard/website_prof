@@ -2,11 +2,12 @@
 include 'koneksi.php';
 session_start();
 include 'csrf_helper.php';
+
 if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
     header("Location: login.php");
     exit();
 }
-if ($_SESSION['role'] !== 'admin') {
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
     header("HTTP/1.1 404 Not Found");
     exit();
 }
@@ -14,45 +15,93 @@ if ($_SESSION['role'] !== 'admin') {
 $pesan = '';
 $pesan_type = '';
 
+// Daftar kelas yang ada, diambil dari data siswa (bukan hardcode)
+$kelas_options = $pdo->query("SELECT DISTINCT kelas FROM users WHERE kelas IS NOT NULL AND kelas <> '' ORDER BY kelas")
+                      ->fetchAll(PDO::FETCH_COLUMN);
+
 // Deploy sesi baru
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
     csrf_require_valid_post();
-    $kategori = trim($_POST['kategori'] ?? '');
-    $level    = trim($_POST['level'] ?? '');
-    $durasi   = (int)($_POST['durasi_menit'] ?? 30);
+    $kategori     = trim($_POST['kategori'] ?? '');
+    $level        = trim($_POST['level'] ?? '');
+    $durasi       = (int)($_POST['durasi_menit'] ?? 30);
+    $kelas_target = $_POST['kelas'] ?? [];
+    $kelas_target = array_values(array_unique(array_filter(array_map('trim', $kelas_target))));
 
-    if ($kategori && $level && $durasi > 0) {
-        // Cek apakah sudah ada sesi aktif untuk kategori+level yang sama
-        $cek = $pdo->prepare("SELECT id FROM kuis_sesi WHERE kategori = ? AND level = ? AND status = 'aktif'");
-        $cek->execute([$kategori, $level]);
+    if ($kategori && $level && $durasi > 0 && !empty($kelas_target)) {
 
-        if ($cek->fetch()) {
-            $pesan = "⚠️ Sudah ada sesi aktif untuk $kategori - $level. Tutup dulu sesi yang lama.";
+        // Cek apakah ada sesi aktif untuk kategori+level yang sama DAN kelasnya overlap
+        $placeholders = implode(',', array_fill(0, count($kelas_target), '?'));
+        $cek = $pdo->prepare("
+            SELECT DISTINCT ks.id, ksk.kelas
+            FROM kuis_sesi ks
+            JOIN kuis_sesi_kelas ksk ON ks.id = ksk.sesi_id
+            WHERE ks.kategori = ? AND ks.level = ? AND ks.status = 'aktif'
+              AND ksk.kelas IN ($placeholders)
+        ");
+        $cek->execute(array_merge([$kategori, $level], $kelas_target));
+        $bentrok = $cek->fetchAll(PDO::FETCH_ASSOC);
+
+        if (!empty($bentrok)) {
+            $kelas_bentrok = implode(', ', array_unique(array_column($bentrok, 'kelas')));
+            $pesan = "⚠️ Sudah ada sesi aktif untuk $kategori - $level di kelas: $kelas_bentrok. Tutup dulu sesi yang lama untuk kelas tersebut.";
             $pesan_type = 'warning';
         } else {
-            $stmt = $pdo->prepare("INSERT INTO kuis_sesi (kategori, level, status, durasi_menit, dibuka_at) VALUES (?, ?, 'aktif', ?, NOW())");
-            $stmt->execute([$kategori, $level, $durasi]);
-            $pesan = "✅ Kuis $kategori - $level berhasil di-deploy! Siswa bisa mulai mengerjakan.";
-            $pesan_type = 'success';
+            $pdo->beginTransaction();
+            try {
+                $stmt = $pdo->prepare("INSERT INTO kuis_sesi (kategori, level, status, durasi_menit, dibuka_at) VALUES (?, ?, 'aktif', ?, NOW())");
+                $stmt->execute([$kategori, $level, $durasi]);
+                $sesi_id = $pdo->lastInsertId();
+
+                $stmtKelas = $pdo->prepare("INSERT INTO kuis_sesi_kelas (sesi_id, kelas) VALUES (?, ?)");
+                foreach ($kelas_target as $k) {
+                    $stmtKelas->execute([$sesi_id, $k]);
+                }
+
+                $pdo->commit();
+                $pesan = "✅ Kuis $kategori - $level berhasil di-deploy ke kelas: " . implode(', ', $kelas_target) . "!";
+                $pesan_type = 'success';
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                $pesan = "❌ Gagal deploy kuis. Coba lagi.";
+                $pesan_type = 'danger';
+            }
         }
     } else {
-        $pesan = "⚠️ Lengkapi semua field!";
+        $pesan = "⚠️ Lengkapi semua field, minimal pilih 1 kelas!";
         $pesan_type = 'danger';
     }
 }
 
-// Tutup sesi
-if (isset($_GET['tutup'])) {
-    csrf_require_valid_get();
-    $id = (int)$_GET['tutup'];
+// Tutup sesi (POST, sudah dilindungi CSRF)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tutup'])) {
+    csrf_require_valid_post();
+    $id = (int)$_POST['tutup'];
     $stmt = $pdo->prepare("UPDATE kuis_sesi SET status = 'nonaktif', ditutup_at = NOW() WHERE id = ?");
     $stmt->execute([$id]);
     header("Location: deploy-kuis-sija");
     exit();
 }
 
-$sesi_aktif = $pdo->query("SELECT * FROM kuis_sesi WHERE status = 'aktif' ORDER BY dibuka_at DESC")->fetchAll(PDO::FETCH_ASSOC);
-$sesi_riwayat = $pdo->query("SELECT * FROM kuis_sesi WHERE status = 'nonaktif' ORDER BY ditutup_at DESC LIMIT 10")->fetchAll(PDO::FETCH_ASSOC);
+// Sesi aktif, sekalian ambil daftar kelas targetnya (GROUP_CONCAT)
+$sesi_aktif = $pdo->query("
+    SELECT ks.*, GROUP_CONCAT(ksk.kelas ORDER BY ksk.kelas SEPARATOR ', ') AS kelas_target
+    FROM kuis_sesi ks
+    LEFT JOIN kuis_sesi_kelas ksk ON ks.id = ksk.sesi_id
+    WHERE ks.status = 'aktif'
+    GROUP BY ks.id
+    ORDER BY ks.dibuka_at DESC
+")->fetchAll(PDO::FETCH_ASSOC);
+
+$sesi_riwayat = $pdo->query("
+    SELECT ks.*, GROUP_CONCAT(ksk.kelas ORDER BY ksk.kelas SEPARATOR ', ') AS kelas_target
+    FROM kuis_sesi ks
+    LEFT JOIN kuis_sesi_kelas ksk ON ks.id = ksk.sesi_id
+    WHERE ks.status = 'nonaktif'
+    GROUP BY ks.id
+    ORDER BY ks.ditutup_at DESC
+    LIMIT 10
+")->fetchAll(PDO::FETCH_ASSOC);
 
 $level_badge = [
     'pemula'   => ['🟢 Pemula', 'success'],
@@ -126,6 +175,7 @@ $level_badge = [
             </div>
             <div class="card-body p-4">
                 <form method="POST" class="row g-3">
+                    <?= csrf_field() ?>
                     <div class="col-md-4">
                         <label class="form-label fw-semibold">Kategori</label>
                         <select class="form-select" name="kategori" required>
@@ -149,6 +199,29 @@ $level_badge = [
                         <label class="form-label fw-semibold">Durasi (menit)</label>
                         <input type="number" class="form-control" name="durasi_menit" value="30" min="5" max="180" required>
                     </div>
+
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Kelas Tujuan</label>
+                        <?php if (empty($kelas_options)): ?>
+                            <div class="alert alert-warning small mb-0">
+                                Belum ada data kelas di tabel siswa. Pastikan kolom "kelas" sudah terisi.
+                            </div>
+                        <?php else: ?>
+                            <div class="d-flex flex-wrap gap-3 border rounded-3 p-3 bg-light">
+                                <?php foreach ($kelas_options as $k): ?>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="kelas[]"
+                                           value="<?= htmlspecialchars($k) ?>" id="kelas_<?= md5($k) ?>">
+                                    <label class="form-check-label" for="kelas_<?= md5($k) ?>">
+                                        <?= htmlspecialchars($k) ?>
+                                    </label>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <div class="form-text">Pilih 1 atau lebih kelas yang akan mengerjakan kuis ini.</div>
+                        <?php endif; ?>
+                    </div>
+
                     <div class="col-12">
                         <button type="submit" name="deploy" class="btn btn-success fw-bold px-4">
                             <i class="bi bi-rocket-takeoff"></i> Deploy Kuis Sekarang
@@ -169,6 +242,7 @@ $level_badge = [
                     <tr>
                         <th>Kategori</th>
                         <th>Level</th>
+                        <th>Kelas Tujuan</th>
                         <th>Durasi</th>
                         <th>Dibuka Pukul</th>
                         <th class="text-center">Aksi</th>
@@ -179,12 +253,17 @@ $level_badge = [
                     <tr>
                         <td class="fw-semibold"><?= htmlspecialchars($s['kategori']) ?></td>
                         <td><span class="badge bg-<?= $lvl[1] ?>"><?= $lvl[0] ?></span></td>
+                        <td><span class="small"><?= htmlspecialchars($s['kelas_target'] ?? '-') ?></span></td>
                         <td><?= $s['durasi_menit'] ?> menit</td>
                         <td><?= date('d M Y, H:i', strtotime($s['dibuka_at'])) ?></td>
                         <td class="text-center">
-                            <a href="?tutup=<?= $s['id'] ?>" class="btn btn-sm btn-danger fw-bold" onclick="return confirm('Tutup sesi ini? Siswa tidak bisa mengerjakan lagi.')">
-                                <i class="bi bi-stop-circle"></i> Tutup Sesi
-                            </a>
+                            <form method="POST" style="display:inline" onsubmit="return confirm('Tutup sesi ini? Siswa tidak bisa mengerjakan lagi.')">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="tutup" value="<?= $s['id'] ?>">
+                                <button type="submit" class="btn btn-sm btn-danger fw-bold">
+                                    <i class="bi bi-stop-circle"></i> Tutup Sesi
+                                </button>
+                            </form>
                         </td>
                     </tr>
                     <?php endforeach; ?>
@@ -204,6 +283,7 @@ $level_badge = [
                     <tr>
                         <th>Kategori</th>
                         <th>Level</th>
+                        <th>Kelas Tujuan</th>
                         <th>Dibuka</th>
                         <th>Ditutup</th>
                     </tr>
@@ -213,6 +293,7 @@ $level_badge = [
                     <tr class="text-muted">
                         <td><?= htmlspecialchars($s['kategori']) ?></td>
                         <td><span class="badge bg-<?= $lvl[1] ?>"><?= $lvl[0] ?></span></td>
+                        <td class="small"><?= htmlspecialchars($s['kelas_target'] ?? '-') ?></td>
                         <td><?= date('d M Y, H:i', strtotime($s['dibuka_at'])) ?></td>
                         <td><?= $s['ditutup_at'] ? date('d M Y, H:i', strtotime($s['ditutup_at'])) : '-' ?></td>
                     </tr>

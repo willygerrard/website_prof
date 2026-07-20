@@ -4,7 +4,7 @@ require 'koneksi.php';
 $pesan = "";
 
 // KUNCI RAHASIA: Setel token sak karepmu, misal diganti saben mlebu kelas
-$token_sah = "Sija2026"; 
+$token_sah = "gak berlaku"; 
 
 if (isset($_POST['register'])) {
     

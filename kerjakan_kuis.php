@@ -29,6 +29,19 @@ if (!$sesi) {
     die("Sesi kuis ini sudah ditutup atau tidak ditemukan. <a href='kuis.php'>Kembali</a>");
 }
 
+// Pastikan sesi ini memang ditujukan untuk kelas siswa yang login
+// (mencegah akses langsung via URL walau kartunya tidak muncul di kuis.php)
+$stmtKelasSiswa = $pdo->prepare("SELECT kelas FROM users WHERE id = ?");
+$stmtKelasSiswa->execute([$user_id]);
+$kelas_siswa = $stmtKelasSiswa->fetchColumn();
+
+$cekKelas = $pdo->prepare("SELECT 1 FROM kuis_sesi_kelas WHERE sesi_id = ? AND kelas = ?");
+$cekKelas->execute([$sesi_id, $kelas_siswa]);
+
+if (!$cekKelas->fetch()) {
+    die("Kuis ini tidak ditujukan untuk kelas kamu. <a href='kuis.php'>Kembali</a>");
+}
+
 // Cek attempt & status lulus sebelum mengizinkan akses
 $cek = $pdo->prepare("SELECT COUNT(*) as total, MAX(skor) as nilai_terbaik FROM kuis_hasil WHERE user_id = ? AND kategori = ? AND level = ?");
 $cek->execute([$user_id, $sesi['kategori'], $sesi['level']]);
