@@ -20,12 +20,6 @@ $error = $_GET['error'] ?? '';
         /* CSS Sederhana ala Router Web Admin */
         body {
             font-family: Arial, sans-serif;
-            background-color: #f4f6f9;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
             margin: 0;
             padding: 0;
             height: 100vh;

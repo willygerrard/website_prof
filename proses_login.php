@@ -1,30 +1,9 @@
 <?php
 // 1. Hidupkan Session di baris paling atas
 session_start();
-include 'koneksi.php';
+include 'koneksi.php'; // $pdo sudah tersedia dari sini
 
-// 2. Konfigurasi Koneksi MariaDB Docker Bapak (Port 3307)
-$host = 'db';
-$port = '3306'; 
-$db   = 'db_website_pribadi';
-$user_db = 'willy'; // Kita ganti nama variabel koneksinya biar gak tabrakan sama $user database
-$pass_db = 'RahasiaPro2026!';
-$charset = 'utf8mb4';
-
-$dsn = "mysql:host=$host;port=$port;dbname=$db;charset=$charset";
-$options = [
-    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-    PDO::ATTR_EMULATE_PREPARES   => false, // Proteksi mutlak Anti SQL Injection
-];
-
-try {
-     $pdo = new PDO($dsn, $user_db, $pass_db, $options);
-} catch (\PDOException $e) {
-     die("Koneksi Database Gagal: " . $e->getMessage());
-}
-
-// 3. Pastikan data dikirim lewat Method POST dari form login
+// 2. Pastikan data dikirim lewat Method POST dari form login
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Ambil input dan bersihkan (Proteksi XSS Dasar)
     $user_input = htmlspecialchars(trim($_POST['username'] ?? ''));

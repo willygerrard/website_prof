@@ -1,6 +1,6 @@
 <?php
 try {
-    require 'config/database.php'; // sesuaikan
+    require 'koneksi.php';
 
     $pdo->query("SELECT 1");
 

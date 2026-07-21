@@ -3,8 +3,18 @@ require 'koneksi.php';
 
 $pesan = "";
 
-// KUNCI RAHASIA: Setel token sak karepmu, misal diganti saben mlebu kelas
-$token_sah = "gak berlaku"; 
+// Baca status & token dari database (tabel pengaturan)
+$stmt_status = $pdo->query("SELECT `value` FROM pengaturan WHERE `key` = 'registrasi_status'");
+$registrasi_status = $stmt_status->fetchColumn();
+
+$stmt_token = $pdo->query("SELECT `value` FROM pengaturan WHERE `key` = 'registrasi_token_sekarang'");
+$token_sah = $stmt_token->fetchColumn();
+
+// Fallback kalau tabel pengaturan belum ada
+if ($registrasi_status === false || $token_sah === false) {
+    $registrasi_status = 'tutup';
+    $token_sah = 'gak berlaku';
+}
 
 if (isset($_POST['register'])) {
     
@@ -18,7 +28,10 @@ if (isset($_POST['register'])) {
     // Normalisasi nomor WA (hapus spasi, strip, dst)
     $no_wa_bersih = preg_replace('/[^0-9]/', '', $no_wa_ortu);
 
-    if ($token_input !== $token_sah) {
+    // Cek apakah registrasi sedang dibuka
+    if ($registrasi_status !== 'buka') {
+        $pesan = "<div style='color: #ff9933; margin-bottom: 15px;'>⚠️ Pendaftaran sedang ditutup. Silakan hubungi guru pembimbing jika ingin mendaftar.</div>";
+    } elseif ($token_input !== $token_sah) {
         $pesan = "<div style='color: #ff3333; margin-bottom: 15px;'>Gagal! Token salah!</div>";
     } elseif (!preg_match('/^(08|62)[0-9]{8,12}$/', $no_wa_bersih)) {
         $pesan = "<div style='color: #ff3333; margin-bottom: 15px;'>Format nomor WA tidak valid. Contoh: 081234567890</div>";
@@ -118,7 +131,6 @@ if (isset($_POST['register'])) {
     <div class="back-link">
         <a href="login.php">← Kembali ke halaman login</a>
     </div>
-</div>
 
 </body>
 </html>

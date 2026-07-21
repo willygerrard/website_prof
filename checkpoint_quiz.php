@@ -31,6 +31,7 @@ $optionB = $q['opsi_b'];
 $correctKey = $q['jawaban_benar']; // 'a' atau 'b'
 
 
+$csrf_token = csrf_token();
 $pesan_error = '';
 $done = false;
 

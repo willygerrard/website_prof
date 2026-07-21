@@ -8,8 +8,8 @@ if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
     exit();
 }
 
-if (!isset($_SESSION['is_login']) || $_SESSION['role'] !== 'admin') {
- header("HTTP/1.1 404 Not Found");
+if (!isset($_SESSION['is_login']) || !isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
+    header("HTTP/1.1 404 Not Found");
     exit();
 }
 

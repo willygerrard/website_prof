@@ -9,6 +9,11 @@ if (!isset($_SESSION['is_login']) || $_SESSION['role'] !== 'admin') {
     exit();
 }
 
+if (strpos($_SERVER['REQUEST_URI'], 'pintu-game-sija') === false) {
+    header("HTTP/1.1 404 Not Found");
+    exit();
+}
+
 $pesan = '';
 
 // 2. Buat folder 'games_data' otomatis jika belum ada di server

@@ -1,7 +1,7 @@
 <?php
 include 'koneksi.php';
 ini_set('session.cookie_httponly', 1);
-ini_set('session.cookie_use_only_cookies', 1);
+ini_set('session.use_only_cookies', 1);
 session_start();
 
 if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {

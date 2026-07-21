@@ -41,10 +41,10 @@ $level_badge = [
     'mahir'    => ['🔴 Mahir', 'danger'],
 ];
 
-// Hitung status attempt siswa untuk setiap sesi
+// Hitung status attempt siswa untuk setiap sesi (PER SESI, bukan gabungan semua deploy dengan kategori+level sama)
 foreach ($sesi_list as &$sesi) {
-    $stmt = $pdo->prepare("SELECT COUNT(*) as total, MAX(skor) as nilai_terbaik FROM kuis_hasil WHERE user_id = ? AND kategori = ? AND level = ?");
-    $stmt->execute([$user_id, $sesi['kategori'], $sesi['level']]);
+    $stmt = $pdo->prepare("SELECT COUNT(*) as total, MAX(skor) as nilai_terbaik FROM kuis_hasil WHERE user_id = ? AND sesi_id = ?");
+    $stmt->execute([$user_id, $sesi['id']]);
     $hasil = $stmt->fetch(PDO::FETCH_ASSOC);
 
     $sesi['total_attempt'] = (int)$hasil['total'];

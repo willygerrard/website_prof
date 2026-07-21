@@ -42,9 +42,9 @@ if (!$cekKelas->fetch()) {
     die("Kuis ini tidak ditujukan untuk kelas kamu. <a href='kuis.php'>Kembali</a>");
 }
 
-// Cek attempt & status lulus sebelum mengizinkan akses
-$cek = $pdo->prepare("SELECT COUNT(*) as total, MAX(skor) as nilai_terbaik FROM kuis_hasil WHERE user_id = ? AND kategori = ? AND level = ?");
-$cek->execute([$user_id, $sesi['kategori'], $sesi['level']]);
+// Cek attempt & status lulus sebelum mengizinkan akses (PER SESI, bukan gabungan semua deploy)
+$cek = $pdo->prepare("SELECT COUNT(*) as total, MAX(skor) as nilai_terbaik FROM kuis_hasil WHERE user_id = ? AND sesi_id = ?");
+$cek->execute([$user_id, $sesi_id]);
 $status = $cek->fetch(PDO::FETCH_ASSOC);
 
 $total_attempt = (int)$status['total'];
@@ -84,9 +84,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_kuis'])) {
 
         $skor = $total_soal > 0 ? round(($benar / $total_soal) * 100) : 0;
 
-        // Simpan hasil
-        $stmt = $pdo->prepare("INSERT INTO kuis_hasil (user_id, kategori, level, skor, total_soal, attempt, dikerjakan_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
-        $stmt->execute([$user_id, $sesi['kategori'], $sesi['level'], $skor, $total_soal, $total_attempt + 1]);
+        // Simpan hasil (terikat ke sesi_id ini, sehingga deploy lain kategori+level sama tidak tercampur)
+        $stmt = $pdo->prepare("INSERT INTO kuis_hasil (user_id, kategori, level, sesi_id, skor, total_soal, attempt, dikerjakan_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
+        $stmt->execute([$user_id, $sesi['kategori'], $sesi['level'], $sesi_id, $skor, $total_soal, $total_attempt + 1]);
 
         // Kirim notifikasi WA ke ortu
         $stmt_wa = $pdo->prepare("SELECT no_wa_ortu FROM users WHERE id = ?");

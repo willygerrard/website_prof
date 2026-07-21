@@ -18,10 +18,11 @@ $level_filter    = $_GET['level'] ?? '';
 $status_filter   = $_GET['status'] ?? '';
 $kelas_filter    = $_GET['kelas'] ?? ''; // 🔥 Filter kelas baru
 
-// Query 1: Riwayat Attempt (Tambah users.kelas)
-$sql = "SELECT kuis_hasil.*, users.username, users.kelas 
+// Query 1: Riwayat Attempt (Tambah users.kelas + info sesi)
+$sql = "SELECT kuis_hasil.*, users.username, users.kelas, ks.dibuka_at AS sesi_dibuka
         FROM kuis_hasil 
         JOIN users ON kuis_hasil.user_id = users.id 
+        LEFT JOIN kuis_sesi ks ON kuis_hasil.sesi_id = ks.id
         WHERE 1=1";
 $params = [];
 
@@ -49,14 +50,17 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $hasil_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Query 2: Ringkasan per siswa (Tambah users.kelas)
-$ringkasan_sql = "SELECT users.id as user_id, users.username, users.kelas, kuis_hasil.kategori, kuis_hasil.level,
+// Query 2: Ringkasan per siswa PER SESI (bukan gabungan semua deploy kategori+level yang sama)
+$ringkasan_sql = "SELECT users.id as user_id, users.username, users.kelas,
+                          kuis_hasil.kategori, kuis_hasil.level, kuis_hasil.sesi_id,
+                          ks.dibuka_at AS sesi_dibuka,
                           MAX(kuis_hasil.skor) as nilai_terbaik,
                           COUNT(*) as total_attempt
                    FROM kuis_hasil
                    JOIN users ON kuis_hasil.user_id = users.id
-                   GROUP BY users.id, kuis_hasil.kategori, kuis_hasil.level
-                   ORDER BY users.kelas ASC, users.username ASC, kuis_hasil.kategori ASC, kuis_hasil.level ASC"; // 🔥 Urutkan berdasarkan kelas dhisik
+                   LEFT JOIN kuis_sesi ks ON kuis_hasil.sesi_id = ks.id
+                   GROUP BY users.id, kuis_hasil.kategori, kuis_hasil.level, kuis_hasil.sesi_id
+                   ORDER BY users.kelas ASC, users.username ASC, kuis_hasil.kategori ASC, kuis_hasil.level ASC, ks.dibuka_at ASC"; // 🔥 Urutkan berdasarkan kelas dhisik
 $ringkasan = $pdo->query($ringkasan_sql)->fetchAll(PDO::FETCH_ASSOC);
 
 $level_badge = [
@@ -146,6 +150,7 @@ foreach ($ringkasan as $r) {
                         <th>Siswa</th>
                         <th>Kategori</th>
                         <th>Level</th>
+                        <th>Sesi</th>
                         <th>Nilai Terbaik</th>
                         <th>Attempt</th>
                         <th>Status</th>
@@ -168,6 +173,7 @@ foreach ($ringkasan as $r) {
                         <td class="fw-semibold"><?= htmlspecialchars($r['username']) ?></td>
                         <td><span class="badge bg-info text-dark"><?= htmlspecialchars($r['kategori']) ?></span></td>
                         <td><span class="badge bg-<?= $lvl[1] ?>"><?= $lvl[0] ?></span></td>
+                        <td class="small text-muted"><?= $r['sesi_dibuka'] ? date('d M Y', strtotime($r['sesi_dibuka'])) : 'Riwayat lama' ?></td>
                         <td class="fw-bold"><?= $r['nilai_terbaik'] ?></td>
                         <td><?= $r['total_attempt'] ?> / 4</td>
                         <td>
@@ -188,7 +194,7 @@ foreach ($ringkasan as $r) {
                     <?php endforeach; ?>
                     
                     <?php if (!$ada_data_ringkasan): ?>
-                    <tr><td colspan="8" class="text-center text-muted py-4">Tidak ada data untuk kelas ini.</td></tr>
+                    <tr><td colspan="9" class="text-center text-muted py-4">Tidak ada data untuk kelas ini.</td></tr>
                     <?php endif; ?>
                 </tbody>
             </table>
@@ -203,6 +209,7 @@ foreach ($ringkasan as $r) {
                         <th>Siswa</th>
                         <th>Kategori</th>
                         <th>Level</th>
+                        <th>Sesi</th>
                         <th>Nilai Terbaik</th>
                         <th>Attempt</th>
                         <th>Status</th>
@@ -211,7 +218,7 @@ foreach ($ringkasan as $r) {
                 </thead>
                 <tbody>
                     <?php if (empty($ringkasan)): ?>
-                    <tr><td colspan="8" class="text-center text-muted py-4">Belum ada data kuis.</td></tr>
+                    <tr><td colspan="9" class="text-center text-muted py-4">Belum ada data kuis.</td></tr>
                     <?php endif; ?>
                     <?php foreach ($ringkasan as $r): 
                         $lvl = $level_badge[$r['level']] ?? ['-', 'secondary'];
@@ -223,6 +230,7 @@ foreach ($ringkasan as $r) {
                         <td class="fw-semibold"><?= htmlspecialchars($r['username']) ?></td>
                         <td><span class="badge bg-info text-dark"><?= htmlspecialchars($r['kategori']) ?></span></td>
                         <td><span class="badge bg-<?= $lvl[1] ?>"><?= $lvl[0] ?></span></td>
+                        <td class="small text-muted"><?= $r['sesi_dibuka'] ? date('d M Y', strtotime($r['sesi_dibuka'])) : 'Riwayat lama' ?></td>
                         <td class="fw-bold"><?= $r['nilai_terbaik'] ?></td>
                         <td><?= $r['total_attempt'] ?> / 4</td>
                         <td>
@@ -293,6 +301,7 @@ foreach ($ringkasan as $r) {
                         <th>Siswa</th>
                         <th>Kategori</th>
                         <th>Level</th>
+                        <th>Sesi</th>
                         <th>Skor</th>
                         <th>Attempt ke-</th>
                         <th>Waktu</th>
@@ -300,7 +309,7 @@ foreach ($ringkasan as $r) {
                 </thead>
                 <tbody>
                     <?php if (empty($hasil_list)): ?>
-                    <tr><td colspan="7" class="text-center text-muted py-4">Tidak ada data untuk filter ini.</td></tr>
+                    <tr><td colspan="8" class="text-center text-muted py-4">Tidak ada data untuk filter ini.</td></tr>
                     <?php endif; ?>
                     <?php foreach ($hasil_list as $h): 
                         $lvl = $level_badge[$h['level']] ?? ['-', 'secondary'];
@@ -311,6 +320,7 @@ foreach ($ringkasan as $r) {
                         <td><?= htmlspecialchars($h['username']) ?></td>
                         <td><span class="badge bg-info text-dark"><?= htmlspecialchars($h['kategori']) ?></span></td>
                         <td><span class="badge bg-<?= $lvl[1] ?>"><?= $lvl[0] ?></span></td>
+                        <td class="small text-muted"><?= $h['sesi_dibuka'] ? date('d M Y', strtotime($h['sesi_dibuka'])) : 'Riwayat lama' ?></td>
                         <td class="fw-bold <?= $h['skor'] >= KKM ? 'text-success' : 'text-danger' ?>"><?= $h['skor'] ?></td>
                         <td><?= $h['attempt'] ?></td>
                         <td class="text-muted small"><?= date('d M Y, H:i', strtotime($h['dikerjakan_at'])) ?></td>

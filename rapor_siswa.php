@@ -32,9 +32,13 @@ if (!$siswa) {
 
 // Export ke CSV
 if (isset($_GET['export']) && $_GET['export'] === 'csv') {
-    $sql = "SELECT kategori, level, MAX(skor) as nilai_terbaik, COUNT(*) as total_attempt
-            FROM kuis_hasil WHERE user_id = ?
-            GROUP BY kategori, level ORDER BY kategori, level";
+    $sql = "SELECT kuis_hasil.kategori, kuis_hasil.level, ks.dibuka_at AS sesi_dibuka,
+                   MAX(kuis_hasil.skor) as nilai_terbaik, COUNT(*) as total_attempt
+            FROM kuis_hasil 
+            LEFT JOIN kuis_sesi ks ON kuis_hasil.sesi_id = ks.id
+            WHERE kuis_hasil.user_id = ?
+            GROUP BY kuis_hasil.kategori, kuis_hasil.level, kuis_hasil.sesi_id
+            ORDER BY kuis_hasil.kategori, kuis_hasil.level, ks.dibuka_at";
     $stmt = $pdo->prepare($sql);
     $stmt->execute([$siswa_id]);
     $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -44,21 +48,26 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
 
     $output = fopen('php://output', 'w');
     fputs($output, "\xEF\xBB\xBF"); // BOM biar Excel baca UTF-8 dengan benar
-    fputcsv($output, ['Nama Siswa', 'Kategori', 'Level', 'Nilai Terbaik', 'Jumlah Percobaan', 'Status']);
+    fputcsv($output, ['Nama Siswa', 'Kategori', 'Level', 'Sesi (Tanggal Deploy)', 'Nilai Terbaik', 'Jumlah Percobaan', 'Status']);
 
     foreach ($data as $row) {
         $status = $row['nilai_terbaik'] >= KKM ? 'Lulus' : ($row['total_attempt'] >= 4 ? 'Tidak Lulus' : 'Belum Tuntas');
-        fputcsv($output, [$siswa['username'], $row['kategori'], ucfirst($row['level']), $row['nilai_terbaik'], $row['total_attempt'], $status]);
+        $sesi_label = $row['sesi_dibuka'] ? date('d M Y', strtotime($row['sesi_dibuka'])) : 'Riwayat lama';
+        fputcsv($output, [$siswa['username'], $row['kategori'], ucfirst($row['level']), $sesi_label, $row['nilai_terbaik'], $row['total_attempt'], $status]);
     }
     fclose($output);
     exit();
 }
 
-// Ambil ringkasan nilai
-$sql = "SELECT kategori, level, MAX(skor) as nilai_terbaik, COUNT(*) as total_attempt,
-               MAX(dikerjakan_at) as terakhir_dikerjakan
-        FROM kuis_hasil WHERE user_id = ?
-        GROUP BY kategori, level ORDER BY kategori, level";
+// Ambil ringkasan nilai PER SESI (bukan gabungan semua deploy kategori+level yang sama)
+$sql = "SELECT kuis_hasil.kategori, kuis_hasil.level, kuis_hasil.sesi_id, ks.dibuka_at AS sesi_dibuka,
+               MAX(kuis_hasil.skor) as nilai_terbaik, COUNT(*) as total_attempt,
+               MAX(kuis_hasil.dikerjakan_at) as terakhir_dikerjakan
+        FROM kuis_hasil
+        LEFT JOIN kuis_sesi ks ON kuis_hasil.sesi_id = ks.id
+        WHERE kuis_hasil.user_id = ?
+        GROUP BY kuis_hasil.kategori, kuis_hasil.level, kuis_hasil.sesi_id
+        ORDER BY kuis_hasil.kategori, kuis_hasil.level, ks.dibuka_at";
 $stmt = $pdo->prepare($sql);
 $stmt->execute([$siswa_id]);
 $ringkasan = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -76,10 +85,13 @@ $level_badge = [
 
 // Statistik ringkas
 $total_lulus = 0;
-$total_kategori = count($ringkasan);
+$total_sesi_dikerjakan = count($ringkasan); // jumlah baris = jumlah sesi/deploy yang pernah dikerjakan
+$kategori_unik = [];
 foreach ($ringkasan as $r) {
     if ($r['nilai_terbaik'] >= KKM) $total_lulus++;
+    $kategori_unik[$r['kategori'] . '|' . $r['level']] = true;
 }
+$total_kategori = count($kategori_unik);
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -154,13 +166,13 @@ foreach ($ringkasan as $r) {
             <div class="col-md-4">
                 <div class="card border-0 shadow-sm rounded-3 text-center p-3">
                     <div class="fs-2 fw-bold text-success"><?= $total_lulus ?></div>
-                    <div class="text-muted small">Sudah Lulus</div>
+                    <div class="text-muted small">Sesi Lulus</div>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="card border-0 shadow-sm rounded-3 text-center p-3">
-                    <div class="fs-2 fw-bold text-warning"><?= $total_kategori - $total_lulus ?></div>
-                    <div class="text-muted small">Belum Lulus</div>
+                    <div class="fs-2 fw-bold text-warning"><?= $total_sesi_dikerjakan - $total_lulus ?></div>
+                    <div class="text-muted small">Sesi Belum Lulus</div>
                 </div>
             </div>
         </div>
@@ -173,6 +185,7 @@ foreach ($ringkasan as $r) {
                     <tr>
                         <th>Kategori</th>
                         <th>Level</th>
+                        <th>Sesi</th>
                         <th>Nilai Terbaik</th>
                         <th>Percobaan</th>
                         <th>Terakhir Dikerjakan</th>
@@ -181,7 +194,7 @@ foreach ($ringkasan as $r) {
                 </thead>
                 <tbody>
                     <?php if (empty($ringkasan)): ?>
-                    <tr><td colspan="6" class="text-center text-muted py-4">Belum ada kuis yang dikerjakan.</td></tr>
+                    <tr><td colspan="7" class="text-center text-muted py-4">Belum ada kuis yang dikerjakan.</td></tr>
                     <?php endif; ?>
                     <?php foreach ($ringkasan as $r):
                         $lvl = $level_badge[$r['level']] ?? ['-', 'secondary'];
@@ -190,6 +203,7 @@ foreach ($ringkasan as $r) {
                     <tr>
                         <td class="fw-semibold"><?= htmlspecialchars($r['kategori']) ?></td>
                         <td><span class="badge bg-<?= $lvl[1] ?>"><?= $lvl[0] ?></span></td>
+                        <td class="small text-muted"><?= $r['sesi_dibuka'] ? date('d M Y', strtotime($r['sesi_dibuka'])) : 'Riwayat lama' ?></td>
                         <td class="fw-bold fs-5 <?= $lulus ? 'text-success' : 'text-danger' ?>"><?= $r['nilai_terbaik'] ?></td>
                         <td><?= $r['total_attempt'] ?> / 4</td>
                         <td class="text-muted small"><?= date('d M Y', strtotime($r['terakhir_dikerjakan'])) ?></td>
