@@ -113,9 +113,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_kuis'])) {
     }
 }
 
-// ===== AMBIL SOAL (RANDOM) =====
-$stmt = $pdo->prepare("SELECT * FROM kuis_soal WHERE kategori = ? AND level = ? ORDER BY RAND()");
-$stmt->execute([$sesi['kategori'], $sesi['level']]);
+// ===== AMBIL SOAL (RANDOM, DIFILTER MATERI KALAU DEPLOY MEMBATASI MATERI) =====
+$materiSesi = $pdo->prepare("SELECT materi FROM kuis_sesi_materi WHERE sesi_id = ?");
+$materiSesi->execute([$sesi_id]);
+$materi_dibatasi = $materiSesi->fetchAll(PDO::FETCH_COLUMN);
+
+if (!empty($materi_dibatasi)) {
+    // Sesi ini dibatasi ke materi tertentu
+    $placeholders = implode(',', array_fill(0, count($materi_dibatasi), '?'));
+    $stmt = $pdo->prepare("SELECT * FROM kuis_soal WHERE kategori = ? AND level = ? AND materi IN ($placeholders) ORDER BY RAND()");
+    $stmt->execute(array_merge([$sesi['kategori'], $sesi['level']], $materi_dibatasi));
+} else {
+    // Tidak ada batasan materi, ambil semua soal kategori+level seperti biasa
+    $stmt = $pdo->prepare("SELECT * FROM kuis_soal WHERE kategori = ? AND level = ? ORDER BY RAND()");
+    $stmt->execute([$sesi['kategori'], $sesi['level']]);
+}
 $soal_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 if (empty($soal_list)) {

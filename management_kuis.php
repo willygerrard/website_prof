@@ -6,7 +6,6 @@ if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
     header("Location: login.php");
     exit();
 }
-
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
     header("HTTP/1.1 404 Not Found");
     exit();
@@ -17,20 +16,20 @@ if (strpos($_SERVER['REQUEST_URI'], 'pintu-rahasia-sija') === false) {
     exit();
 }
 
-// Handle hapus soal (POST + CSRF)
-if (isset($_POST['hapus'])) {
-    csrf_require_valid_post();
-    $id = (int)$_POST['hapus'];
+// Handle hapus soal
+if (isset($_GET['hapus'])) {
+    csrf_require_valid_get('csrf_token');
+    $id = (int)$_GET['hapus'];
     $stmt = $pdo->prepare("DELETE FROM kuis_soal WHERE id = ?");
     $stmt->execute([$id]);
     header("Location: /pintu-rahasia-sija");
     exit();
 }
 
-
-// Filter kategori & level
+// Filter kategori, level & materi
 $kategori_filter = $_GET['kategori'] ?? '';
 $level_filter     = $_GET['level'] ?? '';
+$materi_filter    = $_GET['materi'] ?? '';
 
 $sql = "SELECT * FROM kuis_soal WHERE 1=1";
 $params = [];
@@ -43,17 +42,25 @@ if ($level_filter) {
     $sql .= " AND level = ?";
     $params[] = $level_filter;
 }
+if ($materi_filter) {
+    $sql .= " AND materi = ?";
+    $params[] = $materi_filter;
+}
 $sql .= " ORDER BY id DESC";
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $query = $stmt;
 
+$materi_list_filter = $pdo->query("SELECT DISTINCT materi FROM kuis_soal WHERE materi IS NOT NULL AND materi <> '' ORDER BY materi")
+                           ->fetchAll(PDO::FETCH_COLUMN);
+
 $level_badge = [
     'pemula'   => ['🟢 Pemula', 'success'],
     'menengah' => ['🟡 Menengah', 'warning'],
     'mahir'    => ['🔴 Mahir', 'danger'],
 ];
+$delete_token = csrf_token();
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -126,41 +133,56 @@ $level_badge = [
         <!-- Filter Kategori -->
         <div class="mb-2 d-flex gap-2 flex-wrap align-items-center">
             <span class="text-muted small fw-semibold me-1">Kategori:</span>
-            <a href="?level=<?= urlencode($level_filter) ?>" class="btn btn-sm <?= !$kategori_filter ? 'btn-dark' : 'btn-outline-dark' ?>">Semua</a>
+            <a href="?level=<?= urlencode($level_filter) ?>&materi=<?= urlencode($materi_filter) ?>" class="btn btn-sm <?= !$kategori_filter ? 'btn-dark' : 'btn-outline-dark' ?>">Semua</a>
             <?php
             $kategori_list = $pdo->query("SELECT DISTINCT kategori FROM kuis_soal ORDER BY kategori");
             while ($kat = $kategori_list->fetch(PDO::FETCH_ASSOC)) :
                 $active = $kategori_filter === $kat['kategori'] ? 'btn-info text-white' : 'btn-outline-info';
             ?>
-            <a href="?kategori=<?= urlencode($kat['kategori']) ?>&level=<?= urlencode($level_filter) ?>" class="btn btn-sm <?= $active ?>">
+            <a href="?kategori=<?= urlencode($kat['kategori']) ?>&level=<?= urlencode($level_filter) ?>&materi=<?= urlencode($materi_filter) ?>" class="btn btn-sm <?= $active ?>">
                 <?= htmlspecialchars($kat['kategori']) ?>
             </a>
             <?php endwhile; ?>
         </div>
 
         <!-- Filter Level -->
-        <div class="mb-3 d-flex gap-2 flex-wrap align-items-center">
+        <div class="mb-2 d-flex gap-2 flex-wrap align-items-center">
             <span class="text-muted small fw-semibold me-1">Level:</span>
-            <a href="?kategori=<?= urlencode($kategori_filter) ?>" class="btn btn-sm <?= !$level_filter ? 'btn-dark' : 'btn-outline-dark' ?>">Semua</a>
+            <a href="?kategori=<?= urlencode($kategori_filter) ?>&materi=<?= urlencode($materi_filter) ?>" class="btn btn-sm <?= !$level_filter ? 'btn-dark' : 'btn-outline-dark' ?>">Semua</a>
             <?php foreach ($level_badge as $key => $val):
                 $active = $level_filter === $key ? 'btn-' . $val[1] . ' text-white' : 'btn-outline-' . $val[1];
             ?>
-            <a href="?kategori=<?= urlencode($kategori_filter) ?>&level=<?= $key ?>" class="btn btn-sm <?= $active ?>">
+            <a href="?kategori=<?= urlencode($kategori_filter) ?>&level=<?= $key ?>&materi=<?= urlencode($materi_filter) ?>" class="btn btn-sm <?= $active ?>">
                 <?= $val[0] ?>
             </a>
             <?php endforeach; ?>
         </div>
 
+        <!-- Filter Materi -->
+        <div class="mb-3 d-flex gap-2 flex-wrap align-items-center">
+            <span class="text-muted small fw-semibold me-1">Materi:</span>
+            <a href="?kategori=<?= urlencode($kategori_filter) ?>&level=<?= urlencode($level_filter) ?>" class="btn btn-sm <?= !$materi_filter ? 'btn-dark' : 'btn-outline-dark' ?>">Semua</a>
+            <?php foreach ($materi_list_filter as $m):
+                $active = $materi_filter === $m ? 'btn-secondary text-white' : 'btn-outline-secondary';
+            ?>
+            <a href="?kategori=<?= urlencode($kategori_filter) ?>&level=<?= urlencode($level_filter) ?>&materi=<?= urlencode($m) ?>" class="btn btn-sm <?= $active ?>">
+                <?= htmlspecialchars($m) ?>
+            </a>
+            <?php endforeach; ?>
+        </div>
+
         <form id="bulkDeleteForm" method="POST">
+        <?= csrf_field() ?>
         <div class="table-responsive bg-white p-4 rounded-3 shadow-sm border">
             <table class="table table-hover align-middle m-0">
                 <thead class="table-light">
                     <tr>
                         <th style="width: 4%"><input type="checkbox" class="form-check-input" id="checkAll" title="Pilih semua"></th>
                         <th style="width: 4%">No</th>
-                        <th style="width: 33%">Pertanyaan</th>
-                        <th style="width: 15%">Kategori</th>
-                        <th style="width: 13%">Level</th>
+                        <th style="width: 28%">Pertanyaan</th>
+                        <th style="width: 12%">Kategori</th>
+                        <th style="width: 11%">Level</th>
+                        <th style="width: 14%">Materi</th>
                         <th style="width: 16%">Jawaban</th>
                         <th style="width: 15%" class="text-center">Aksi</th>
                     </tr>
@@ -178,6 +200,13 @@ $level_badge = [
                         <td><span class="badge bg-info text-dark px-2 py-1"><?= htmlspecialchars($row['kategori'] ?? ''); ?></span></td>
                         <td><span class="badge bg-<?= $lvl[1] ?>"><?= $lvl[0] ?></span></td>
                         <td>
+                            <?php if (!empty($row['materi'])): ?>
+                                <span class="badge bg-secondary"><?= htmlspecialchars($row['materi']) ?></span>
+                            <?php else: ?>
+                                <span class="badge bg-light text-muted border">Belum Ditandai</span>
+                            <?php endif; ?>
+                        </td>
+                        <td>
                             <span class="badge bg-success">
                                 <?php
                                 $jwb = strtoupper($row['jawaban']);
@@ -188,19 +217,14 @@ $level_badge = [
                         <td class="text-center">
                             <div class="btn-group btn-group-sm">
                                 <a href="edit-soal-sija?id=<?= $row['id']; ?>" class="btn btn-warning fw-bold text-dark px-2">E</a>
-                                <form method="POST" action="" style="display:inline-block;">
-                                    <input type="hidden" name="hapus" value="<?= (int)$row['id']; ?>">
-                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()); ?>">
-                                    <button type="submit" class="btn btn-danger fw-bold px-2" onclick="return confirm('Yakin hapus soal ini?')">－</button>
-                                </form>
-
+                                <a href="?hapus=<?= $row['id']; ?>&csrf_token=<?= urlencode($delete_token); ?>" class="btn btn-danger fw-bold px-2" onclick="return confirm('Yakin hapus soal ini?')">－</a>
                             </div>
                         </td>
                     </tr>
                     <?php endwhile; ?>
                     <?php if ($no === 1): ?>
                     <tr>
-                        <td colspan="7" class="text-center text-muted py-4">Belum ada soal untuk filter ini.</td>
+                        <td colspan="8" class="text-center text-muted py-4">Belum ada soal untuk filter ini.</td>
                     </tr>
                     <?php endif; ?>
                 </tbody>

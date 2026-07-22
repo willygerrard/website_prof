@@ -93,6 +93,25 @@ if (isset($_GET['action']) && $_GET['action'] === 'hapus_permanen' && isset($_GE
     }
 }
 
+// --- AKSI BARU: EDIT NAMA ASLI (backfill siswa lama yang belum punya nama) ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_nama') {
+    csrf_require_valid_post();
+    $id_target = (int)($_POST['id'] ?? 0);
+    $nama_baru = trim($_POST['nama_asli'] ?? '');
+
+    if ($id_target && $nama_baru !== '') {
+        try {
+            $stmt_nama = $pdo->prepare("UPDATE users SET nama_asli = ? WHERE id = ? AND role != 'admin'");
+            $stmt_nama->execute([$nama_baru, $id_target]);
+            $pesan = "<div style='color: #00ccff; margin-bottom: 15px;'>✅ Nama siswa diperbarui.</div>";
+        } catch (PDOException $e) {
+            $pesan = "<div style='color: #ff3333; margin-bottom: 15px;'>Error: " . htmlspecialchars($e->getMessage()) . "</div>";
+        }
+    } else {
+        $pesan = "<div style='color: #ff9933; margin-bottom: 15px;'>⚠️ Nama tidak boleh kosong.</div>";
+    }
+}
+
 // --- AKSI BARU: RESET PASSWORD ---
 if (isset($_GET['action']) && $_GET['action'] === 'reset_password' && isset($_GET['id'])) {
     validate_csrf_get();
@@ -114,9 +133,31 @@ if (isset($_GET['action']) && $_GET['action'] === 'reset_password' && isset($_GE
     }
 }
 
+// --- SEARCH & SORT ---
+$search = trim($_GET['search'] ?? '');
+$sort   = $_GET['sort'] ?? ''; // 'kelas_asc' atau 'kelas_desc'
+
 // --- READ USER (TAMPILNO DAFTAR SISWA) ---
 try {
-    $stmt_read = $pdo->query("SELECT id, username, kelas, role, no_wa_ortu, status, created_at FROM users WHERE role = 'siswa' ORDER BY status ASC, id DESC");
+    $sql = "SELECT id, username, nama_asli, kelas, role, no_wa_ortu, status, created_at FROM users WHERE role = 'siswa'";
+    $params = [];
+
+    if ($search !== '') {
+        $sql .= " AND (username LIKE ? OR nama_asli LIKE ?)";
+        $params[] = '%' . $search . '%';
+        $params[] = '%' . $search . '%';
+    }
+
+    if ($sort === 'kelas_asc') {
+        $sql .= " ORDER BY kelas ASC, status ASC, id DESC";
+    } elseif ($sort === 'kelas_desc') {
+        $sql .= " ORDER BY kelas DESC, status ASC, id DESC";
+    } else {
+        $sql .= " ORDER BY status ASC, id DESC";
+    }
+
+    $stmt_read = $pdo->prepare($sql);
+    $stmt_read->execute($params);
     $daftar_siswa = $stmt_read->fetchAll();
 } catch (PDOException $e) {
     die("Gagal njupuk data siswa: " . $e->getMessage());
@@ -164,12 +205,35 @@ $csrf_token = csrf_token();
 
     <?= $pesan; ?>
 
+    <form method="GET" style="display: flex; gap: 8px; margin: 15px 0; align-items: center;">
+        <?php if ($sort): ?>
+        <input type="hidden" name="sort" value="<?= htmlspecialchars($sort) ?>">
+        <?php endif; ?>
+        <input type="text" name="search" value="<?= htmlspecialchars($search) ?>"
+               placeholder="Cari username atau nama siswa..."
+               style="flex: 1; max-width: 300px; padding: 8px 12px; border-radius: 4px; border: 1px solid #333; background: #2a2a2a; color: #fff;">
+        <button type="submit" class="btn-action" style="background: #00cc66; color: #1a1a1a; border: none; cursor: pointer;">
+            🔍 Cari
+        </button>
+        <?php if ($search): ?>
+        <a href="?<?= $sort ? 'sort=' . urlencode($sort) : '' ?>" class="btn-action" style="background: #444; color: #fff;">
+            ✕ Reset
+        </a>
+        <?php endif; ?>
+    </form>
+
     <table>
         <thead>
             <tr>
                 <th>ID</th>
                 <th>Username Siswa</th>
-                <th>Kelas</th>
+                <th>
+                    <a href="?<?= $search ? 'search=' . urlencode($search) . '&' : '' ?>sort=<?= $sort === 'kelas_asc' ? 'kelas_desc' : 'kelas_asc' ?>"
+                       style="color: #00cc66; text-decoration: none;">
+                        Kelas
+                        <?php if ($sort === 'kelas_asc'): ?>▲<?php elseif ($sort === 'kelas_desc'): ?>▼<?php else: ?>⇅<?php endif; ?>
+                    </a>
+                </th>
                 <th>No. WA Ortu</th>
                 <th>Status</th>
                 <th>Tanggal Registrasi</th>
@@ -183,7 +247,27 @@ $csrf_token = csrf_token();
                 ?>
                     <tr class="<?= $is_nonaktif ? 'nonaktif' : '' ?>">
                         <td><?= $siswa['id']; ?></td>
-                        <td><?= htmlspecialchars($siswa['username']); ?></td>
+                        <td>
+                            <?= htmlspecialchars($siswa['username']); ?>
+                            <?php if (!empty($siswa['nama_asli'])): ?>
+                                <br><span style="color: #888; font-size: 12px;" id="nama-view-<?= $siswa['id'] ?>"><?= htmlspecialchars($siswa['nama_asli']) ?></span>
+                            <?php else: ?>
+                                <br><span class="wa-kosong" id="nama-view-<?= $siswa['id'] ?>">nama belum diisi</span>
+                            <?php endif; ?>
+                            <a href="javascript:void(0)" onclick="toggleEditNama(<?= $siswa['id'] ?>)" style="color: #0099cc; font-size: 11px; text-decoration: none;">✏️ edit</a>
+
+                            <form method="POST" id="form-nama-<?= $siswa['id'] ?>" style="display:none; margin-top: 4px;">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="action" value="update_nama">
+                                <input type="hidden" name="id" value="<?= $siswa['id'] ?>">
+                                <input type="hidden" name="search" value="<?= htmlspecialchars($search) ?>">
+                                <input type="hidden" name="sort" value="<?= htmlspecialchars($sort) ?>">
+                                <input type="text" name="nama_asli" value="<?= htmlspecialchars($siswa['nama_asli'] ?? '') ?>"
+                                       placeholder="Nama lengkap..." required
+                                       style="width: 140px; padding: 4px 6px; font-size: 12px; border-radius: 4px; border: 1px solid #555; background: #222; color: #fff;">
+                                <button type="submit" style="font-size: 11px; padding: 4px 8px; background: #00cc66; color: #1a1a1a; border: none; border-radius: 4px; cursor: pointer;">Simpan</button>
+                            </form>
+                        </td>
                         <td>
                             <?php if (!empty($siswa['kelas'])): ?>
                                 <?= htmlspecialchars($siswa['kelas']); ?>
@@ -207,13 +291,13 @@ $csrf_token = csrf_token();
                         <td><?= $siswa['created_at']; ?></td>
                         <td style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
                             <?php if ($is_nonaktif): ?>
-                                <a href="?action=aktifkan&id=<?= $siswa['id']; ?>&csrf_token=<?= urlencode($csrf_token) ?>"
+                                <a href="?action=aktifkan&id=<?= $siswa['id']; ?>&csrf_token=<?= urlencode($csrf_token) ?>&search=<?= urlencode($search) ?>&sort=<?= urlencode($sort) ?>"
                                    class="btn-action btn-aktif"
                                    onclick="return confirm('Aktifkan kembali akun ini?')">
                                    🔄 AKTIFKAN
                                 </a>
                             <?php else: ?>
-                                <a href="?action=nonaktifkan&id=<?= $siswa['id']; ?>&csrf_token=<?= urlencode($csrf_token) ?>"
+                                <a href="?action=nonaktifkan&id=<?= $siswa['id']; ?>&csrf_token=<?= urlencode($csrf_token) ?>&search=<?= urlencode($search) ?>&sort=<?= urlencode($sort) ?>"
                                    class="btn-action btn-nonaktif"
                                    onclick="return confirm('Nonaktifkan akun ini? Riwayat nilai tetap tersimpan, tapi siswa tidak bisa login lagi.')">
                                    🔴 NONAKTIFKAN
@@ -221,7 +305,7 @@ $csrf_token = csrf_token();
                             <?php endif; ?>
 
                             <!-- 🔑 RESET PASSWORD (muncul untuk semua status) -->
-                            <a href="?action=reset_password&id=<?= $siswa['id']; ?>&csrf_token=<?= urlencode($csrf_token) ?>"
+                            <a href="?action=reset_password&id=<?= $siswa['id']; ?>&csrf_token=<?= urlencode($csrf_token) ?>&search=<?= urlencode($search) ?>&sort=<?= urlencode($sort) ?>"
                                class="btn-action"
                                style="background: #0099cc; color: #fff;"
                                onclick="return confirm('Reset password jadi \"sija2026\"? Beritahu siswa untuk ganti password setelah login.')">
@@ -230,7 +314,7 @@ $csrf_token = csrf_token();
 
                             <!-- 🗑️ HAPUS PERMANEN (hanya untuk akun NONAKTIF) -->
                             <?php if ($is_nonaktif): ?>
-                            <a href="?action=hapus_permanen&id=<?= $siswa['id']; ?>&csrf_token=<?= urlencode($csrf_token) ?>"
+                            <a href="?action=hapus_permanen&id=<?= $siswa['id']; ?>&csrf_token=<?= urlencode($csrf_token) ?>&search=<?= urlencode($search) ?>&sort=<?= urlencode($sort) ?>"
                                class="btn-action"
                                style="background: #cc0000; color: #fff;"
                                onclick="return confirm('⚠️ HAPUS PERMANEN akun ini? Hanya bisa dilakukan jika belum ada riwayat nilai/kuis. Data akan hilang selamanya!')">
@@ -242,7 +326,9 @@ $csrf_token = csrf_token();
                 <?php endforeach; ?>
             <?php else: ?>
                 <tr>
-                    <td colspan="6" style="text-align: center; color: #aaa;">Belum ada siswa yang mendaftar.</td>
+                    <td colspan="7" style="text-align: center; color: #aaa;">
+                        <?= $search ? 'Tidak ada siswa dengan username/nama mengandung "' . htmlspecialchars($search) . '".' : 'Belum ada siswa yang mendaftar.' ?>
+                    </td>
                 </tr>
             <?php endif; ?>
         </tbody>
@@ -250,6 +336,13 @@ $csrf_token = csrf_token();
 
     <a href="index.php" class="back-link">← Kembali ke Dashboard Materi</a>
 </div>
+
+<script>
+    function toggleEditNama(id) {
+        const form = document.getElementById('form-nama-' + id);
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    }
+</script>
 
 </body>
 </html>

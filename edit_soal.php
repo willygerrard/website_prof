@@ -27,6 +27,10 @@ if (!$data) {
     die("Data soal tidak ditemukan!");
 }
 
+// Daftar materi yang sudah ada, untuk dropdown + opsi tambah baru
+$materi_list = $pdo->query("SELECT DISTINCT materi FROM kuis_soal WHERE materi IS NOT NULL AND materi <> '' ORDER BY materi")
+                    ->fetchAll(PDO::FETCH_COLUMN);
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_require_valid_post();
     $kategori   = trim($_POST['kategori'] ?? '');
@@ -38,9 +42,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $pilihan_d  = trim($_POST['pilihan_d'] ?? '');
     $jawaban    = trim($_POST['jawaban'] ?? '');
 
+    // Materi: ambil dari input "tambah baru" kalau diisi, kalau tidak pakai yang dipilih dropdown
+    $materi_baru   = trim($_POST['materi_baru'] ?? '');
+    $materi_pilih  = trim($_POST['materi_pilih'] ?? '');
+    $materi        = $materi_baru !== '' ? $materi_baru : ($materi_pilih !== '' ? $materi_pilih : null);
+
     try {
-        $stmt = $pdo->prepare("UPDATE kuis_soal SET kategori=?, level=?, pertanyaan=?, pilihan_a=?, pilihan_b=?, pilihan_c=?, pilihan_d=?, jawaban=? WHERE id=?");
-        $stmt->execute([$kategori, $level, $pertanyaan, $pilihan_a, $pilihan_b, $pilihan_c, $pilihan_d, $jawaban, $id]);
+        $stmt = $pdo->prepare("UPDATE kuis_soal SET kategori=?, level=?, materi=?, pertanyaan=?, pilihan_a=?, pilihan_b=?, pilihan_c=?, pilihan_d=?, jawaban=? WHERE id=?");
+        $stmt->execute([$kategori, $level, $materi, $pertanyaan, $pilihan_a, $pilihan_b, $pilihan_c, $pilihan_d, $jawaban, $id]);
 
         echo "<script>
             alert('Soal berhasil diperbarui!');
@@ -113,6 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <option value="Network"        <?= $data['kategori'] === 'Network' ? 'selected' : '' ?>>Network</option>
                         <option value="IoT"            <?= $data['kategori'] === 'IoT' ? 'selected' : '' ?>>Internet of Things (IoT)</option>
                         <option value="Cloud Computing" <?= $data['kategori'] === 'Cloud Computing' ? 'selected' : '' ?>>Cloud Computing</option>
+                        <option value="DevOps"         <?= $data['kategori'] === 'DevOps' ? 'selected' : '' ?>>DevOps</option>
                     </select>
                 </div>
 
@@ -123,6 +133,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <option value="menengah" <?= $data['level'] === 'menengah' ? 'selected' : '' ?>>🟡 Menengah</option>
                         <option value="mahir"    <?= $data['level'] === 'mahir' ? 'selected' : '' ?>>🔴 Mahir</option>
                     </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold text-secondary">Materi</label>
+                    <select class="form-select" name="materi_pilih" id="materi_pilih" onchange="toggleMateriBaru(this)">
+                        <option value="">-- Belum Ditandai --</option>
+                        <?php foreach ($materi_list as $m): ?>
+                        <option value="<?= htmlspecialchars($m) ?>" <?= $data['materi'] === $m ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($m) ?>
+                        </option>
+                        <?php endforeach; ?>
+                        <option value="__baru__">+ Tambah materi baru...</option>
+                    </select>
+                    <input type="text" name="materi_baru" id="materi_baru" class="form-control mt-2"
+                           placeholder="Ketik nama materi baru" style="display:none;">
                 </div>
 
                 <div class="mb-3">
@@ -166,5 +191,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function toggleMateriBaru(select) {
+            const inputBaru = document.getElementById('materi_baru');
+            if (select.value === '__baru__') {
+                inputBaru.style.display = 'block';
+                inputBaru.required = true;
+            } else {
+                inputBaru.style.display = 'none';
+                inputBaru.required = false;
+                inputBaru.value = '';
+            }
+        }
+    </script>
 </body>
 </html>

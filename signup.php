@@ -19,6 +19,7 @@ if ($registrasi_status === false || $token_sah === false) {
 if (isset($_POST['register'])) {
     
     $username    = trim($_POST['username']);
+    $nama_asli   = trim($_POST['nama_asli']);
     $password    = $_POST['password'];
     $no_wa_ortu  = trim($_POST['no_wa_ortu']);
     $token_input = trim($_POST['token']);
@@ -31,6 +32,8 @@ if (isset($_POST['register'])) {
     // Cek apakah registrasi sedang dibuka
     if ($registrasi_status !== 'buka') {
         $pesan = "<div style='color: #ff9933; margin-bottom: 15px;'>⚠️ Pendaftaran sedang ditutup. Silakan hubungi guru pembimbing jika ingin mendaftar.</div>";
+    } elseif ($nama_asli === '') {
+        $pesan = "<div style='color: #ff3333; margin-bottom: 15px;'>Nama lengkap wajib diisi!</div>";
     } elseif ($token_input !== $token_sah) {
         $pesan = "<div style='color: #ff3333; margin-bottom: 15px;'>Gagal! Token salah!</div>";
     } elseif (!preg_match('/^(08|62)[0-9]{8,12}$/', $no_wa_bersih)) {
@@ -45,12 +48,13 @@ if (isset($_POST['register'])) {
             } else {
                 $password_aman = password_hash($password, PASSWORD_DEFAULT);
 
-                $sql_insert = "INSERT INTO users (username, password, no_wa_ortu, kelas, role, created_at) 
-                               VALUES (:username, :password, :no_wa_ortu, :kelas, :role, NOW())";
+                $sql_insert = "INSERT INTO users (username, nama_asli, password, no_wa_ortu, kelas, role, created_at) 
+                               VALUES (:username, :nama_asli, :password, :no_wa_ortu, :kelas, :role, NOW())";
                 
                 $stmt_insert = $pdo->prepare($sql_insert);
                 $eksekusi = $stmt_insert->execute([
                     'username'    => $username,
+                    'nama_asli'   => $nama_asli,
                     'password'    => $password_aman,
                     'no_wa_ortu'  => $no_wa_bersih,
                     'kelas'       => $kelas,
@@ -97,8 +101,12 @@ if (isset($_POST['register'])) {
     <?= $pesan; ?>
 
     <form action="" method="POST">
+        <label>Nama Lengkap:</label>
+        <input type="text" name="nama_asli" placeholder="Sesuai nama di rapor/absensi..." required autocomplete="off">
+
         <label>Username Baru:</label>
         <input type="text" name="username" placeholder="Masukkan username..." required autocomplete="off">
+        <span class="hint">Boleh beda dari nama asli, dipakai untuk login saja.</span>
 
         <label>Password:</label>
         <input type="password" name="password" placeholder="******" required>

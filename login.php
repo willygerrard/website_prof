@@ -1,6 +1,7 @@
 <?php
 // 1. HIDUPKAN SESSION START JUGA DI SINI
 session_start();
+include 'csrf_helper.php';
 
 // 2. KALAU SUDAH LOGIN KOK ISENG BUKA HALAMAN INI, LANGSUNG LEMPAR KE INDEX
 if (isset($_SESSION['is_login']) && $_SESSION['is_login'] === true) {
@@ -107,6 +108,7 @@ $error = $_GET['error'] ?? '';
 <?php endif; ?>
     
     <form action="proses_login.php" method="POST">
+        <?= csrf_field() ?>
         <div class="form-group">
             <label for="username">Username:</label>
             <input type="text" id="username" name="username" required autocomplete="off" placeholder="admin">

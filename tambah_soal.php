@@ -1,7 +1,8 @@
 <?php
 include 'koneksi.php';
-include 'csrf_helper.php';
 session_start();
+include 'csrf_helper.php';
+
 if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true || $_SESSION['role'] !== 'admin') {
     header("Location: login.php");
     exit();
@@ -10,8 +11,13 @@ if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true || $_SESSION
 $pesan = '';
 $pesan_type = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori'])) {
+// Daftar materi yang sudah ada, untuk dropdown + opsi tambah baru
+$materi_list = $pdo->query("SELECT DISTINCT materi FROM kuis_soal WHERE materi IS NOT NULL AND materi <> '' ORDER BY materi")
+                    ->fetchAll(PDO::FETCH_COLUMN);
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori']) && !isset($_POST['quiz_json'])) {
     csrf_require_valid_post();
+
     $kategori   = trim($_POST['kategori'] ?? '');
     $pertanyaan = trim($_POST['pertanyaan'] ?? '');
     $pilihan_a  = trim($_POST['pilihan_a'] ?? '');
@@ -21,9 +27,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori'])) {
     $jawaban    = trim($_POST['jawaban'] ?? '');
     $level      = trim($_POST['level'] ?? '');
 
+    $materi_baru  = trim($_POST['materi_baru'] ?? '');
+    $materi_pilih = trim($_POST['materi_pilih'] ?? '');
+    $materi       = $materi_baru !== '' ? $materi_baru : ($materi_pilih !== '' ? $materi_pilih : null);
+
     if ($kategori && $pertanyaan && $pilihan_a && $pilihan_b && $pilihan_c && $pilihan_d && $jawaban && $level) {
-        $stmt = $pdo->prepare("INSERT INTO kuis_soal (kategori, level, pertanyaan, pilihan_a, pilihan_b, pilihan_c, pilihan_d, jawaban) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$kategori, $level, $pertanyaan, $pilihan_a, $pilihan_b, $pilihan_c, $pilihan_d, $jawaban]);
+        $stmt = $pdo->prepare("INSERT INTO kuis_soal (kategori, level, materi, pertanyaan, pilihan_a, pilihan_b, pilihan_c, pilihan_d, jawaban) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$kategori, $level, $materi, $pertanyaan, $pilihan_a, $pilihan_b, $pilihan_c, $pilihan_d, $jawaban]);
         $pesan = '✅ Soal berhasil ditambahkan!';
         $pesan_type = 'success';
     } else {
@@ -111,6 +121,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori'])) {
             <div class="alert alert-<?= $pesan_type ?>"><?= $pesan ?></div>
         <?php endif; ?>
 
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-dark text-white">Metadata Soal</div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Kategori</label>
+                        <select class="form-select" id="sharedKategori" onchange="syncSharedMetadata()">
+                            <option value="Network">Network</option>
+                            <option value="IoT">IoT</option>
+                            <option value="Cloud Computing">Cloud</option>
+                            <option value="DevOps">DevOps</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Level</label>
+                        <select class="form-select" id="sharedLevel" onchange="syncSharedMetadata()">
+                            <option value="pemula">Pemula</option>
+                            <option value="menengah">Menengah</option>
+                            <option value="mahir">Mahir</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Materi</label>
+                        <select class="form-select" id="sharedMateri" onchange="syncSharedMetadata(); toggleMateriBaru(this, 'sharedMateriBaru')">
+                            <option value="">-- Belum Ditandai --</option>
+                            <?php foreach ($materi_list as $m): ?>
+                                <option value="<?= htmlspecialchars($m) ?>"><?= htmlspecialchars($m) ?></option>
+                            <?php endforeach; ?>
+                            <option value="__baru__">+ Tambah materi baru...</option>
+                        </select>
+                        <input type="text" id="sharedMateriBaru" class="form-control mt-2"
+                               placeholder="Ketik nama materi baru" style="display:none;">
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="row g-4">
             <div class="col-lg-6">
                 <div class="card shadow-sm h-100">
@@ -120,7 +167,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori'])) {
                             <?= csrf_field() ?>
                             <div class="mb-2">
                                 <label class="form-label">Kategori</label>
-                                <select class="form-select" name="kategori" required>
+                                <select class="form-select" name="kategori" id="manualKategori" required>
                                     <option value="Network">Network</option>
                                     <option value="IoT">IoT</option>
                                     <option value="Cloud Computing">Cloud</option>
@@ -129,11 +176,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori'])) {
                             </div>
                             <div class="mb-2">
                                 <label class="form-label">Level</label>
-                                <select class="form-select" name="level" required>
+                                <select class="form-select" name="level" id="manualLevel" required>
                                     <option value="pemula">Pemula</option>
                                     <option value="menengah">Menengah</option>
                                     <option value="mahir">Mahir</option>
                                 </select>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label">Materi</label>
+                                <select class="form-select" name="materi_pilih" id="materi_pilih_manual" onchange="toggleMateriBaru(this, 'materi_baru_manual')">
+                                    <option value="">-- Belum Ditandai --</option>
+                                    <?php foreach ($materi_list as $m): ?>
+                                    <option value="<?= htmlspecialchars($m) ?>"><?= htmlspecialchars($m) ?></option>
+                                    <?php endforeach; ?>
+                                    <option value="__baru__">+ Tambah materi baru...</option>
+                                </select>
+                                <input type="text" name="materi_baru" id="materi_baru_manual" class="form-control mt-2"
+                                       placeholder="Ketik nama materi baru" style="display:none;">
                             </div>
                             <div class="mb-2">
                                 <label class="form-label">Pertanyaan</label>
@@ -164,7 +223,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori'])) {
 
                         <div class="alert alert-info py-2 px-3 small">
                         <i class="bi bi-info-circle-fill"></i> <strong>Cara Pakai:</strong><br>
-                        Pilih kategori dan level terlebih dahulu, lalu paste format: Pertanyaan [enter] Pilihan A, B, C, D [enter] Answer: [Jawaban]. 
+                        Pilih kategori, level, dan materi di panel atas terlebih dahulu, lalu paste format: Pertanyaan [enter] Pilihan A, B, C, D [enter] Answer: [Jawaban]. 
                         Pastikan ada 1 baris kosong antar soal.
                         </div>
 
@@ -188,6 +247,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori'])) {
                                 <input type="hidden" id="finalJsonData" name="quiz_json">
                                 <input type="hidden" id="inputKategori" name="kategori">
                                 <input type="hidden" id="inputLevel" name="level">
+                                <input type="hidden" id="inputMateri" name="materi">
                                 <button type="button" class="btn btn-secondary" onclick="backToEdit()">Edit Kembali</button>
                                 <button type="submit" class="btn btn-success">Simpan ke Database</button>
                             </form>
@@ -199,14 +259,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori'])) {
     </div>
 
     <script>
+        function syncSharedMetadata() {
+            const sharedKategori = document.getElementById('sharedKategori')?.value || '';
+            const sharedLevel = document.getElementById('sharedLevel')?.value || '';
+            const sharedMateriSelect = document.getElementById('sharedMateri');
+            const sharedMateri = sharedMateriSelect?.value || '';
+            const sharedMateriBaru = document.getElementById('sharedMateriBaru')?.value.trim() || '';
+            const finalSharedMateri = sharedMateri === '__baru__' ? sharedMateriBaru : sharedMateri;
+
+            const manualKategori = document.getElementById('manualKategori');
+            const manualLevel = document.getElementById('manualLevel');
+            const manualMateri = document.getElementById('materi_pilih_manual');
+
+            if (manualKategori) manualKategori.value = sharedKategori;
+            if (manualLevel) manualLevel.value = sharedLevel;
+            if (manualMateri) manualMateri.value = sharedMateri;
+
+            const inputKategori = document.getElementById('inputKategori');
+            const inputLevel = document.getElementById('inputLevel');
+            const inputMateri = document.getElementById('inputMateri');
+
+            if (inputKategori) inputKategori.value = sharedKategori;
+            if (inputLevel) inputLevel.value = sharedLevel;
+            if (inputMateri) inputMateri.value = finalSharedMateri;
+        }
+
+        function toggleMateriBaru(select, inputId) {
+            const inputBaru = document.getElementById(inputId);
+            if (select.value === '__baru__') {
+                inputBaru.style.display = 'block';
+            } else {
+                inputBaru.style.display = 'none';
+                inputBaru.value = '';
+            }
+        }
+
         function generatePreviewFromText() {
-            // 1. Ambil nilai dropdown dari form kiri
-            const kat = document.querySelector('select[name="kategori"]').value;
-            const lvl = document.querySelector('select[name="level"]').value;
+            // 1. Ambil nilai metadata dari panel atas
+            const kat = document.getElementById('sharedKategori')?.value || document.querySelector('select[name="kategori"]').value;
+            const lvl = document.getElementById('sharedLevel')?.value || document.querySelector('select[name="level"]').value;
+            const sharedMateriSelect = document.getElementById('sharedMateri');
+            const sharedMateriBaru = document.getElementById('sharedMateriBaru')?.value.trim() || '';
+            const materiPilih = sharedMateriSelect?.value || document.getElementById('materi_pilih_manual').value;
+            const materiBaru = sharedMateriBaru || document.getElementById('materi_baru_manual').value.trim();
+            const materiFinal = materiPilih === '__baru__' ? materiBaru : materiPilih;
 
             // 2. Masukkan ke hidden input di form kanan
             document.getElementById('inputKategori').value = kat;
             document.getElementById('inputLevel').value = lvl;
+            document.getElementById('inputMateri').value = materiFinal;
 
             
             const rawText = document.getElementById('quizRawText').value.trim();
@@ -231,8 +332,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori'])) {
                 let correctAnswer = "";
 
                 lines.forEach(line => {
-                    if (line.match(/^(ans|answer|correct|key|jawaban)\s*[:=-]\s*/i)) {
-                        correctAnswer = line.replace(/^(ans|answer|correct|key|jawaban)\s*[:=-]\s*/i, '').trim();
+                    if (line.match(/^(ans|answer|correct|key)\s*:\s*/i)) {
+                        correctAnswer = line.replace(/^(ans|answer|correct|key)\s*:\s*/i, '').trim();
                     } else if (line.match(/^[A-E][\)|\]\.]\s*/i)) {
                         options.push(line.replace(/^[A-E][\)|\]\.]\s*/i, '').trim());
                     } else if (line.match(/^\d+[\.\)]\s*/)) {
@@ -248,23 +349,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori'])) {
                 if (options[idx]) correctAnswer = options[idx];
             }
 
-            if (
-                questionText &&
-                options.length === 4 &&
-                correctAnswer
-            ) {
-                questionsArray.push({
-                    question_text: questionText,
-                    options: options,
-                    correct_answer: correctAnswer
-                });
+            if (questionText && options.length > 0) {
+                questionsArray.push({ question_text: questionText, options: options, correct_answer: correctAnswer });
             }
-             }
-
-            if (questionsArray.length === 0) {
-            alert("Tidak ada soal yang berhasil diparse.\n\nPastikan format:\n\nQuestion\nA)\nB)\nC)\nD)\nAnswer: A");
-            return;
-            }
+        }
 
         // Tampilkan ke Preview
         previewContainer.innerHTML = "";
@@ -285,6 +373,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori'])) {
             document.getElementById('editSection').style.display = 'block';
             document.getElementById('previewSection').style.display = 'none';
         }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            syncSharedMetadata();
+        });
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>

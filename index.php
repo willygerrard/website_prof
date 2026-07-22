@@ -1,9 +1,13 @@
 <?php
 // 1. Amankan halaman dengan satpam session yang kemarin
+if (session_status() === PHP_SESSION_NONE) {
+    ini_set('session.cookie_httponly', 1); // Anti diintip skrip jahat
+    ini_set('session.use_only_cookies', 1);
+    session_start();
+}
+
 include 'koneksi.php';
-ini_set('session.cookie_httponly', 1); // Anti diintip skrip jahat
-ini_set('session.use_only_cookies', 1);
-session_start();
+
 if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
     header("Location: login.php");
     exit();
@@ -100,14 +104,16 @@ $all_modules = $stmt->fetchAll(PDO::FETCH_ASSOC); // Variabel penampung looping 
                                     <li><hr class="dropdown-divider" /></li>
                                     <li><a class="dropdown-item" href="pintu-game-sija">Manage Game</a></li>
                                     <li><hr class="dropdown-divider" /></li>
-<li><a class="dropdown-item" href="toggle_notif.php">Toggle Notifikasi WA</a></li>
+                                    <li><a class="dropdown-item" href="toggle_notif.php">Toggle Notifikasi WA</a></li>
                                     <li><hr class="dropdown-divider" /></li>
                                     <li><a class="dropdown-item" href="pintu-pendaftaran-sija">🔓 Buka/Tutup Registrasi</a></li>
                                 </ul>
                             </li>
                             <?php endif; ?>
+                            <?php if ($_SESSION['role'] === 'siswa'): ?>
                             <li class="nav-item"><a class="nav-link" href="kuis.php">Kuis</a></li>
                             <li class="nav-item"><a class="nav-link fw-bold text-primary" href="game_edukasi.php">🎮 Game Edukasi</a></li>
+                            <?php endif; ?>
                     </ul>
                     <div class="d-flex align-items-center gap-3">
     <?php if (isset($_SESSION['username'])) : ?>

@@ -1,10 +1,12 @@
 <?php
 // 1. Koneksi ke database MariaDB via PDO (Sesuaikan dengan file koneksi Bapak)
-include 'koneksi.php'; 
+include 'koneksi.php';
+include 'csrf_helper.php';
 
 $id = $_GET['id'] ?? '';
 
 if (!empty($id)) {
+    csrf_require_valid_get('csrf_token');
     try {
         // 2. Ambil nama file gambar dari database dulu sebelum datanya dihapus
         $sql_select = "SELECT image_path FROM modules WHERE id = :id";

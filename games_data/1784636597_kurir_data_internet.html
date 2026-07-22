@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kurir Data Internet - Kelas X TKJ</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #0b0f19;
+            color: #f1f5f9;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        header {
+            border-bottom: 1px solid #1e293b;
+            background-color: rgba(15, 23, 42, 0.9);
+            padding: 12px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        .header-container {
+            max-width: 1150px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .logo-title { display: flex; align-items: center; gap: 12px; }
+        .logo-icon {
+            background: linear-gradient(135deg, #38bdf8, #2563eb);
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-size: 20px;
+        }
+        h1 { font-size: 16px; font-weight: 800; color: #fff; }
+        .badge {
+            background: rgba(6, 182, 212, 0.2);
+            color: #67e8f9;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 99px;
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            margin-left: 6px;
+        }
+        .subtitle { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+
+        main {
+            max-width: 1150px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 16px;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            flex-grow: 1;
+        }
+        .left-panel { flex: 2; min-width: 320px; display: flex; flex-direction: column; gap: 15px; }
+        .right-panel { flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 15px; }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            padding: 12px;
+            border-radius: 12px;
+        }
+        .dash-card {
+            background: #020617;
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid #1e293b;
+            text-align: center;
+        }
+        .dash-label { font-size: 10px; color: #94a3b8; font-weight: bold; text-transform: uppercase; }
+        .dash-val-cyan { font-size: 14px; font-weight: 800; color: #38bdf8; }
+        .dash-val-green { font-size: 16px; font-weight: 800; color: #4ade80; }
+        .dash-val-red { font-size: 16px; font-weight: 800; color: #f87171; }
+
+        .game-screen {
+            position: relative;
+            background: #020617;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            overflow: hidden;
+            flex-grow: 1;
+            min-height: 420px;
+            display: flex;
+            flex-direction: column;
+        }
+        .map-badge {
+            position: absolute;
+            top: 12px; left: 12px;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid #1e293b;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: bold;
+            color: #cbd5e1;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .dot { width: 8px; height: 8px; border-radius: 50%; background: #38bdf8; }
+
+        canvas { width: 100%; height: 100%; display: block; cursor: pointer; flex-grow: 1; }
+
+        .card-panel {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .btn-lvl {
+            width: 100%;
+            text-align: left;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid #1e293b;
+            background: rgba(15, 23, 42, 0.5);
+            color: #cbd5e1;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+        }
+        .btn-lvl.active {
+            border-color: rgba(6, 182, 212, 0.4);
+            background: linear-gradient(90deg, rgba(8, 47, 73, 0.4), #0f172a);
+            color: #38bdf8;
+            font-weight: bold;
+        }
+        .btn-action {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            color: #fff;
+        }
+        .btn-green { background: #059669; }
+        .btn-green:hover { background: #047857; }
+        .btn-amber { background: #d97706; }
+        .btn-slate { background: #334155; }
+
+        .briefing {
+            background: #020617;
+            border: 1px solid #1e293b;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            color: #cbd5e1;
+            line-height: 1.5;
+        }
+
+        .toast {
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: bold;
+            display: none;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Modal */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+            z-index: 100;
+        }
+        .modal-body {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            max-width: 360px;
+            width: 100%;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-container">
+            <div class="logo-title">
+                <div class="logo-icon">⚡</div>
+                <div>
+                    <h1>KURIR DATA INTERNET <span class="badge">KELAS X TKJ</span></h1>
+                    <div class="subtitle">Belajar bagaimana internet mengirim pesan & video tanpa tertukar!</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="left-panel">
+            <div class="dashboard">
+                <div class="dash-card">
+                    <div class="dash-label">Misi Level</div>
+                    <div id="label-level-now" class="dash-val-cyan">Level 1</div>
+                </div>
+                <div class="dash-card">
+                    <div class="dash-label">Data Terkirim</div>
+                    <div id="label-delivered" class="dash-val-green">0 / 5</div>
+                </div>
+                <div class="dash-card">
+                    <div class="dash-label">Data Nyasar / Hilang</div>
+                    <div id="label-lost" class="dash-val-red">0</div>
+                </div>
+            </div>
+
+            <div class="game-screen">
+                <div class="map-badge">
+                    <div class="dot"></div>
+                    PETA KABEL INTERNET
+                </div>
+                <canvas id="canvas-game"></canvas>
+                <div id="game-toast" class="toast">📢 <span id="toast-text">Klik tiang cabang untuk mengubah jalur!</span></div>
+            </div>
+
+            <div style="background: rgba(15,23,42,0.4); border: 1px solid #1e293b; padding: 10px; border-radius: 8px; font-size: 11px; color: #94a3b8;">
+                💡 <strong>Cara Main:</strong> Klik/tap lingkaran <strong>Tiang Cabang (🛜)</strong> untuk memutar arah panahnya. Arahkan emoji data agar masuk ke aplikasi yang cocok!
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="card-panel">
+                <h3 style="font-size: 13px; font-weight: bold;">🎮 Pilih Level Tantangan:</h3>
+                
+                <button onclick="startLevel(0)" id="btn-lvl-0" class="btn-lvl active">
+                    <div>
+                        <div style="font-weight: bold; color: #38bdf8;">Level 1: Kirim Chat WA 💬</div>
+                        <div style="font-size: 10px; color: #64748b;">Misi mudah: arahkan chat dari HP ke server WA.</div>
+                    </div>
+                    ▶️
+                </button>
+
+                <button onclick="startLevel(1)" id="btn-lvl-1" class="btn-lvl">
+                    <div>
+                        <div style="font-weight: bold;">Level 2: Sortir Chat & Video 📹</div>
+                        <div style="font-size: 10px; color: #64748b;">Sortir chat ke WA & video ke YouTube.</div>
+                    </div>
+                    ▶️
+                </button>
+
+                <button onclick="startLevel(2)" id="btn-lvl-2" class="btn-lvl">
+                    <div>
+                        <div style="font-weight: bold;">Level 3: Mabar Mobile Legends 🎮</div>
+                        <div style="font-size: 10px; color: #64748b;">Ada kabel putus! Putar jalur memutar.</div>
+                    </div>
+                    ▶️
+                </button>
+
+                <div class="briefing">
+                    <div style="font-weight: bold; font-size: 10px; color: #64748b; text-transform: uppercase; margin-bottom: 4px;">📢 Tugas Kamu:</div>
+                    <div id="level-briefing">Pilih salah satu level di atas untuk mulai!</div>
+                </div>
+
+                <div style="display: flex; gap: 8px;">
+                    <button id="btn-toggle-flow" onclick="toggleFlow()" class="btn-action btn-green">⚡ Mulai Kirim Data</button>
+                    <button onclick="resetLevel()" class="btn-action btn-slate" style="flex:0; width: auto;">🔄</button>
+                </div>
+            </div>
+
+            <div class="card-panel" style="font-size: 11px; color: #cbd5e1;">
+                <h3 style="font-size: 12px; font-weight: bold; border-bottom: 1px solid #1e293b; padding-bottom: 6px;">🌍 Analogi Internet</h3>
+                <p>💬 <strong>Paket Data:</strong> Foto/chat dipotong kecil-kecil seperti surat di dalam amplop paket.</p>
+                <p>🛜 <strong>Router:</strong> Pak Pos yang membaca alamat paket lalu mengarahkannya ke jalan yang tepat.</p>
+                <p>🖥️ <strong>Server:</strong> Komputer raksasa penyedia aplikasi (WA, YouTube) yang melayani data.</p>
+            </div>
+        </div>
+    </main>
+
+    <div id="modal-result" class="modal">
+        <div class="modal-body">
+            <div id="modal-emoji" style="font-size: 32px;">🎉</div>
+            <h3 id="modal-title" style="font-size: 15px; font-weight: 800; color: #fff;">Hasil Misi</h3>
+            <p id="modal-desc" style="font-size: 11px; color: #94a3b8;"></p>
+            <div id="modal-lesson" style="background: #020617; padding: 10px; border-radius: 8px; font-size: 10px; color: #67e8f9; text-align: left;"></div>
+            <div style="display: flex; gap: 8px; margin-top: 5px;">
+                <button onclick="closeModal()" class="btn-action btn-slate">Tutup</button>
+                <button id="modal-btn-next" class="btn-action btn-green" style="display:none;">Lanjut ➡️</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas-game');
+        const ctx = canvas.getContext('2d');
+
+        let isRunning = false;
+        let animationFrameId = null;
+        let currentLevel = 0;
+
+        let deliveredCount = 0;
+        let lostCount = 0;
+
+        let nodes = {};
+        let links = [];
+        let dataPackets = [];
+        let cableBroken = false;
+
+        const levels = [
+            {
+                title: "Level 1: Kirim Chat WA 💬",
+                briefing: "Kirim 5 Paket Chat (💬) dari HP ke Server WA. Klik Tiang Cabang agar mengarah ke atas!",
+                targetCount: 5,
+                allowedLoss: 0
+            },
+            {
+                title: "Level 2: Sortir Chat & Video 📹",
+                briefing: "HP mengirim Chat (💬) & Video (📹). Klik tiang cabang untuk mengarahkan Chat ke WA & Video ke YouTube!",
+                targetCount: 8,
+                allowedLoss: 2
+            },
+            {
+                title: "Level 3: Mabar Mobile Legends 🎮",
+                briefing: "Kabel utama ke Server Game (🎮) putus! Alihkan Tiang Cabang lewat jalur memutar di bawah!",
+                targetCount: 5,
+                allowedLoss: 1
+            }
+        ];
+
+        function initNetwork() {
+            nodes = {
+                'hp-client': { id: 'hp-client', label: '📱 HP Kamu', type: 'sender', x: 0.15, y: 0.5, color: '#38bdf8' },
+                'tiang-1': { id: 'tiang-1', label: '🛜 Tiang A', type: 'switcher', x: 0.45, y: 0.5, color: '#a855f7', outputIndex: 0, outputs: ['server-wa', 'server-youtube'] },
+                'tiang-2': { id: 'tiang-2', label: '🛜 Tiang B', type: 'switcher', x: 0.7, y: 0.75, color: '#a855f7', outputIndex: 0, outputs: ['server-game'] },
+                'server-wa': { id: 'server-wa', label: '💬 Server WA', type: 'server', x: 0.75, y: 0.25, color: '#22c55e' },
+                'server-youtube': { id: 'server-youtube', label: '📹 Server YouTube', type: 'server', x: 0.75, y: 0.5, color: '#ef4444' },
+                'server-game': { id: 'server-game', label: '🎮 Server Game ML', type: 'server', x: 0.9, y: 0.75, color: '#eab308' }
+            };
+
+            links = [
+                { from: 'hp-client', to: 'tiang-1' },
+                { from: 'tiang-1', to: 'server-wa' },
+                { from: 'tiang-1', to: 'server-youtube' },
+                { from: 'tiang-1', to: 'tiang-2' },
+                { from: 'tiang-2', to: 'server-game' }
+            ];
+
+            if (currentLevel === 0) {
+                nodes['tiang-1'].outputs = ['server-youtube', 'server-wa'];
+            } else if (currentLevel === 1) {
+                nodes['tiang-1'].outputs = ['server-wa', 'server-youtube'];
+            } else if (currentLevel === 2) {
+                nodes['tiang-1'].outputs = ['server-youtube', 'tiang-2'];
+                nodes['tiang-2'].outputs = ['server-game'];
+            }
+        }
+
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            drawGame();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        function drawGame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < canvas.width; i += 40) {
+                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+            }
+            for (let j = 0; j < canvas.height; j += 40) {
+                ctx.beginPath(); ctx.moveTo(0, j); ctx.lineTo(canvas.width, j); ctx.stroke();
+            }
+
+            links.forEach(link => {
+                const fromNode = nodes[link.from];
+                const toNode = nodes[link.to];
+
+                if (currentLevel !== 2 && (link.from === 'tiang-2' || link.to === 'tiang-2' || link.to === 'server-game')) return;
+
+                const x1 = fromNode.x * canvas.width;
+                const y1 = fromNode.y * canvas.height;
+                const x2 = toNode.x * canvas.width;
+                const y2 = toNode.y * canvas.height;
+
+                ctx.strokeStyle = '#1e293b';
+                ctx.lineWidth = 4;
+
+                let isActive = false;
+                if (link.from === 'hp-client') isActive = true;
+                else if (link.from === 'tiang-1' && link.to === fromNode.outputs[fromNode.outputIndex]) isActive = true;
+                else if (link.from === 'tiang-2' && link.to === fromNode.outputs[fromNode.outputIndex]) isActive = true;
+
+                if (isActive) { ctx.strokeStyle = '#0284c7'; ctx.lineWidth = 5; }
+
+                if (cableBroken && link.from === 'tiang-1' && link.to === 'server-youtube') {
+                    ctx.strokeStyle = '#f43f5e';
+                    ctx.setLineDash([6, 6]);
+                } else {
+                    ctx.setLineDash([]);
+                }
+
+                ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+                ctx.setLineDash([]);
+            });
+
+            Object.values(nodes).forEach(node => {
+                if (currentLevel !== 2 && (node.id === 'tiang-2' || node.id === 'server-game')) return;
+
+                const x = node.x * canvas.width;
+                const y = node.y * canvas.height;
+
+                ctx.fillStyle = node.color;
+                ctx.beginPath();
+                ctx.arc(x, y, node.type === 'switcher' ? 20 : 16, 0, Math.PI * 2);
+                ctx.fill();
+
+                if (node.type === 'switcher') {
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 24, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    const targetNode = nodes[node.outputs[node.outputIndex]];
+                    if (targetNode) {
+                        const angle = Math.atan2((targetNode.y * canvas.height) - y, (targetNode.x * canvas.width) - x);
+                        ctx.strokeStyle = '#ffffff';
+                        ctx.lineWidth = 3;
+                        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(angle) * 20, y + Math.sin(angle) * 20); ctx.stroke();
+                    }
+                }
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 11px system-ui';
+                ctx.textAlign = 'center';
+                ctx.fillText(node.label, x, y - 28);
+
+                if (cableBroken && node.id === 'server-youtube') {
+                    ctx.fillStyle = '#f43f5e';
+                    ctx.font = 'bold 9px system-ui';
+                    ctx.fillText('❌ KABEL PUTUS!', x - 35, y + 28);
+                }
+            });
+
+            dataPackets.forEach(packet => {
+                ctx.fillStyle = packet.color;
+                ctx.beginPath();
+                ctx.arc(packet.curX, packet.curY, 12, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '12px serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(packet.emoji, packet.curX, packet.curY + 4);
+            });
+        }
+
+        function spawnPacket() {
+            let dataChoice = 'chat';
+            let emoji = '💬';
+            let color = '#22c55e';
+
+            if (currentLevel === 1) {
+                if (Math.random() > 0.5) { dataChoice = 'video'; emoji = '📹'; color = '#ef4444'; }
+            } else if (currentLevel === 2) {
+                dataChoice = 'game'; emoji = '🎮'; color = '#eab308';
+            }
+
+            dataPackets.push({
+                type: dataChoice, emoji: emoji, color: color,
+                curNodeId: 'hp-client', nextNodeId: 'tiang-1',
+                curX: nodes['hp-client'].x * canvas.width,
+                curY: nodes['hp-client'].y * canvas.height,
+                progress: 0, speed: 0.015
+            });
+        }
+
+        function updatePackets() {
+            for (let i = dataPackets.length - 1; i >= 0; i--) {
+                const p = dataPackets[i];
+                const fromNode = nodes[p.curNodeId];
+                const toNode = nodes[p.nextNodeId];
+
+                const x1 = fromNode.x * canvas.width;
+                const y1 = fromNode.y * canvas.height;
+                const x2 = toNode.x * canvas.width;
+                const y2 = toNode.y * canvas.height;
+
+                p.progress += p.speed;
+                p.curX = x1 + (x2 - x1) * p.progress;
+                p.curY = y1 + (y2 - y1) * p.progress;
+
+                if (p.progress >= 1.0) {
+                    p.progress = 0;
+                    p.curNodeId = p.nextNodeId;
+                    const currentNode = nodes[p.curNodeId];
+
+                    if (currentNode.id === 'tiang-1') {
+                        const targetArah = currentNode.outputs[currentNode.outputIndex];
+                        p.nextNodeId = targetArah;
+
+                        if (cableBroken && targetArah === 'server-youtube') {
+                            dataPackets.splice(i, 1);
+                            lostCount++;
+                            showToast("💥 Paket Jatuh karena Kabel Utama Putus!");
+                            updateDashboardUI(); checkLevelEnd(); continue;
+                        }
+                    } else if (currentNode.id === 'tiang-2') {
+                        p.nextNodeId = 'server-game';
+                    } else if (currentNode.type === 'server') {
+                        let isCorrect = (currentNode.id === 'server-wa' && p.type === 'chat') ||
+                                        (currentNode.id === 'server-youtube' && p.type === 'video') ||
+                                        (currentNode.id === 'server-game' && p.type === 'game');
+
+                        if (isCorrect) {
+                            deliveredCount++;
+                            showToast("✅ Berhasil! Paket Sampai di Server yang Tepat!");
+                        } else {
+                            lostCount++;
+                            showToast("❌ Paket Nyasar ke Server Lain!");
+                        }
+
+                        dataPackets.splice(i, 1);
+                        updateDashboardUI(); checkLevelEnd(); continue;
+                    }
+                }
+            }
+        }
+
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+
+            Object.values(nodes).forEach(node => {
+                if (node.type === 'switcher') {
+                    if (currentLevel !== 2 && node.id === 'tiang-2') return;
+                    const dist = Math.hypot(clickX - (node.x * canvas.width), clickY - (node.y * canvas.height));
+                    if (dist <= 30) {
+                        node.outputIndex = (node.outputIndex + 1) % node.outputs.length;
+                        showToast("⚙️ Jalur kabel dialihkan!");
+                        drawGame();
+                    }
+                }
+            });
+        });
+
+        function toggleFlow() {
+            const btn = document.getElementById('btn-toggle-flow');
+            if (isRunning) {
+                stopFlow();
+                btn.textContent = "⚡ Mulai Kirim Data";
+                btn.className = "btn-action btn-green";
+            } else {
+                isRunning = true;
+                btn.textContent = "⏸️ Hentikan Aliran";
+                btn.className = "btn-action btn-amber";
+                gameTick(performance.now());
+            }
+        }
+
+        function stopFlow() {
+            isRunning = false;
+            if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
+        }
+
+        let lastSpawnTime = 0;
+        function gameTick(timestamp) {
+            if (!isRunning) return;
+            if (!lastSpawnTime) lastSpawnTime = timestamp;
+            if (timestamp - lastSpawnTime > 1800) {
+                if (deliveredCount + lostCount < levels[currentLevel].targetCount) spawnPacket();
+                lastSpawnTime = timestamp;
+            }
+            updatePackets();
+            drawGame();
+            animationFrameId = requestAnimationFrame(gameTick);
+        }
+
+        function updateDashboardUI() {
+            document.getElementById('label-delivered').textContent = `${deliveredCount} / ${levels[currentLevel].targetCount}`;
+            document.getElementById('label-lost').textContent = lostCount;
+        }
+
+        function showToast(text) {
+            const toast = document.getElementById('game-toast');
+            document.getElementById('toast-text').innerHTML = text;
+            toast.style.display = 'flex';
+            setTimeout(() => { toast.style.display = 'none'; }, 2000);
+        }
+
+        function checkLevelEnd() {
+            const activeLvl = levels[currentLevel];
+            if (lostCount > activeLvl.allowedLoss) {
+                stopFlow();
+                showResultModal("❌ MISI GAGAL", "Paket data banyak yang nyasar/hilang!", "💡 Router (Tiang) harus diarahkan dengan tepat!", false);
+            } else if (deliveredCount >= activeLvl.targetCount) {
+                stopFlow();
+                showResultModal("🎉 MISI SELESAI!", "Semua data sampai dengan selamat!", "💡 Di internet asli, Router memindahkan jutaan paket otomatis!", true);
+            }
+        }
+
+        function startLevel(index) {
+            stopFlow(); currentLevel = index; deliveredCount = 0; lostCount = 0; dataPackets = [];
+            cableBroken = (index === 2);
+
+            document.getElementById('label-level-now').textContent = `Level ${index + 1}`;
+            document.getElementById('level-briefing').innerHTML = levels[index].briefing;
+
+            for (let i = 0; i < 3; i++) {
+                const btn = document.getElementById(`btn-lvl-${i}`);
+                btn.className = i === index ? "btn-lvl active" : "btn-lvl";
+            }
+
+            initNetwork(); updateDashboardUI();
+            document.getElementById('btn-toggle-flow').textContent = "⚡ Mulai Kirim Data";
+            document.getElementById('btn-toggle-flow').className = "btn-action btn-green";
+            drawGame();
+        }
+
+        function resetLevel() { startLevel(currentLevel); }
+
+        function showResultModal(title, desc, lesson, isSuccess) {
+            const modal = document.getElementById('modal-result');
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-desc').textContent = desc;
+            document.getElementById('modal-lesson').innerHTML = lesson;
+
+            const btnNext = document.getElementById('modal-btn-next');
+            if (isSuccess && currentLevel < 2) {
+                btnNext.style.display = 'inline-block';
+                btnNext.onclick = function() { closeModal(); startLevel(currentLevel + 1); };
+            } else {
+                btnNext.style.display = 'none';
+            }
+            modal.style.display = 'flex';
+        }
+
+        function closeModal() { document.getElementById('modal-result').style.display = 'none'; }
+
+        window.onload = function() { initNetwork(); resizeCanvas(); startLevel(0); };
+    </script>
+</body>
+</html>

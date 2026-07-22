@@ -61,7 +61,8 @@ if (empty($soal_list)) {
                 . "B) {$s['pilihan_b']}\n"
                 . "C) {$s['pilihan_c']}\n"
                 . "D) {$s['pilihan_d']}\n"
-                . "Answer: " . strtoupper($s['jawaban']);
+                . "Answer: " . strtoupper($s['jawaban']) . "\n"
+                . "Materi: " . ($s['materi'] ?? '');
 
             $original_ids[] = (int)$s['id'];
             $original_data[] = [
@@ -72,6 +73,7 @@ if (empty($soal_list)) {
                 'pilihan_c'  => $s['pilihan_c'],
                 'pilihan_d'  => $s['pilihan_d'],
                 'jawaban'    => strtoupper($s['jawaban']),
+                'materi'     => $s['materi'] ?? '',
             ];
             $no++;
         }
@@ -161,7 +163,8 @@ if (empty($soal_list)) {
                     <div class="alert alert-info py-2 px-3 small">
                         <i class="bi bi-info-circle-fill"></i> <strong>Cara Pakai:</strong><br>
                         Format soal di bawah sudah otomatis terisi dari data yang ada. Edit langsung teksnya
-                        (pertanyaan, pilihan, atau jawaban), lalu klik <strong>Generate Preview</strong>.
+                        (pertanyaan, pilihan, jawaban, atau baris <strong>Materi:</strong>), lalu klik <strong>Generate Preview</strong>.
+                        Baris "Materi:" boleh dikosongkan (artinya soal belum ditandai materi).
                         Jangan menghapus atau menambah blok soal — jumlah blok harus tetap
                         <?= count($soal_list) ?> soal, dipisah 1 baris kosong antar soal.
                     </div>
@@ -223,10 +226,13 @@ if (empty($soal_list)) {
                 let questionText = "";
                 let options = [];
                 let correctAnswer = "";
+                let materiText = "";
 
                 lines.forEach(line => {
                     if (line.match(/^(ans|answer|correct|key)\s*:\s*/i)) {
                         correctAnswer = line.replace(/^(ans|answer|correct|key)\s*:\s*/i, '').trim();
+                    } else if (line.match(/^materi\s*:\s*/i)) {
+                        materiText = line.replace(/^materi\s*:\s*/i, '').trim();
                     } else if (line.match(/^[A-E][\)|\]\.]\s*/i)) {
                         options.push(line.replace(/^[A-E][\)|\]\.]\s*/i, '').trim());
                     } else if (line.match(/^\d+[\.\)]\s*/)) {
@@ -243,7 +249,7 @@ if (empty($soal_list)) {
                 }
 
                 if (questionText && options.length > 0) {
-                    questionsArray.push({ question_text: questionText, options: options, correct_answer: correctAnswer });
+                    questionsArray.push({ question_text: questionText, options: options, correct_answer: correctAnswer, materi: materiText });
                 }
             }
             return questionsArray;
@@ -307,7 +313,8 @@ if (empty($soal_list)) {
                     pilihan_b: opts[1],
                     pilihan_c: opts[2],
                     pilihan_d: opts[3],
-                    jawaban: jawabanBaru
+                    jawaban: jawabanBaru,
+                    materi: q.materi || ''
                 });
 
                 previewContainer.innerHTML += `
@@ -321,6 +328,7 @@ if (empty($soal_list)) {
                             <li>D) ${diffSpan(orig.pilihan_d, opts[3])}</li>
                         </ul>
                         <div class="small"><strong>Jawaban:</strong> ${diffSpan(orig.jawaban, jawabanBaru)}</div>
+                        <div class="small"><strong>Materi:</strong> ${diffSpan(orig.materi || '(kosong)', q.materi || '(kosong)')}</div>
                     </div>`;
             });
 

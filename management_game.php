@@ -85,7 +85,7 @@ if (isset($_GET['hapus'])) {
         $stmt_del->execute([$id]);
     }
 
-    header("Location: manage_game.php?status=deleted");
+    header("Location: /pintu-game-sija?status=deleted");
     exit();
 }
 
@@ -224,7 +224,7 @@ $games = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                             <i class="bi bi-play-fill"></i> Tes
                                         </a>
                                         <!-- Tombol Hapus -->
-                                      <a href="<?= 'manage_game.php?hapus=' . (int)$g['id'] . '&token=' . csrf_token() ?>" 
+                                      <a href="<?= '/pintu-game-sija?hapus=' . (int)$g['id'] . '&token=' . csrf_token() ?>" 
                                         class="btn btn-sm btn-danger" 
                                         onclick="return confirm('Yakin ingin menghapus game ini?');" 
                                         title="Hapus Game">

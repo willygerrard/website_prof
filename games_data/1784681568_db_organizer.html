@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DB Organizer - Penyelamat Web Lemot (Kelas XII)</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #080c14;
+            color: #f1f5f9;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        header {
+            border-bottom: 1px solid #1e293b;
+            background-color: rgba(15, 23, 42, 0.9);
+            padding: 12px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        .header-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .logo-title { display: flex; align-items: center; gap: 12px; }
+        .logo-icon {
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-size: 20px;
+        }
+        h1 { font-size: 16px; font-weight: 800; color: #fff; }
+        .badge {
+            background: rgba(99, 102, 241, 0.2);
+            color: #a5b4fc;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 99px;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            margin-left: 6px;
+            font-family: monospace;
+        }
+        .subtitle { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+
+        .status-pill {
+            padding: 4px 12px;
+            border-radius: 99px;
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #34d399;
+            font-size: 11px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .status-pill.danger {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: rgba(239, 68, 68, 0.3);
+            color: #f87171;
+        }
+
+        main {
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 16px;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            flex-grow: 1;
+        }
+        .left-panel { flex: 2; min-width: 320px; display: flex; flex-direction: column; gap: 15px; }
+        .right-panel { flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 15px; }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            padding: 12px;
+            border-radius: 12px;
+        }
+        .dash-card {
+            background: #020617;
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid #1e293b;
+            text-align: center;
+        }
+        .dash-label { font-size: 10px; color: #94a3b8; font-weight: bold; text-transform: uppercase; }
+        .dash-val-emerald { font-size: 16px; font-weight: 800; color: #34d399; font-family: monospace; }
+        .dash-val-cyan { font-size: 16px; font-weight: 800; color: #38bdf8; font-family: monospace; }
+        .dash-val-amber { font-size: 16px; font-weight: 800; color: #fbbf24; font-family: monospace; }
+
+        .server-box {
+            position: relative;
+            background: #020617;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            overflow: hidden;
+            flex-grow: 1;
+            min-height: 420px;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.2s;
+        }
+        .server-box.danger {
+            border-color: #ef4444 !important;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+        }
+
+        .mode-badge {
+            position: absolute;
+            top: 12px; left: 12px;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid #1e293b;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: bold;
+            color: #cbd5e1;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: monospace;
+        }
+
+        canvas { width: 100%; height: 100%; display: block; cursor: pointer; flex-grow: 1; }
+
+        .manual-panel {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            padding: 12px;
+            border-radius: 12px;
+            display: none;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .manual-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+        .btn-sort {
+            background: #020617;
+            border: 1px solid #1e293b;
+            padding: 10px 4px;
+            border-radius: 8px;
+            color: #fff;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        .btn-sort:hover { border-color: #6366f1; }
+
+        .card-panel {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .btn-lvl {
+            width: 100%;
+            text-align: left;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid #1e293b;
+            background: rgba(15, 23, 42, 0.5);
+            color: #cbd5e1;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+        }
+        .btn-lvl.active {
+            border-color: rgba(99, 102, 241, 0.4);
+            background: linear-gradient(90deg, rgba(30, 27, 75, 0.4), #0f172a);
+            color: #818cf8;
+            font-weight: bold;
+        }
+        .btn-action {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            color: #fff;
+        }
+        .btn-indigo { background: #4f46e5; }
+        .btn-indigo:hover { background: #4338ca; }
+        .btn-amber { background: #d97706; }
+        .btn-slate { background: #334155; }
+
+        .briefing {
+            background: #020617;
+            border: 1px solid #1e293b;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            color: #cbd5e1;
+            line-height: 1.5;
+        }
+
+        .toast {
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: bold;
+            display: none;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Modal */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+            z-index: 100;
+        }
+        .modal-body {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            max-width: 380px;
+            width: 100%;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-container">
+            <div class="logo-title">
+                <div class="logo-icon">🗄️</div>
+                <div>
+                    <h1>DB ORGANIZER <span class="badge">DATABASES VS FLAT FILES</span></h1>
+                    <div class="subtitle">Paham fungsi database lewat perbandingan nyata pengelolaan data server kelas XII</div>
+                </div>
+            </div>
+            <div id="server-status-pill" class="status-pill">
+                <span style="width:8px; height:8px; border-radius:50%; background:#34d399;"></span> ONLINE (OK)
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="left-panel">
+            <div class="dashboard">
+                <div class="dash-card">
+                    <div class="dash-label">Beban Server</div>
+                    <div id="metric-load" class="dash-val-emerald">0%</div>
+                </div>
+                <div class="dash-card">
+                    <div class="dash-label">Kecepatan Cari</div>
+                    <div id="metric-speed" class="dash-val-cyan">0 ms</div>
+                </div>
+                <div class="dash-card">
+                    <div class="dash-label">Pengunjung Puas</div>
+                    <div id="metric-satisfaction" class="dash-val-amber">100%</div>
+                </div>
+            </div>
+
+            <div id="server-box" class="server-box">
+                <div class="mode-badge">
+                    <span id="mode-dot" style="width:8px; height:8px; border-radius:50%; background:#f87171;"></span>
+                    <span id="mode-label">Mode: Folder Biasa (Flat Files)</span>
+                </div>
+                <canvas id="canvas-simulator"></canvas>
+                <div id="toast-simulator" class="toast">📢 <span id="toast-text">Klik data masuk untuk menyortirnya ke database!</span></div>
+            </div>
+
+            <div id="manual-sorting-panel" class="manual-panel">
+                <p style="font-size: 11px; font-weight: bold; color: #818cf8; text-align: center;">👇 PANEL KONTROL ENGINE DATABASE: SORTIR SEKARANG! 👇</p>
+                <div class="manual-grid">
+                    <button onclick="sortIncomingData('user')" class="btn-sort">
+                        <span style="font-size:18px;">👤</span>
+                        <span style="font-size:10px; color:#38bdf8; font-family:monospace; font-weight:bold;">Tabel_User</span>
+                    </button>
+                    <button onclick="sortIncomingData('document')" class="btn-sort">
+                        <span style="font-size:18px;">📄</span>
+                        <span style="font-size:10px; color:#34d399; font-family:monospace; font-weight:bold;">Tabel_Dokumen</span>
+                    </button>
+                    <button onclick="sortIncomingData('media')" class="btn-sort">
+                        <span style="font-size:18px;">🖼️</span>
+                        <span style="font-size:10px; color:#c084fc; font-family:monospace; font-weight:bold;">Tabel_Media</span>
+                    </button>
+                </div>
+            </div>
+
+            <div style="background: rgba(15,23,42,0.4); border: 1px solid #1e293b; padding: 10px; border-radius: 8px; font-size: 11px; color: #94a3b8;">
+                💡 <strong>Cara Bermain:</strong> Pada Level 1, sistem mencari file di satu folder manual. Pada Level 2, klik kategori tombol di atas untuk mengelompokkan data yang masuk ke tabel database yang tepat.
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="card-panel">
+                <h3 style="font-size: 13px; font-weight: bold;">🎮 Pilih Level Studi Kasus:</h3>
+                
+                <button onclick="startLevel(0)" id="btn-lvl-0" class="btn-lvl active">
+                    <div>
+                        <div style="font-weight: bold; color: #f87171;">Level 1: Era Tanpa Database 📂</div>
+                        <div style="font-size: 10px; color: #64748b;">Menyimpan data di satu folder PC biasa.</div>
+                    </div>
+                    ▶️
+                </button>
+
+                <button onclick="startLevel(1)" id="btn-lvl-1" class="btn-lvl">
+                    <div>
+                        <div style="font-weight: bold;">Level 2: Sortir Struktur DB ⚙️</div>
+                        <div style="font-size: 10px; color: #64748b;">Kelompokkan data masuk ke tabel relasional.</div>
+                    </div>
+                    ▶️
+                </button>
+
+                <button onclick="startLevel(2)" id="btn-lvl-2" class="btn-lvl">
+                    <div>
+                        <div style="font-weight: bold;">Level 3: Serangan Ribuan Query ⚡</div>
+                        <div style="font-size: 10px; color: #64748b;">Uji kecepatan cari instan sistem terindeks DB!</div>
+                    </div>
+                    ▶️
+                </button>
+
+                <div class="briefing">
+                    <div style="font-weight: bold; font-size: 10px; color: #64748b; text-transform: uppercase; margin-bottom: 4px;">📢 Tugas Skenario:</div>
+                    <div id="level-briefing">Pilih level untuk memulai pengujian arsitektur data.</div>
+                </div>
+
+                <div style="display: flex; gap: 8px;">
+                    <button id="btn-toggle-run" onclick="toggleSimulation()" class="btn-action btn-indigo">⚡ Mulai Simulasi Server</button>
+                    <button onclick="resetLevel()" class="btn-action btn-slate" style="flex:0; width: auto;">🔄</button>
+                </div>
+            </div>
+
+            <div class="card-panel" style="font-size: 11px; color: #cbd5e1;">
+                <h3 style="font-size: 12px; font-weight: bold; border-bottom: 1px solid #1e293b; padding-bottom: 6px;">🌍 Database vs Flat Files</h3>
+                <p>📁 <strong>Folder Biasa:</strong> Mirip menumpuk baju & buku di satu kardus. Mencari barang terpaksa diacak dari atas ke bawah (sangat lambat!).</p>
+                <p>🗄️ <strong>Database Terstruktur:</strong> Mirip lemari laci bersekat khusus per tabel. Komputer langsung menuju laci yang tepat secara instan.</p>
+            </div>
+        </div>
+    </main>
+
+    <div id="modal-result" class="modal">
+        <div class="modal-body">
+            <div id="modal-emoji" style="font-size: 32px;">🎉</div>
+            <h3 id="modal-title" style="font-size: 15px; font-weight: 800; color: #fff;">Evaluasi Server</h3>
+            <p id="modal-desc" style="font-size: 11px; color: #94a3b8;"></p>
+            <div id="modal-lesson" style="background: #020617; padding: 10px; border-radius: 8px; font-size: 10px; color: #a5b4fc; text-align: left; font-family: monospace;"></div>
+            <div style="display: flex; gap: 8px; margin-top: 5px;">
+                <button onclick="closeModal()" class="btn-action btn-slate">Tutup</button>
+                <button id="modal-btn-next" class="btn-action btn-indigo" style="display:none;">Lanjut ➡️</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas-simulator');
+        const ctx = canvas.getContext('2d');
+
+        let isRunning = false;
+        let animationFrameId = null;
+        let currentLevel = 0;
+
+        let serverLoad = 0;
+        let searchSpeed = 0;
+        let satisfaction = 100;
+
+        let clientQueries = [];
+        let sortedDatabase = { 'user': [], 'document': [], 'media': [] };
+        let unsortedFolder = [];
+        let currentPendingData = null;
+
+        const levels = [
+            {
+                title: "Level 1: Era Tanpa Database 📂",
+                briefing: "Saksikan bagaimana website menderita saat semua file ditaruh berantakan di satu folder PC biasa tanpa struktur database.",
+                targetTime: 20,
+                isDatabaseMode: false
+            },
+            {
+                title: "Level 2: Sortir Struktur DB ⚙️",
+                briefing: "Data baru akan mengantre. Gunakan tombol panel di bawah untuk menyortirnya ke tabel Tabel_User, Tabel_Dokumen, atau Tabel_Media!",
+                targetSortCount: 10,
+                isDatabaseMode: true
+            },
+            {
+                title: "Level 3: Serangan Ribuan Query ⚡",
+                briefing: "Uji server dalam skenario stres-test trafik tinggi. Perhatikan bagaimana pencarian berjalan instan (0 ms)!",
+                targetTime: 15,
+                isDatabaseMode: true
+            }
+        ];
+
+        function initScenario() {
+            clientQueries = [];
+            unsortedFolder = [];
+            sortedDatabase = { 'user': [], 'document': [], 'media': [] };
+            serverLoad = 0;
+            searchSpeed = 0;
+            satisfaction = 100;
+            currentPendingData = null;
+
+            const types = ['user', 'document', 'media'];
+            for (let i = 0; i < 15; i++) {
+                const rType = types[Math.floor(Math.random() * types.length)];
+                let emoji = '👤';
+                let name = `user_${i}.cfg`;
+                if (rType === 'document') { emoji = '📄'; name = `lap_keu_${i}.doc`; }
+                if (rType === 'media') { emoji = '🖼️'; name = `foto_${i}.png`; }
+
+                const dataItem = { type: rType, emoji: emoji, name: name };
+
+                if (levels[currentLevel].isDatabaseMode) {
+                    sortedDatabase[rType].push(dataItem);
+                } else {
+                    unsortedFolder.push(dataItem);
+                }
+            }
+
+            updateDashboardUI();
+        }
+
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            drawSimulator();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        function drawSimulator() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = '#111827';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < canvas.width; i += 40) {
+                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+            }
+            for (let j = 0; j < canvas.height; j += 40) {
+                ctx.beginPath(); ctx.moveTo(0, j); ctx.lineTo(canvas.width, j); ctx.stroke();
+            }
+
+            const centerX = canvas.width / 2;
+
+            // Trafik Pengunjung
+            ctx.fillStyle = '#1e293b';
+            ctx.beginPath(); ctx.roundRect(40, 15, canvas.width - 80, 45, 8); ctx.fill();
+            ctx.fillStyle = '#ffffff'; ctx.font = 'bold 11px system-ui'; ctx.textAlign = 'left';
+            ctx.fillText("👥 TRAFIK PENGUNJUNG WEB (PENCARIAN DATA)", 55, 42);
+
+            if (!levels[currentLevel].isDatabaseMode) {
+                // Folder Biasa
+                const storageY = canvas.height - 140;
+                ctx.fillStyle = '#181212'; ctx.strokeStyle = '#f43f5e'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.roundRect(centerX - 150, storageY, 300, 120, 10); ctx.fill(); ctx.stroke();
+
+                ctx.fillStyle = '#ef4444'; ctx.font = 'bold 11px system-ui'; ctx.textAlign = 'center';
+                ctx.fillText("📂 GUDANG FOLDER PC (Tumpukan File Biasa)", centerX, storageY + 22);
+
+                let drawX = centerX - 110;
+                let drawY = storageY + 40;
+                unsortedFolder.forEach((item, index) => {
+                    if (index < 16) {
+                        ctx.fillStyle = '#2d1b1b';
+                        ctx.beginPath(); ctx.roundRect(drawX, drawY, 30, 30, 6); ctx.fill();
+                        ctx.fillStyle = '#ffffff'; ctx.font = '12px serif'; ctx.textAlign = 'center';
+                        ctx.fillText(item.emoji, drawX + 15, drawY + 20);
+                        drawX += 38;
+                        if (drawX > centerX + 100) { drawX = centerX - 110; drawY += 34; }
+                    }
+                });
+            } else {
+                // Database Terstruktur
+                const storageY = canvas.height - 140;
+                ctx.fillStyle = '#061514'; ctx.strokeStyle = '#10b981'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.roundRect(15, storageY, canvas.width - 30, 120, 10); ctx.fill(); ctx.stroke();
+
+                ctx.fillStyle = '#10b981'; ctx.font = 'bold 11px system-ui'; ctx.textAlign = 'center';
+                ctx.fillText("🗄️ STRUKTUR DATABASE RELASIONAL (Terbagi per Tabel)", centerX, storageY + 20);
+
+                const tables = [
+                    { key: 'user', label: 'Tabel_User', color: '#38bdf8', x: 25 },
+                    { key: 'document', label: 'Tabel_Dokumen', color: '#34d399', x: centerX - 55 },
+                    { key: 'media', label: 'Tabel_Media', color: '#c084fc', x: canvas.width - 135 }
+                ];
+
+                tables.forEach(table => {
+                    ctx.fillStyle = '#090f13'; ctx.strokeStyle = table.color; ctx.lineWidth = 1.5;
+                    ctx.beginPath(); ctx.roundRect(table.x, storageY + 30, 110, 75, 8); ctx.fill(); ctx.stroke();
+
+                    ctx.fillStyle = table.color; ctx.font = 'bold 9px monospace'; ctx.textAlign = 'center';
+                    ctx.fillText(table.label, table.x + 55, storageY + 45);
+
+                    const dataInTable = sortedDatabase[table.key] || [];
+                    let dX = table.x + 15;
+                    let dY = storageY + 55;
+                    dataInTable.forEach((item, index) => {
+                        if (index < 6) {
+                            ctx.fillStyle = '#1e293b'; ctx.beginPath(); ctx.arc(dX, dY + 10, 7, 0, Math.PI * 2); ctx.fill();
+                            ctx.fillStyle = '#ffffff'; ctx.font = '8px serif'; ctx.fillText(item.emoji, dX, dY + 13);
+                            dX += 18;
+                            if (dX > table.x + 95) { dX = table.x + 15; dY += 18; }
+                        }
+                    });
+                });
+            }
+
+            // Client Queries
+            clientQueries.forEach((q, idx) => {
+                const startX = 60 + (idx * 100);
+                if (startX > canvas.width - 60) return;
+
+                ctx.fillStyle = q.isScanning ? '#ef4444' : '#1e1b4b';
+                ctx.strokeStyle = q.isScanning ? '#f43f5e' : '#312e81';
+                ctx.lineWidth = 1;
+
+                ctx.beginPath(); ctx.roundRect(startX, 80, 90, 40, 6); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#ffffff'; ctx.font = '10px system-ui'; ctx.textAlign = 'center';
+                ctx.fillText(`${q.targetEmoji} Cari File`, startX + 45, 96);
+                ctx.fillStyle = q.isScanning ? '#fca5a5' : '#cbd5e1'; ctx.font = '8px monospace';
+                ctx.fillText(q.isScanning ? "Scanning..." : "Menunggu...", startX + 45, 110);
+
+                if (q.isScanning) {
+                    ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 1.5;
+                    ctx.beginPath(); ctx.moveTo(startX + 45, 120); ctx.lineTo(centerX, canvas.height - 90); ctx.stroke();
+                }
+            });
+
+            // Pending Data
+            if (currentLevel === 1 && currentPendingData) {
+                const pendX = centerX; const pendY = 150;
+                ctx.fillStyle = '#1e293b'; ctx.strokeStyle = '#a855f7'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.roundRect(pendX - 65, pendY, 130, 45, 8); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#ffffff'; ctx.font = '14px serif'; ctx.textAlign = 'center';
+                ctx.fillText(currentPendingData.emoji, pendX - 42, pendY + 28);
+                ctx.fillStyle = '#ffffff'; ctx.font = 'bold 9px monospace'; ctx.textAlign = 'left';
+                ctx.fillText(currentPendingData.name, pendX - 20, pendY + 22);
+                ctx.fillStyle = '#cbd5e1'; ctx.font = '8px system-ui';
+                ctx.fillText("Butuh Penyimpanan", pendX - 20, pendY + 34);
+            }
+        }
+
+        function spawnQuery() {
+            const types = ['user', 'document', 'media'];
+            const rType = types[Math.floor(Math.random() * types.length)];
+            let tEmoji = '👤';
+            if (rType === 'document') tEmoji = '📄';
+            if (rType === 'media') tEmoji = '🖼️';
+
+            clientQueries.push({ type: rType, targetEmoji: tEmoji, isScanning: false, scanProgress: 0 });
+        }
+
+        function updateQueryProcessing() {
+            if (clientQueries.length === 0) return;
+            const activeQuery = clientQueries[0];
+
+            if (!activeQuery.isScanning) {
+                activeQuery.isScanning = true;
+                activeQuery.scanSpeed = levels[currentLevel].isDatabaseMode ? 0.2 : 0.015;
+            }
+
+            activeQuery.scanProgress += activeQuery.scanSpeed;
+
+            if (!levels[currentLevel].isDatabaseMode) {
+                serverLoad = Math.min(100, serverLoad + 0.3);
+                searchSpeed = Math.round(serverLoad * 22);
+            } else {
+                serverLoad = Math.max(5, serverLoad - 1);
+                searchSpeed = 1;
+            }
+
+            if (activeQuery.scanProgress >= 1.0) {
+                clientQueries.shift();
+                if (!levels[currentLevel].isDatabaseMode) {
+                    satisfaction = Math.max(0, satisfaction - 12);
+                    showToast("⚠️ Pengunjung Mengeluh: Pencarian file lambat sekali!");
+                } else {
+                    satisfaction = Math.min(100, satisfaction + 5);
+                    showToast("⚡ Sukses! Query selesai instan berkat indexing tabel!");
+                }
+                updateDashboardUI();
+                checkLevelConditions();
+            }
+        }
+
+        function spawnPendingData() {
+            if (currentPendingData) return;
+            const types = ['user', 'document', 'media'];
+            const rType = types[Math.floor(Math.random() * types.length)];
+            let emoji = '👤'; let name = `user_${Math.floor(Math.random() * 100)}.cfg`;
+            if (rType === 'document') { emoji = '📄'; name = `doc_${Math.floor(Math.random() * 100)}.pdf`; }
+            if (rType === 'media') { emoji = '🖼️'; name = `img_${Math.floor(Math.random() * 100)}.jpg`; }
+
+            currentPendingData = { type: rType, emoji: emoji, name: name };
+        }
+
+        function sortIncomingData(targetTable) {
+            if (!currentPendingData) return;
+
+            if (currentPendingData.type === targetTable) {
+                sortedDatabase[targetTable].push(currentPendingData);
+                currentPendingData = null;
+                showToast("✅ Mantap! Data dimasukkan ke tabel yang benar.");
+                satisfaction = Math.min(100, satisfaction + 8);
+                serverLoad = Math.max(10, serverLoad - 5);
+
+                if (levels[currentLevel].targetSortCount) {
+                    const totalSorted = sortedDatabase.user.length + sortedDatabase.document.length + sortedDatabase.media.length - 15;
+                    if (totalSorted >= levels[currentLevel].targetSortCount) {
+                        stopSimulation();
+                        showResultModal("🏆 DATABASE TERSTRUKTUR!", "Kamu berhasil mengelompokkan data ke tabel yang tepat.", "💡 Skema tabel yang rapi menghindarkan redundansi data & menjaga web tetap cepat!", true);
+                    }
+                }
+            } else {
+                satisfaction = Math.max(0, satisfaction - 15);
+                serverLoad = Math.min(100, serverLoad + 15);
+                showToast("❌ Salah Tabel! Jangan campur tipe data berbeda!");
+            }
+
+            updateDashboardUI(); checkLevelConditions(); drawSimulator();
+        }
+
+        let lastActionTime = 0;
+        function serverTick(timestamp) {
+            if (!isRunning) return;
+            if (!lastActionTime) lastActionTime = timestamp;
+
+            let spawnRate = currentLevel === 2 ? 1000 : 2500;
+            if (timestamp - lastActionTime > spawnRate) {
+                if (clientQueries.length < 5) spawnQuery();
+                if (currentLevel === 1) spawnPendingData();
+                lastActionTime = timestamp;
+            }
+
+            updateQueryProcessing();
+            drawSimulator();
+
+            const serverBox = document.getElementById('server-box');
+            const pill = document.getElementById('server-status-pill');
+            if (serverLoad > 75) {
+                serverBox.className = "server-box danger";
+                pill.className = "status-pill danger";
+                pill.innerHTML = '<span style="width:8px; height:8px; border-radius:50%; background:#f87171;"></span> BEBAN KRITIS (LAG)';
+            } else {
+                serverBox.className = "server-box";
+                pill.className = "status-pill";
+                pill.innerHTML = '<span style="width:8px; height:8px; border-radius:50%; background:#34d399;"></span> ONLINE (OK)';
+            }
+
+            animationFrameId = requestAnimationFrame(serverTick);
+        }
+
+        function showToast(text) {
+            const toast = document.getElementById('toast-simulator');
+            document.getElementById('toast-text').innerHTML = text;
+            toast.style.display = 'flex';
+            setTimeout(() => { toast.style.display = 'none'; }, 2000);
+        }
+
+        function updateDashboardUI() {
+            document.getElementById('metric-load').textContent = `${Math.round(serverLoad)}%`;
+            document.getElementById('metric-speed').textContent = `${searchSpeed} ms`;
+            document.getElementById('metric-satisfaction').textContent = `${satisfaction}%`;
+        }
+
+        function checkLevelConditions() {
+            if (satisfaction <= 0 || serverLoad >= 100) {
+                stopSimulation();
+                showResultModal("❌ SERVER CRASH!", "Website mati total karena kelebihan beban pencarian file manual.", "💡 Flat Files tidak mumpuni melayani transaksi data besar. Gunakan database!", false);
+                return;
+            }
+
+            const activeLvl = levels[currentLevel];
+            if (currentLevel === 0 && isRunning) {
+                setTimeout(() => {
+                    if (currentLevel === 0 && isRunning) {
+                        stopSimulation();
+                        showResultModal("⚠️ EVALUASI LEVEL 1", "Pencarian folder manual terbukti lambat dan membebankan server.", "💡 Mari beralih ke Database Relasional di Level 2!", true);
+                    }
+                }, activeLvl.targetTime * 1000);
+            } else if (currentLevel === 2 && isRunning) {
+                setTimeout(() => {
+                    if (currentLevel === 2 && isRunning) {
+                        stopSimulation();
+                        showResultModal("🎉 WEBSITE SUPER CEPAT!", "Server bertahan sempurna menghadapi trafik tinggi!", "💡 Dengan Database, SELECT query langsung merujuk ke memori terindeks!", true);
+                    }
+                }, activeLvl.targetTime * 1000);
+            }
+        }
+
+        function toggleSimulation() {
+            const btn = document.getElementById('btn-toggle-run');
+            if (isRunning) {
+                stopSimulation();
+                btn.textContent = "⚡ Mulai Simulasi Server";
+                btn.className = "btn-action btn-indigo";
+            } else {
+                isRunning = true;
+                btn.textContent = "⏸️ Matikan Server";
+                btn.className = "btn-action btn-amber";
+                serverTick(performance.now());
+            }
+        }
+
+        function stopSimulation() {
+            isRunning = false;
+            if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
+            lastActionTime = 0;
+        }
+
+        function startLevel(index) {
+            stopSimulation(); currentLevel = index;
+
+            document.getElementById('level-briefing').innerHTML = levels[index].briefing;
+            document.getElementById('mode-label').textContent = index === 0 ? "Mode: Folder Biasa (Flat Files)" : "Mode: Sistem Database SQL";
+            document.getElementById('mode-dot').style.background = index === 0 ? "#f87171" : "#34d399";
+
+            const sortPanel = document.getElementById('manual-sorting-panel');
+            sortPanel.style.display = index === 1 ? 'flex' : 'none';
+
+            for (let i = 0; i < 3; i++) {
+                const btn = document.getElementById(`btn-lvl-${i}`);
+                btn.className = i === index ? "btn-lvl active" : "btn-lvl";
+            }
+
+            initScenario();
+            document.getElementById('btn-toggle-run').textContent = "⚡ Mulai Simulasi Server";
+            document.getElementById('btn-toggle-run').className = "btn-action btn-indigo";
+            document.getElementById('server-box').className = "server-box";
+            drawSimulator();
+        }
+
+        function resetLevel() { startLevel(currentLevel); }
+
+        function showResultModal(title, desc, lesson, isSuccess) {
+            const modal = document.getElementById('modal-result');
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-desc').innerHTML = desc;
+            document.getElementById('modal-lesson').innerHTML = lesson;
+
+            const btnNext = document.getElementById('modal-btn-next');
+            if (isSuccess && currentLevel < 2) {
+                btnNext.style.display = 'inline-block';
+                btnNext.onclick = function() { closeModal(); startLevel(currentLevel + 1); };
+            } else {
+                btnNext.style.display = 'none';
+            }
+            modal.style.display = 'flex';
+        }
+
+        function closeModal() { document.getElementById('modal-result').style.display = 'none'; }
+
+        window.onload = function() { initScenario(); resizeCanvas(); startLevel(0); };
+    </script>
+</body>
+</html>

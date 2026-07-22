@@ -87,6 +87,8 @@ $is_aktif = ($status_sekarang['status'] ?? 'nonaktif') === 'aktif';
                 <?php endif; ?>
 
                 <form method="POST">
+                    <?= csrf_field(); ?>
+                    
                     <?php if ($is_aktif): ?>
                         <button type="submit" name="toggle" value="nonaktif" class="btn btn-danger w-100 fw-bold py-3">
                             <i class="bi bi-stop-circle"></i> Matikan Notifikasi

@@ -17,6 +17,15 @@ $pesan_type = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_require_valid_post();
+
+    // --- Update nama_asli ---
+    $nama_asli = trim($_POST['nama_asli'] ?? '');
+    if ($nama_asli !== '') {
+        $stmt = $pdo->prepare("UPDATE users SET nama_asli = ? WHERE id = ?");
+        $stmt->execute([$nama_asli, $user_id]);
+    }
+
+    // --- Update no_wa_ortu ---
     $no_wa_ortu = trim($_POST['no_wa_ortu'] ?? '');
     $no_wa_bersih = preg_replace('/[^0-9]/', '', $no_wa_ortu);
 
@@ -26,13 +35,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $stmt = $pdo->prepare("UPDATE users SET no_wa_ortu = ? WHERE id = ?");
         $stmt->execute([$no_wa_bersih, $user_id]);
-        $pesan = "✅ Nomor WA orang tua berhasil diperbarui!";
+        $pesan = "✅ Data berhasil diperbarui!";
         $pesan_type = 'success';
+    }
+
+    // --- Update password (jika diisi) ---
+    $password_lama = $_POST['password_lama'] ?? '';
+    $password_baru = $_POST['password_baru'] ?? '';
+    $password_konfirmasi = $_POST['password_konfirmasi'] ?? '';
+
+    if ($password_lama !== '' || $password_baru !== '' || $password_konfirmasi !== '') {
+        // Ambil hash password dari database
+        $stmt_pass = $pdo->prepare("SELECT password FROM users WHERE id = ?");
+        $stmt_pass->execute([$user_id]);
+        $row_pass = $stmt_pass->fetch(PDO::FETCH_ASSOC);
+
+        if (!password_verify($password_lama, $row_pass['password'])) {
+            $pesan = "❌ Password lama salah.";
+            $pesan_type = 'danger';
+        } elseif (strlen($password_baru) < 6) {
+            $pesan = "❌ Password baru minimal 6 karakter.";
+            $pesan_type = 'danger';
+        } elseif ($password_baru !== $password_konfirmasi) {
+            $pesan = "❌ Konfirmasi password baru tidak cocok.";
+            $pesan_type = 'danger';
+        } else {
+            $hash_baru = password_hash($password_baru, PASSWORD_DEFAULT);
+            $stmt_up = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
+            $stmt_up->execute([$hash_baru, $user_id]);
+            $pesan = "✅ Data & password berhasil diperbarui!";
+            $pesan_type = 'success';
+        }
     }
 }
 
 // Ambil data terkini
-$stmt = $pdo->prepare("SELECT username, no_wa_ortu FROM users WHERE id = ?");
+$stmt = $pdo->prepare("SELECT username, nama_asli, no_wa_ortu FROM users WHERE id = ?");
 $stmt->execute([$user_id]);
 $data = $stmt->fetch(PDO::FETCH_ASSOC);
 ?>
@@ -81,10 +119,22 @@ $data = $stmt->fetch(PDO::FETCH_ASSOC);
             <div class="card-body p-4">
                 <div class="mb-3">
                     <label class="form-label fw-semibold text-muted small">Username</label>
-                    <input type="text" class="form-control" value="<?= htmlspecialchars($data['username']) ?>" disabled>
+                    <p class="form-control-plaintext fw-bold ps-2"><?= htmlspecialchars($data['username']) ?></p>
                 </div>
 
                 <form method="POST">
+                    <?= csrf_field() ?>
+
+                    <!-- NAMA ASLI -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Nama Lengkap (Asli)</label>
+                        <input type="text" class="form-control" name="nama_asli"
+                               value="<?= htmlspecialchars($data['nama_asli'] ?? '') ?>"
+                               placeholder="Masukkan nama lengkap Anda" required>
+                        <div class="form-text">Nama asli yang akan muncul di rapor/game.</div>
+                    </div>
+
+                    <!-- NO WA ORTU -->
                     <div class="mb-3">
                         <label class="form-label fw-semibold">No. WhatsApp Orang Tua/Wali</label>
                         <input type="text" class="form-control" name="no_wa_ortu"
@@ -92,11 +142,39 @@ $data = $stmt->fetch(PDO::FETCH_ASSOC);
                                placeholder="Contoh: 081234567890" required>
                         <div class="form-text">Pastikan nomor ini aktif untuk menerima notifikasi progress belajar.</div>
                     </div>
+
+                    <hr class="my-4">
+                    <h6 class="fw-bold text-muted mb-3">🔒 Ubah Password <span class="text-muted small fw-normal">(kosongkan jika tidak ingin ubah)</span></h6>
+
+                    <!-- PASSWORD LAMA -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Password Lama</label>
+                        <input type="password" class="form-control" name="password_lama" placeholder="Masukkan password saat ini" autocomplete="current-password">
+                    </div>
+
+                    <!-- PASSWORD BARU -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Password Baru</label>
+                        <input type="password" class="form-control" name="password_baru" placeholder="Minimal 6 karakter" autocomplete="new-password">
+                    </div>
+
+                    <!-- KONFIRMASI PASSWORD BARU -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Konfirmasi Password Baru</label>
+                        <input type="password" class="form-control" name="password_konfirmasi" placeholder="Ketik ulang password baru" autocomplete="new-password">
+                    </div>
+
                     <button type="submit" class="btn btn-primary w-100 fw-bold py-2">
                         <i class="bi bi-check-circle"></i> Simpan Perubahan
                     </button>
                 </form>
             </div>
+        </div>
+
+        <div class="text-center mt-3">
+            <a href="index.php" class="btn btn-outline-secondary px-4">
+                <i class="bi bi-arrow-left"></i> Kembali ke Dashboard
+            </a>
         </div>
 
     </div>

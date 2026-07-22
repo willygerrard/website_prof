@@ -5,6 +5,18 @@ include 'koneksi.php';
 include 'csrf_helper.php';
 session_start();
 
+// Wajib login sebagai admin sebelum bisa menyimpan soal
+if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
+    header("Location: login.php");
+    exit();
+}
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
+    header("HTTP/1.1 404 Not Found");
+    exit();
+}
+
+csrf_require_valid_post();
+
 // =========================
 // AMBIL JSON
 // =========================
@@ -18,9 +30,10 @@ if (!$data || !isset($data['questions'])) {
         "error" => "JSON tidak valid."
     ]));
 }
-// kategori & level
+// kategori, level & materi
 $kategori  = $_POST['kategori'] ?? 'Network'; // Default fallback
 $level     = $_POST['level'] ?? 'pemula';    // Default fallback
+$materi    = trim($_POST['materi'] ?? '') !== '' ? trim($_POST['materi']) : null;
 
 
 // =========================
@@ -30,6 +43,7 @@ $level     = $_POST['level'] ?? 'pemula';    // Default fallback
 $sql = "INSERT INTO kuis_soal
 (
 kategori,
+materi,
 pertanyaan,
 pilihan_a,
 pilihan_b,
@@ -41,6 +55,7 @@ level
 VALUES
 (
 :kategori,
+:materi,
 :pertanyaan,
 :a,
 :b,
@@ -89,6 +104,7 @@ try {
 
         $stmt->execute([
             ":kategori"   => $kategori,
+            ":materi"     => $materi,
             ":pertanyaan" => trim($q['question_text']),
             ":a"          => $a,
             ":b"          => $b,

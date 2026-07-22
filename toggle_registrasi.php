@@ -1,6 +1,6 @@
 <?php
-include 'koneksi.php';
 session_start();
+include 'koneksi.php';
 include 'csrf_helper.php';
 
 if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
@@ -27,8 +27,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle'])) {
     
     $status_baru = $_POST['toggle'] === 'buka' ? 'buka' : 'tutup';
 
-    $stmt = $pdo->prepare("UPDATE pengaturan SET `value` = ? WHERE `key` = 'registrasi_status'");
-    $stmt->execute([$status_baru]);
+    // Gunakan INSERT ON DUPLICATE KEY agar kalau key belum ada di DB, otomatis dibuatkan!
+    $sql = "INSERT INTO pengaturan (`key`, `value`) VALUES (?, ?) 
+            ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)";
+            
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute(['registrasi_status', $status_baru]);
 
     if ($status_baru === 'buka') {
         $pesan = "🟢 Pendaftaran siswa DIBUKA! Siswa bisa daftar menggunakan token yang aktif.";

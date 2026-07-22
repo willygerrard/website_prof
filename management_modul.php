@@ -23,6 +23,7 @@ if (strpos($_SERVER['REQUEST_URI'], 'gerbang-rahasia-sija') === false) {
 
 // Query ambil data untuk tabel
 $query = $pdo->query("SELECT * FROM modules ORDER BY id DESC");
+$delete_token = csrf_token();
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -114,7 +115,7 @@ $query = $pdo->query("SELECT * FROM modules ORDER BY id DESC");
                         <td class="text-center">
                             <div class="btn-group btn-group-sm">
                                 <a href="edit_modul.php?id=<?= $row['id']; ?>" class="btn btn-warning fw-bold text-dark px-2.5">E</a>
-                                <a href="hapus.php?id=<?= $row['id']; ?>" class="btn btn-danger fw-bold px-2.5" onclick="return confirm('Yakin hapus, Pak?')">－</a>
+                                <a href="hapus.php?id=<?= $row['id']; ?>&csrf_token=<?= urlencode($delete_token); ?>" class="btn btn-danger fw-bold px-2.5" onclick="return confirm('Yakin hapus, Pak?')">－</a>
                             </div>
                         </td>
                     </tr>

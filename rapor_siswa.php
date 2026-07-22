@@ -33,12 +33,13 @@ if (!$siswa) {
 // Export ke CSV
 if (isset($_GET['export']) && $_GET['export'] === 'csv') {
     $sql = "SELECT kuis_hasil.kategori, kuis_hasil.level, ks.dibuka_at AS sesi_dibuka,
-                   MAX(kuis_hasil.skor) as nilai_terbaik, COUNT(*) as total_attempt
-            FROM kuis_hasil 
-            LEFT JOIN kuis_sesi ks ON kuis_hasil.sesi_id = ks.id
-            WHERE kuis_hasil.user_id = ?
-            GROUP BY kuis_hasil.kategori, kuis_hasil.level, kuis_hasil.sesi_id
-            ORDER BY kuis_hasil.kategori, kuis_hasil.level, ks.dibuka_at";
+               MAX(kuis_hasil.skor) as nilai_terbaik, COUNT(*) as total_attempt,
+               (SELECT GROUP_CONCAT(materi SEPARATOR ', ') FROM kuis_sesi_materi WHERE sesi_id = ks.id) AS materi
+        FROM kuis_hasil 
+        LEFT JOIN kuis_sesi ks ON kuis_hasil.sesi_id = ks.id
+        WHERE kuis_hasil.user_id = ?
+        GROUP BY kuis_hasil.kategori, kuis_hasil.level, kuis_hasil.sesi_id
+        ORDER BY kuis_hasil.kategori, kuis_hasil.level, ks.dibuka_at";
     $stmt = $pdo->prepare($sql);
     $stmt->execute([$siswa_id]);
     $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -48,12 +49,12 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
 
     $output = fopen('php://output', 'w');
     fputs($output, "\xEF\xBB\xBF"); // BOM biar Excel baca UTF-8 dengan benar
-    fputcsv($output, ['Nama Siswa', 'Kategori', 'Level', 'Sesi (Tanggal Deploy)', 'Nilai Terbaik', 'Jumlah Percobaan', 'Status']);
+    fputcsv($output, ['Nama Siswa', 'Kategori', 'Level', 'Materi', 'Sesi (Tanggal Deploy)', 'Nilai Terbaik', 'Jumlah Percobaan', 'Status']);
 
     foreach ($data as $row) {
         $status = $row['nilai_terbaik'] >= KKM ? 'Lulus' : ($row['total_attempt'] >= 4 ? 'Tidak Lulus' : 'Belum Tuntas');
         $sesi_label = $row['sesi_dibuka'] ? date('d M Y', strtotime($row['sesi_dibuka'])) : 'Riwayat lama';
-        fputcsv($output, [$siswa['username'], $row['kategori'], ucfirst($row['level']), $sesi_label, $row['nilai_terbaik'], $row['total_attempt'], $status]);
+        fputcsv($output, [$siswa['username'], $row['kategori'], ucfirst($row['level']), $row['materi'] ?? '-', $sesi_label, $row['nilai_terbaik'], $row['total_attempt'], $status]);
     }
     fclose($output);
     exit();
@@ -62,7 +63,8 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
 // Ambil ringkasan nilai PER SESI (bukan gabungan semua deploy kategori+level yang sama)
 $sql = "SELECT kuis_hasil.kategori, kuis_hasil.level, kuis_hasil.sesi_id, ks.dibuka_at AS sesi_dibuka,
                MAX(kuis_hasil.skor) as nilai_terbaik, COUNT(*) as total_attempt,
-               MAX(kuis_hasil.dikerjakan_at) as terakhir_dikerjakan
+               MAX(kuis_hasil.dikerjakan_at) as terakhir_dikerjakan,
+               (SELECT GROUP_CONCAT(materi SEPARATOR ', ') FROM kuis_sesi_materi WHERE sesi_id = ks.id) AS materi
         FROM kuis_hasil
         LEFT JOIN kuis_sesi ks ON kuis_hasil.sesi_id = ks.id
         WHERE kuis_hasil.user_id = ?
@@ -73,7 +75,13 @@ $stmt->execute([$siswa_id]);
 $ringkasan = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Riwayat semua attempt
-$stmt2 = $pdo->prepare("SELECT * FROM kuis_hasil WHERE user_id = ? ORDER BY dikerjakan_at DESC");
+$stmt2 = $pdo->prepare("
+    SELECT kuis_hasil.*, 
+           (SELECT GROUP_CONCAT(materi SEPARATOR ', ') FROM kuis_sesi_materi WHERE sesi_id = kuis_hasil.sesi_id) AS materi
+    FROM kuis_hasil 
+    WHERE user_id = ? 
+    ORDER BY dikerjakan_at DESC
+");
 $stmt2->execute([$siswa_id]);
 $riwayat = $stmt2->fetchAll(PDO::FETCH_ASSOC);
 
@@ -185,6 +193,7 @@ $total_kategori = count($kategori_unik);
                     <tr>
                         <th>Kategori</th>
                         <th>Level</th>
+                        <th>Materi</th>
                         <th>Sesi</th>
                         <th>Nilai Terbaik</th>
                         <th>Percobaan</th>
@@ -194,7 +203,7 @@ $total_kategori = count($kategori_unik);
                 </thead>
                 <tbody>
                     <?php if (empty($ringkasan)): ?>
-                    <tr><td colspan="7" class="text-center text-muted py-4">Belum ada kuis yang dikerjakan.</td></tr>
+                    <tr><td colspan="8" class="text-center text-muted py-4">Belum ada kuis yang dikerjakan.</td></tr>
                     <?php endif; ?>
                     <?php foreach ($ringkasan as $r):
                         $lvl = $level_badge[$r['level']] ?? ['-', 'secondary'];
@@ -203,6 +212,7 @@ $total_kategori = count($kategori_unik);
                     <tr>
                         <td class="fw-semibold"><?= htmlspecialchars($r['kategori']) ?></td>
                         <td><span class="badge bg-<?= $lvl[1] ?>"><?= $lvl[0] ?></span></td>
+                        <td><?= htmlspecialchars($r['materi'] ?? '-') ?></td>
                         <td class="small text-muted"><?= $r['sesi_dibuka'] ? date('d M Y', strtotime($r['sesi_dibuka'])) : 'Riwayat lama' ?></td>
                         <td class="fw-bold fs-5 <?= $lulus ? 'text-success' : 'text-danger' ?>"><?= $r['nilai_terbaik'] ?></td>
                         <td><?= $r['total_attempt'] ?> / 4</td>
@@ -230,6 +240,7 @@ $total_kategori = count($kategori_unik);
                     <tr>
                         <th>Kategori</th>
                         <th>Level</th>
+                        <th>Materi</th>
                         <th>Skor</th>
                         <th>Attempt ke-</th>
                         <th>Waktu</th>
@@ -237,7 +248,7 @@ $total_kategori = count($kategori_unik);
                 </thead>
                 <tbody>
                     <?php if (empty($riwayat)): ?>
-                    <tr><td colspan="5" class="text-center text-muted py-4">Belum ada riwayat.</td></tr>
+                    <tr><td colspan="6" class="text-center text-muted py-4">Belum ada riwayat.</td></tr>
                     <?php endif; ?>
                     <?php foreach ($riwayat as $h):
                         $lvl = $level_badge[$h['level']] ?? ['-', 'secondary'];
@@ -245,6 +256,7 @@ $total_kategori = count($kategori_unik);
                     <tr>
                         <td><?= htmlspecialchars($h['kategori']) ?></td>
                         <td><span class="badge bg-<?= $lvl[1] ?>"><?= $lvl[0] ?></span></td>
+                        <td><?= htmlspecialchars($h['materi'] ?? '-') ?></td>
                         <td class="fw-bold <?= $h['skor'] >= KKM ? 'text-success' : 'text-danger' ?>"><?= $h['skor'] ?></td>
                         <td><?= $h['attempt'] ?></td>
                         <td class="text-muted small"><?= date('d M Y, H:i', strtotime($h['dikerjakan_at'])) ?></td>

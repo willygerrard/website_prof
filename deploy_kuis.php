@@ -19,14 +19,19 @@ $pesan_type = '';
 $kelas_options = $pdo->query("SELECT DISTINCT kelas FROM users WHERE kelas IS NOT NULL AND kelas <> '' ORDER BY kelas")
                       ->fetchAll(PDO::FETCH_COLUMN);
 
+$materi_options = $pdo->query("SELECT DISTINCT materi FROM kuis_soal WHERE materi IS NOT NULL AND materi <> '' ORDER BY materi")
+                       ->fetchAll(PDO::FETCH_COLUMN);
+
 // Deploy sesi baru
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
     csrf_require_valid_post();
-    $kategori     = trim($_POST['kategori'] ?? '');
-    $level        = trim($_POST['level'] ?? '');
-    $durasi       = (int)($_POST['durasi_menit'] ?? 30);
-    $kelas_target = $_POST['kelas'] ?? [];
-    $kelas_target = array_values(array_unique(array_filter(array_map('trim', $kelas_target))));
+    $kategori      = trim($_POST['kategori'] ?? '');
+    $level         = trim($_POST['level'] ?? '');
+    $durasi        = (int)($_POST['durasi_menit'] ?? 30);
+    $kelas_target  = $_POST['kelas'] ?? [];
+    $kelas_target  = array_values(array_unique(array_filter(array_map('trim', $kelas_target))));
+    $materi_target = $_POST['materi'] ?? [];
+    $materi_target = array_values(array_unique(array_filter(array_map('trim', $materi_target))));
 
     if ($kategori && $level && $durasi > 0 && !empty($kelas_target)) {
 
@@ -58,8 +63,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
                     $stmtKelas->execute([$sesi_id, $k]);
                 }
 
+                // Materi bersifat opsional: kalau tidak dicentang sama sekali,
+                // sesi tetap jalan tanpa batasan materi (ambil semua soal kategori+level).
+                if (!empty($materi_target)) {
+                    $stmtMateri = $pdo->prepare("INSERT INTO kuis_sesi_materi (sesi_id, materi) VALUES (?, ?)");
+                    foreach ($materi_target as $m) {
+                        $stmtMateri->execute([$sesi_id, $m]);
+                    }
+                }
+
                 $pdo->commit();
-                $pesan = "✅ Kuis $kategori - $level berhasil di-deploy ke kelas: " . implode(', ', $kelas_target) . "!";
+                $materi_info = !empty($materi_target) ? " (materi: " . implode(', ', $materi_target) . ")" : " (semua materi)";
+                $pesan = "✅ Kuis $kategori - $level berhasil di-deploy ke kelas: " . implode(', ', $kelas_target) . "$materi_info!";
                 $pesan_type = 'success';
             } catch (Exception $e) {
                 $pdo->rollBack();
@@ -83,20 +98,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tutup'])) {
     exit();
 }
 
-// Sesi aktif, sekalian ambil daftar kelas targetnya (GROUP_CONCAT)
+// Sesi aktif, sekalian ambil daftar kelas & materi targetnya (GROUP_CONCAT)
 $sesi_aktif = $pdo->query("
-    SELECT ks.*, GROUP_CONCAT(ksk.kelas ORDER BY ksk.kelas SEPARATOR ', ') AS kelas_target
+    SELECT ks.*,
+           GROUP_CONCAT(DISTINCT ksk.kelas ORDER BY ksk.kelas SEPARATOR ', ') AS kelas_target,
+           GROUP_CONCAT(DISTINCT ksm.materi ORDER BY ksm.materi SEPARATOR ', ') AS materi_target
     FROM kuis_sesi ks
     LEFT JOIN kuis_sesi_kelas ksk ON ks.id = ksk.sesi_id
+    LEFT JOIN kuis_sesi_materi ksm ON ks.id = ksm.sesi_id
     WHERE ks.status = 'aktif'
     GROUP BY ks.id
     ORDER BY ks.dibuka_at DESC
 ")->fetchAll(PDO::FETCH_ASSOC);
 
 $sesi_riwayat = $pdo->query("
-    SELECT ks.*, GROUP_CONCAT(ksk.kelas ORDER BY ksk.kelas SEPARATOR ', ') AS kelas_target
+    SELECT ks.*,
+           GROUP_CONCAT(DISTINCT ksk.kelas ORDER BY ksk.kelas SEPARATOR ', ') AS kelas_target,
+           GROUP_CONCAT(DISTINCT ksm.materi ORDER BY ksm.materi SEPARATOR ', ') AS materi_target
     FROM kuis_sesi ks
     LEFT JOIN kuis_sesi_kelas ksk ON ks.id = ksk.sesi_id
+    LEFT JOIN kuis_sesi_materi ksm ON ks.id = ksm.sesi_id
     WHERE ks.status = 'nonaktif'
     GROUP BY ks.id
     ORDER BY ks.ditutup_at DESC
@@ -223,6 +244,33 @@ $level_badge = [
                     </div>
 
                     <div class="col-12">
+                        <label class="form-label fw-semibold">
+                            Materi <span class="text-muted fw-normal">(opsional — kosongkan untuk ambil semua materi)</span>
+                        </label>
+                        <?php if (empty($materi_options)): ?>
+                            <div class="alert alert-secondary small mb-0">
+                                Belum ada soal yang ditandai materi. Kuis akan diambil dari semua soal kategori+level yang dipilih.
+                            </div>
+                        <?php else: ?>
+                            <div class="d-flex flex-wrap gap-3 border rounded-3 p-3 bg-light">
+                                <?php foreach ($materi_options as $m): ?>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="materi[]"
+                                           value="<?= htmlspecialchars($m) ?>" id="materi_<?= md5($m) ?>">
+                                    <label class="form-check-label" for="materi_<?= md5($m) ?>">
+                                        <?= htmlspecialchars($m) ?>
+                                    </label>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <div class="form-text">
+                                Centang materi yang sudah diajarkan agar siswa tidak dapat soal dari materi yang belum diajarkan.
+                                Biarkan kosong untuk mengambil dari seluruh materi (termasuk soal yang belum ditandai).
+                            </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="col-12">
                         <button type="submit" name="deploy" class="btn btn-success fw-bold px-4">
                             <i class="bi bi-rocket-takeoff"></i> Deploy Kuis Sekarang
                         </button>
@@ -243,6 +291,7 @@ $level_badge = [
                         <th>Kategori</th>
                         <th>Level</th>
                         <th>Kelas Tujuan</th>
+                        <th>Materi</th>
                         <th>Durasi</th>
                         <th>Dibuka Pukul</th>
                         <th class="text-center">Aksi</th>
@@ -254,6 +303,7 @@ $level_badge = [
                         <td class="fw-semibold"><?= htmlspecialchars($s['kategori']) ?></td>
                         <td><span class="badge bg-<?= $lvl[1] ?>"><?= $lvl[0] ?></span></td>
                         <td><span class="small"><?= htmlspecialchars($s['kelas_target'] ?? '-') ?></span></td>
+                        <td><span class="small text-muted"><?= htmlspecialchars($s['materi_target'] ?? 'Semua materi') ?></span></td>
                         <td><?= $s['durasi_menit'] ?> menit</td>
                         <td><?= date('d M Y, H:i', strtotime($s['dibuka_at'])) ?></td>
                         <td class="text-center">
@@ -284,6 +334,7 @@ $level_badge = [
                         <th>Kategori</th>
                         <th>Level</th>
                         <th>Kelas Tujuan</th>
+                        <th>Materi</th>
                         <th>Dibuka</th>
                         <th>Ditutup</th>
                     </tr>
@@ -294,6 +345,7 @@ $level_badge = [
                         <td><?= htmlspecialchars($s['kategori']) ?></td>
                         <td><span class="badge bg-<?= $lvl[1] ?>"><?= $lvl[0] ?></span></td>
                         <td class="small"><?= htmlspecialchars($s['kelas_target'] ?? '-') ?></td>
+                        <td class="small"><?= htmlspecialchars($s['materi_target'] ?? 'Semua materi') ?></td>
                         <td><?= date('d M Y, H:i', strtotime($s['dibuka_at'])) ?></td>
                         <td><?= $s['ditutup_at'] ? date('d M Y, H:i', strtotime($s['ditutup_at'])) : '-' ?></td>
                     </tr>
