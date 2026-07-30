@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game Edukasi TKJ - Pasang WiFi</title>
+    <title>Game Edukasi TKJ - Pasang WiFi (Input Nomor)</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -17,8 +17,9 @@
         .main-wrapper {
             display: flex;
             gap: 30px;
-            max-width: 950px;
+            max-width: 1000px;
             width: 100%;
+            align-items: flex-start;
         }
         .container {
             background-color: #ffffff;
@@ -38,7 +39,8 @@
             align-items: center;
             justify-content: center;
             gap: 10px;
-            min-width: 260px;
+            position: sticky;
+            top: 20px;
         }
         .device-row {
             display: flex;
@@ -76,6 +78,7 @@
             background: #edf2f7;
             border-radius: 50%;
             font-weight: bold;
+            transition: all 0.3s ease;
         }
         .badge-success { background-color: #d4edda; color: #28a745; }
         .badge-error { background-color: #f8d7da; color: #dc3545; }
@@ -87,12 +90,60 @@
         }
         
         h1 { color: #1a73e8; margin-bottom: 5px; font-size: 24px; }
-        .story { font-style: italic; background-color: #e8f0fe; padding: 15px; border-left: 5px solid #1a73e8; margin-bottom: 25px; border-radius: 0 6px 6px 0; font-size: 14px; line-height: 1.5; }
-        .draggable { background-color: #f8f9fa; border: 2px dashed #b0bec5; padding: 12px; margin: 8px 0; border-radius: 6px; cursor: grab; font-weight: 500; transition: background 0.2s; }
-        .draggable:hover { background-color: #f1f3f4; }
-        .btn-check { background-color: #1a73e8; color: white; border: none; padding: 14px 30px; border-radius: 6px; cursor: pointer; width: 100%; font-size: 16px; font-weight: bold; transition: background 0.2s; margin-top: 15px; }
+        .story { font-style: italic; background-color: #e8f0fe; padding: 15px; border-left: 5px solid #1a73e8; margin-bottom: 20px; border-radius: 0 6px 6px 0; font-size: 14px; line-height: 1.5; }
+        
+        /* Styling untuk List Proses dan Input Nomor */
+        .process-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .process-item {
+            display: flex;
+            align-items: center;
+            background-color: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+        .process-item:hover {
+            background-color: #f1f3f4;
+        }
+        .num-input {
+            width: 40px;
+            height: 40px;
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+            border: 2px solid #cbd5e0;
+            border-radius: 6px;
+            margin-right: 15px;
+            color: #1a73e8;
+            background: white;
+            transition: border-color 0.2s;
+        }
+        .num-input:focus {
+            outline: none;
+            border-color: #1a73e8;
+        }
+        .process-text {
+            font-weight: 500;
+            font-size: 15px;
+            color: #333;
+            flex: 1;
+        }
+
+        .btn-check { background-color: #1a73e8; color: white; border: none; padding: 14px 30px; border-radius: 8px; cursor: pointer; width: 100%; font-size: 16px; font-weight: bold; transition: background 0.2s; margin-top: 20px; }
         .btn-check:hover { background-color: #1557b0; }
-        .notification { margin-top: 20px; padding: 15px; border-radius: 6px; display: none; font-weight: bold; text-align: center; }
+        .notification { margin-top: 20px; padding: 15px; border-radius: 8px; display: none; font-weight: bold; text-align: center; font-size: 15px; }
+
+        /* Responsif untuk layar kecil */
+        @media (max-width: 768px) {
+            .main-wrapper { flex-direction: column-reverse; }
+            .sidebar { position: static; width: 100%; box-sizing: border-box; margin-bottom: 20px; }
+        }
     </style>
 </head>
 <body>
@@ -100,12 +151,16 @@
 <div class="main-wrapper">
     <!-- Panel Kiri: Konten Game -->
     <div class="container">
-        <h1>Sebuah Perusahaan ISP Ingin Memasang WiFi di Rumah Anda</h1>
+        <h1>Tantangan TKJ: Urutan Pasang WiFi</h1>
         <div class="story">
-            <strong>Cerita:</strong> Anda baru saja berlangganan internet dari ISP lokal agar bisa mabar game online dan kuliah daring tanpa kuota habis. Urutkan proses bisnis TKJ di bawah ini dari awal (analisis kebutuhan) hingga HP Anda sukses terhubung ke internet!
+            <strong>Cerita:</strong> Bayangkan Anda adalah seorang teknisi jaringan. Pelanggan baru saja berlangganan internet agar bisa mabar game online dan kuliah daring tanpa kuota habis. Urutkan proses bisnis TKJ di bawah ini dengan benar, mulai dari tahap persiapan hingga layanan aktif!
         </div>
-        <p style="color: #666; font-size: 13px; margin-bottom: 15px;">💡 <em>Petunjuk: Geser (drag) kotak di bawah untuk mengurutkan langkah yang benar!</em></p>
-        <div id="sortable-list"></div>
+        
+        <p style="color: #666; font-size: 13px; margin-bottom: 15px;">💡 <em>Petunjuk: Masukkan angka urutan (1, 2, 3, dst.) di dalam kotak di samping setiap proses.</em></p>
+        
+        <!-- Daftar Proses (Akan diisi oleh JS) -->
+        <ul id="process-list" class="process-list"></ul>
+
         <button class="btn-check" onclick="checkOrder()">Cek Urutan Proses!</button>
         <div id="notification" class="notification"></div>
     </div>
@@ -158,8 +213,8 @@
 </div>
 
 <script>
-    // Urutan baku proses bisnis TKJ
-    const correctOrder = [
+    // Data Urutan baku proses bisnis TKJ
+    const allProcesses = [
         "Analisis Kebutuhan Pelanggan (Survey kuota, budget, dan denah rumah)",
         "Perencanaan & Desain Jaringan (Menentukan jenis kabel, router, dan topologi)",
         "Pengadaan Barang & Alat Jaringan (Membeli router, modem, kabel FO, dll)",
@@ -168,51 +223,92 @@
         "Pengujian / Testing Jaringan (Ping test, speedtest, dan cek koneksi HP)"
     ];
 
-    let currentItems = [...correctOrder];
+    let itemsToDisplay = [];
 
-    // Mengacak list saat game dimulai
-    function shuffleList() {
-        do {
-            currentItems.sort(() => Math.random() - 0.5);
-        } while (JSON.stringify(currentItems) === JSON.stringify(correctOrder));
+    // Mengacak urutan list saat game dimuat
+    function shuffleData() {
+        const shuffled = [...allProcesses];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        if(JSON.stringify(shuffled) === JSON.stringify(allProcesses)) {
+            shuffleData();
+            return;
+        }
+        itemsToDisplay = shuffled;
     }
 
+    // Merender daftar proses ke HTML
     function renderList() {
-        const list = document.getElementById('sortable-list');
-        list.innerHTML = '';
-        currentItems.forEach((item, index) => {
-            const div = document.createElement('div');
-            div.className = 'draggable';
-            div.draggable = true;
-            div.innerText = `${index + 1}. ${item}`;
-            div.dataset.value = item;
+        const listContainer = document.getElementById('process-list');
+        listContainer.innerHTML = '';
+        
+        itemsToDisplay.forEach((process, index) => {
+            const li = document.createElement('li');
+            li.className = 'process-item';
+            
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.min = '1';
+            input.max = itemsToDisplay.length;
+            input.className = 'num-input';
+            input.id = `input-${index}`;
 
-            // Event handler Drag and Drop
-            div.addEventListener('dragstart', (e) => {
-                e.dataTransfer.setData('text/plain', index);
-            });
-            div.addEventListener('dragover', (e) => e.preventDefault());
-            div.addEventListener('drop', (e) => {
-                const fromIndex = e.dataTransfer.getData('text/plain');
-                const toIndex = index;
-                // Swap posisi array
-                [currentItems[fromIndex], currentItems[toIndex]] = [currentItems[toIndex], currentItems[fromIndex]];
-                renderList();
-            });
+            const label = document.createElement('span');
+            label.className = 'process-text';
+            label.textContent = process;
 
-            list.appendChild(div);
+            li.appendChild(input);
+            li.appendChild(label);
+            listContainer.appendChild(li);
         });
     }
 
+    // Memeriksa jawaban pengguna
     function checkOrder() {
-        const isCorrect = JSON.stringify(currentItems) === JSON.stringify(correctOrder);
-        const notif = document.getElementById('notification');
-        notif.style.display = 'block';
-        
-        // Update ikon centang / silang di sebelah kanan perangkat
-        for(let i = 1; i <= 3; i++) {
+        let isAllCorrect = true;
+        const inputs = document.querySelectorAll('.num-input');
+        const userAnswers = [];
+
+        // Reset border input
+        inputs.forEach(input => input.style.borderColor = '#cbd5e0');
+
+        // Ambil nilai dari setiap input
+        for (let i = 0; i < inputs.length; i++) {
+            const val = parseInt(inputs[i].value);
+            if (isNaN(val) || val < 1 || val > inputs.length || userAnswers.includes(val)) {
+                isAllCorrect = false;
+                inputs[i].style.borderColor = '#dc3545';
+                continue; 
+            }
+            userAnswers.push(val);
+        }
+
+        if (isAllCorrect) {
+            for(let i = 0; i < itemsToDisplay.length; i++) {
+                const processText = itemsToDisplay[i];
+                const userAnswerValue = userAnswers[i];
+                const correctIndex = allProcesses.indexOf(processText) + 1;
+                
+                if (userAnswerValue !== correctIndex) {
+                    isAllCorrect = false;
+                    inputs[i].style.borderColor = '#dc3545';
+                } else {
+                    inputs[i].style.borderColor = '#28a745';
+                }
+            }
+        }
+
+        updateUISidebar(isAllCorrect);
+        updateUINotif(isAllCorrect);
+    }
+
+    // Memperbarui status koneksi di panel kanan
+    function updateUISidebar(isSuccess) {
+        for (let i = 1; i <= 3; i++) {
             const badge = document.getElementById('s' + i);
-            if (isCorrect) {
+            if (isSuccess) {
                 badge.innerHTML = '✓';
                 badge.className = 'status-badge badge-success';
             } else {
@@ -220,23 +316,28 @@
                 badge.className = 'status-badge badge-error';
             }
         }
+    }
+
+    // Memperbarui pesan notifikasi di panel kiri
+    function updateUINotif(isSuccess) {
+        const notif = document.getElementById('notification');
+        notif.style.display = 'block';
         
-        // Update teks notifikasi di panel kiri
-        if (isCorrect) {
-            notif.innerHTML = '🎉 Sukses! Internet sudah bisa diakses.';
+        if (isSuccess) {
+            notif.innerHTML = '🎉 Sukses! Urutan benar dan internet sudah bisa diakses.';
             notif.style.backgroundColor = '#d4edda';
             notif.style.color = '#155724';
             notif.style.border = '1px solid #c3e6cb';
         } else {
-            notif.innerHTML = '❌ Belum terhubung. Perbaiki urutan prosesnya!';
+            notif.innerHTML = '❌ Masih ada urutan atau angka yang belum tepat. Periksa kotak yang berwarna merah!';
             notif.style.backgroundColor = '#f8d7da';
             notif.style.color = '#721c24';
             notif.style.border = '1px solid #f5c6cb';
         }
     }
 
-    // Inisialisasi Game
-    shuffleList();
+    // Inisialisasi Game saat pertama kali dimuat
+    shuffleData();
     renderList();
 </script>
 </body>

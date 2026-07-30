@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPv4 Inspector & Class Sorter - Kelas XI SIJA</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #080c14;
+            color: #f1f5f9;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        header {
+            border-bottom: 1px solid #1e293b;
+            background-color: rgba(15, 23, 42, 0.9);
+            padding: 12px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        .header-container {
+            max-width: 1150px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .logo-title { display: flex; align-items: center; gap: 12px; }
+        .logo-icon {
+            background: linear-gradient(135deg, #0284c7, #6366f1);
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-size: 20px;
+        }
+        h1 { font-size: 16px; font-weight: 800; color: #fff; }
+        .badge {
+            background: rgba(56, 189, 248, 0.2);
+            color: #38bdf8;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 99px;
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            margin-left: 6px;
+            font-family: monospace;
+        }
+        .subtitle { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+
+        main {
+            max-width: 1150px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 16px;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            flex-grow: 1;
+        }
+        .left-panel { flex: 2; min-width: 320px; display: flex; flex-direction: column; gap: 15px; }
+        .right-panel { flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 15px; }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            padding: 12px;
+            border-radius: 12px;
+        }
+        .dash-card {
+            background: #020617;
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid #1e293b;
+            text-align: center;
+        }
+        .dash-label { font-size: 10px; color: #94a3b8; font-weight: bold; text-transform: uppercase; }
+        .dash-val-cyan { font-size: 16px; font-weight: 800; color: #38bdf8; font-family: monospace; }
+        .dash-val-green { font-size: 16px; font-weight: 800; color: #4ade80; font-family: monospace; }
+        .dash-val-red { font-size: 16px; font-weight: 800; color: #f87171; font-family: monospace; }
+
+        .inspector-box {
+            background: #020617;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            position: relative;
+        }
+
+        .ip-display-container {
+            background: #0f172a;
+            border: 2px solid #0284c7;
+            border-radius: 12px;
+            padding: 15px 25px;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(2, 132, 199, 0.2);
+        }
+        .ip-target {
+            font-size: 32px;
+            font-weight: 900;
+            font-family: monospace;
+            color: #38bdf8;
+            letter-spacing: 2px;
+        }
+
+        .octet-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            width: 100%;
+        }
+        .octet-card {
+            background: #0f172a;
+            border: 1px solid #334155;
+            padding: 10px 5px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .octet-card.highlight {
+            border-color: #38bdf8;
+            background: rgba(56, 189, 248, 0.1);
+        }
+        .octet-title { font-size: 10px; color: #94a3b8; font-weight: bold; }
+        .octet-val { font-size: 18px; font-weight: bold; font-family: monospace; color: #fff; margin: 4px 0; }
+        .octet-bin { font-size: 9px; font-family: monospace; color: #38bdf8; }
+
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-label { font-size: 11px; font-weight: bold; color: #38bdf8; }
+        .btn-group { display: flex; gap: 8px; }
+
+        .btn-option {
+            flex: 1;
+            padding: 10px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            color: #cbd5e1;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-option:hover { border-color: #0284c7; color: #fff; }
+        .btn-option.selected { background: #0284c7; border-color: #38bdf8; color: #fff; }
+
+        .card-panel {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .btn-action {
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            color: #fff;
+            width: 100%;
+        }
+        .btn-green { background: #059669; }
+        .btn-green:hover { background: #047857; }
+        .btn-slate { background: #334155; }
+
+        .briefing {
+            background: #020617;
+            border: 1px solid #1e293b;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            color: #cbd5e1;
+            line-height: 1.5;
+        }
+
+        .cheat-sheet {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 10px;
+        }
+        .class-tag {
+            background: #020617;
+            border: 1px solid #1e293b;
+            padding: 6px 8px;
+            border-radius: 6px;
+            font-family: monospace;
+            line-height: 1.4;
+        }
+
+        /* Modal */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+            z-index: 100;
+        }
+        .modal-body {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            max-width: 380px;
+            width: 100%;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-container">
+            <div class="logo-title">
+                <div class="logo-icon">🔍</div>
+                <div>
+                    <h1>INSPEKTOR OKTET & KELAS IPv4 <span class="badge">KELAS XI SIJA</span></h1>
+                    <div class="subtitle">Bedah 4 Oktet, Kelas A/B/C, dan Jenis IP (Private vs Public)</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="left-panel">
+            <div class="dashboard">
+                <div class="dash-card">
+                    <div class="dash-label">Soal Ke-</div>
+                    <div id="label-soal-now" class="dash-val-cyan">1 / 5</div>
+                </div>
+                <div class="dash-card">
+                    <div class="dash-label">Jawaban Benar</div>
+                    <div id="label-score" class="dash-val-green">0</div>
+                </div>
+                <div class="dash-card">
+                    <div class="dash-label">Jawaban Salah</div>
+                    <div id="label-wrong" class="dash-val-red">0</div>
+                </div>
+            </div>
+
+            <div class="inspector-box">
+                <div style="font-size: 11px; color: #94a3b8; font-weight: bold; text-transform: uppercase;">
+                    🔎 Paket IP Address Masuk:
+                </div>
+
+                <div class="ip-display-container">
+                    <div id="display-ip" class="ip-target">192.168.1.1</div>
+                </div>
+
+                <!-- Anatomi 4 Oktet -->
+                <div class="octet-grid">
+                    <div class="octet-card highlight" id="card-oct-1">
+                        <div class="octet-title">OKTET 1 (Kunci Kelas)</div>
+                        <div id="val-oct-1" class="octet-val">192</div>
+                        <div id="bin-oct-1" class="octet-bin">11000000</div>
+                    </div>
+                    <div class="octet-card" id="card-oct-2">
+                        <div class="octet-title">OKTET 2</div>
+                        <div id="val-oct-2" class="octet-val">168</div>
+                        <div id="bin-oct-2" class="octet-bin">10101000</div>
+                    </div>
+                    <div class="octet-card" id="card-oct-3">
+                        <div class="octet-title">OKTET 3</div>
+                        <div id="val-oct-3" class="octet-val">1</div>
+                        <div id="bin-oct-3" class="octet-bin">00000001</div>
+                    </div>
+                    <div class="octet-card" id="card-oct-4">
+                        <div class="octet-title">OKTET 4</div>
+                        <div id="val-oct-4" class="octet-val">1</div>
+                        <div id="bin-oct-4" class="octet-bin">00000001</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="background: rgba(15,23,42,0.4); border: 1px solid #1e293b; padding: 10px; border-radius: 8px; font-size: 11px; color: #94a3b8;">
+                💡 <strong>Petunjuk Inspeksi:</strong> Fokus pada <strong>Oktet Pertama</strong> untuk menentukan Kelas IP! Perhatikan juga apakah angkanya masuk ke dalam rentang IP Private lokal atau Public internet.
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="card-panel">
+                <h3 style="font-size: 13px; font-weight: bold;">📝 Form Analisis Inspektur:</h3>
+
+                <div class="form-group">
+                    <label class="form-label">1. Berapakah nilai Oktet Pertama?</label>
+                    <input type="text" id="ans-octet1" style="background:#020617; border:1px solid #334155; color:#fff; padding:8px; border-radius:6px; font-family:monospace; font-size:12px;" placeholder="Ketik angka oktet ke-1...">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">2. Masuk Kelas manakah IP ini?</label>
+                    <div class="btn-group">
+                        <button class="btn-option btn-class" onclick="selectClass('A')">Kelas A</button>
+                        <button class="btn-option btn-class" onclick="selectClass('B')">Kelas B</button>
+                        <button class="btn-option btn-class" onclick="selectClass('C')">Kelas C</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">3. Apa Jenis Alamat IP ini?</label>
+                    <div class="btn-group">
+                        <button class="btn-option btn-type" onclick="selectType('Private')">IP Private</button>
+                        <button class="btn-option btn-type" onclick="selectType('Public')">IP Public</button>
+                        <button class="btn-option btn-type" onclick="selectType('Loopback')">Loopback</button>
+                    </div>
+                </div>
+
+                <button id="btn-submit" onclick="submitAnalysis()" class="btn-action btn-green">✅ Verifikasi Hasil Inspeksi!</button>
+            </div>
+
+            <!-- Buku Saku / Cheat Sheet -->
+            <div class="card-panel" style="font-size: 11px; color: #cbd5e1;">
+                <h3 style="font-size: 12px; font-weight: bold; border-bottom: 1px solid #1e293b; padding-bottom: 6px;">📖 Buku Saku Aturan Oktet 1</h3>
+                <div class="cheat-sheet">
+                    <div class="class-tag"><strong style="color:#38bdf8;">Kelas A:</strong> 1 - 126 (Default Mask: /8)</div>
+                    <div class="class-tag"><strong style="color:#4ade80;">Kelas B:</strong> 128 - 191 (Default Mask: /16)</div>
+                    <div class="class-tag"><strong style="color:#fbbf24;">Kelas C:</strong> 192 - 223 (Default Mask: /24)</div>
+                    <div class="class-tag"><strong style="color:#f87171;">Special 127:</strong> Loopback (Testing lokal)</div>
+                    <div class="class-tag" style="background:#020617; border-color:#334155;">
+                        🔒 <strong>Rentang IP Private (Lokal):</strong><br>
+                        • 10.0.0.0 - 10.255.255.255<br>
+                        • 172.16.0.0 - 172.31.255.255<br>
+                        • 192.168.0.0 - 192.168.255.255
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="modal-result" class="modal">
+        <div class="modal-body">
+            <div id="modal-emoji" style="font-size: 32px;">🎉</div>
+            <h3 id="modal-title" style="font-size: 15px; font-weight: 800; color: #fff;">Hasil Inspeksi</h3>
+            <p id="modal-desc" style="font-size: 11px; color: #94a3b8;"></p>
+            <div id="modal-lesson" style="background: #020617; padding: 10px; border-radius: 8px; font-size: 10px; color: #38bdf8; text-align: left; font-family: monospace;"></div>
+            <div style="display: flex; gap: 8px; margin-top: 5px;">
+                <button onclick="closeModal()" class="btn-action btn-slate">Tutup</button>
+                <button id="modal-btn-next" class="btn-action btn-green" style="display:none;">Soal Berikutnya ➡️</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentProblem = 0;
+        let score = 0;
+        let wrong = 0;
+
+        let selectedClassAns = "";
+        let selectedTypeAns = "";
+
+        // Bank Soal IPv4
+        const problems = [
+            {
+                ip: "192.168.1.100",
+                octets: [192, 168, 1, 100],
+                class: "C",
+                type: "Private",
+                explanation: "Oktet 1 = 192 (masuk rentang Kelas C: 192-223). Awalan 192.168.x.x adalah IP Private lokal rumah/sekolah!"
+            },
+            {
+                ip: "10.0.0.1",
+                octets: [10, 0, 0, 1],
+                class: "A",
+                type: "Private",
+                explanation: "Oktet 1 = 10 (masuk rentang Kelas A: 1-126). Awalan 10.x.x.x adalah IP Private untuk jaringan skala besar."
+            },
+            {
+                ip: "8.8.8.8",
+                octets: [8, 8, 8, 8],
+                class: "A",
+                type: "Public",
+                explanation: "Oktet 1 = 8 (Kelas A). Ini adalah IP Public Google DNS di internet (bukan rentang IP Private)."
+            },
+            {
+                ip: "172.16.5.20",
+                octets: [172, 16, 5, 20],
+                class: "B",
+                type: "Private",
+                explanation: "Oktet 1 = 172 (masuk rentang Kelas B: 128-191). Rentang 172.16 s/d 172.31 adalah IP Private."
+            },
+            {
+                ip: "127.0.0.1",
+                octets: [127, 0, 0, 1],
+                class: "A",
+                type: "Loopback",
+                explanation: "Oktet 1 = 127 khusus dipesan untuk **Loopback** (Localhost), digunakan PC untuk mengetes kartu jaringannya sendiri."
+            }
+        ];
+
+        function toBinary(num) {
+            return (num >>> 0).toString(2).padStart(8, '0');
+        }
+
+        function loadProblem() {
+            const p = problems[currentProblem];
+            document.getElementById('label-soal-now').textContent = `${currentProblem + 1} / ${problems.length}`;
+            document.getElementById('display-ip').textContent = p.ip;
+
+            for (let i = 0; i < 4; i++) {
+                document.getElementById(`val-oct-${i+1}`).textContent = p.octets[i];
+                document.getElementById(`bin-oct-${i+1}`).textContent = toBinary(p.octets[i]);
+            }
+
+            // Reset Form Input
+            document.getElementById('ans-octet1').value = "";
+            selectedClassAns = "";
+            selectedTypeAns = "";
+
+            document.querySelectorAll('.btn-class').forEach(btn => btn.classList.remove('selected'));
+            document.querySelectorAll('.btn-type').forEach(btn => btn.classList.remove('selected'));
+        }
+
+        function selectClass(cls) {
+            selectedClassAns = cls;
+            document.querySelectorAll('.btn-class').forEach(btn => {
+                btn.classList.toggle('selected', btn.textContent.includes(`Kelas ${cls}`));
+            });
+        }
+
+        function selectType(type) {
+            selectedTypeAns = type;
+            document.querySelectorAll('.btn-type').forEach(btn => {
+                btn.classList.toggle('selected', btn.textContent.includes(type));
+            });
+        }
+
+        function submitAnalysis() {
+            const oct1Input = document.getElementById('ans-octet1').value.trim();
+            const p = problems[currentProblem];
+
+            if (!oct1Input || !selectedClassAns || !selectedTypeAns) {
+                alert("⚠️ Lengkapi semua 3 pertanyaan sebelum verifikasi!");
+                return;
+            }
+
+            const isOct1Correct = parseInt(oct1Input) === p.octets[0];
+            const isClassCorrect = selectedClassAns === p.class;
+            const isTypeCorrect = selectedTypeAns === p.type;
+
+            if (isOct1Correct && isClassCorrect && isTypeCorrect) {
+                score++;
+                document.getElementById('label-score').textContent = score;
+                showResultModal(
+                    "🎉 ANALISIS BENAR!",
+                    `Luar biasa! IP ${p.ip} terdeteksi dengan tepat!`,
+                    p.explanation,
+                    true
+                );
+            } else {
+                wrong++;
+                document.getElementById('label-wrong').textContent = wrong;
+                let errDetails = "Detail Kesalahan:\n";
+                if (!isOct1Correct) errDetails += `- Oktet 1 seharusnya **${p.octets[0]}**\n`;
+                if (!isClassCorrect) errDetails += `- Kelas seharusnya **Kelas ${p.class}**\n`;
+                if (!isTypeCorrect) errDetails += `- Jenis IP seharusnya **${p.type}**\n`;
+
+                showResultModal(
+                    "❌ HASIL ANALISIS KELIRU",
+                    errDetails,
+                    p.explanation,
+                    false
+                );
+            }
+        }
+
+        function showResultModal(title, desc, lesson, isSuccess) {
+            const modal = document.getElementById('modal-result');
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-desc').innerHTML = desc.replace(/\n/g, '<br>');
+            document.getElementById('modal-lesson').innerHTML = lesson;
+
+            const btnNext = document.getElementById('modal-btn-next');
+            if (currentProblem < problems.length - 1) {
+                btnNext.style.display = 'inline-block';
+                btnNext.onclick = function() {
+                    closeModal();
+                    currentProblem++;
+                    loadProblem();
+                };
+            } else {
+                btnNext.style.display = 'none';
+            }
+
+            document.getElementById('modal-emoji').textContent = isSuccess ? "🏆" : "💥";
+            modal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('modal-result').style.display = 'none';
+        }
+
+        window.onload = function() {
+            loadProblem();
+        };
+    </script>
+</body>
+</html>

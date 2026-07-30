@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seri Network Game</title>
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: #151c2c;
+            --accent-green: #20e39f;
+            --accent-yellow: #f1b963;
+            --accent-blue: #3b82f6;
+            --text-color: #f3f4f6;
+            --text-dim: #9ca3af;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 650px;
+            background-color: var(--card-bg);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border: 1px solid #2d3748;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #fff;
+        }
+
+        .level-roadmap {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+
+        .level-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            position: relative;
+        }
+
+        .level-status-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background-color: #374151;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+            transition: all 0.3s ease;
+        }
+
+        .dot.completed {
+            background-color: var(--accent-green);
+            box-shadow: 0 0 10px var(--accent-green);
+        }
+
+        .dot.active {
+            background-color: var(--accent-yellow);
+            box-shadow: 0 0 12px var(--accent-yellow);
+            animation: pulse 1.5s infinite;
+        }
+
+        .line {
+            width: 2px;
+            height: 25px;
+            background-color: #374151;
+            margin-top: 4px;
+        }
+
+        .line.active {
+            background-color: var(--accent-green);
+        }
+
+        .level-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .level-name {
+            font-weight: bold;
+            font-size: 14px;
+            color: var(--text-dim);
+        }
+
+        .level-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .game-box {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid #2d3748;
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+        }
+
+        .question-text {
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+
+        .question-detail {
+            font-size: 28px;
+            font-weight: bold;
+            color: var(--accent-green);
+            letter-spacing: 1px;
+            margin: 15px 0 25px 0;
+            background-color: rgba(255, 255, 255, 0.05);
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .btn {
+            background-color: #2a3447;
+            color: white;
+            border: 1px solid #3b4861;
+            padding: 14px 20px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background-color: var(--accent-blue);
+            border-color: var(--accent-blue);
+            transform: translateY(-2px);
+        }
+
+        .feedback {
+            margin-top: 15px;
+            font-size: 14px;
+            min-height: 20px;
+            font-weight: bold;
+        }
+
+        .feedback.correct { color: var(--accent-green); }
+        .feedback.wrong { color: #ef4444; }
+
+        .victory-screen {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .victory-screen h2 {
+            color: var(--accent-green);
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Game Jaringan Komputer</h1>
+
+    <!-- Level Roadmap -->
+    <div class="level-roadmap">
+        <div class="level-item">
+            <div class="level-status-container">
+                <div class="dot active" id="dot-1"></div>
+                <div class="line" id="line-1"></div>
+            </div>
+            <div class="level-info">
+                <span class="level-name">Level 1</span>
+                <span class="level-title">IP Detective</span>
+            </div>
+        </div>
+
+        <div class="level-item">
+            <div class="level-status-container">
+                <div class="dot" id="dot-2"></div>
+                <div class="line" id="line-2"></div>
+            </div>
+            <div class="level-info">
+                <span class="level-name">Level 2</span>
+                <span class="level-title">Private vs Public</span>
+            </div>
+        </div>
+
+        <div class="level-item">
+            <div class="level-status-container">
+                <div class="dot" id="dot-3"></div>
+                <div class="line" id="line-3"></div>
+            </div>
+            <div class="level-info">
+                <span class="level-name">Level 3</span>
+                <span class="level-title">Kelas IP</span>
+            </div>
+        </div>
+
+        <div class="level-item">
+            <div class="level-status-container">
+                <div class="dot" id="dot-4"></div>
+            </div>
+            <div class="level-info">
+                <span class="level-name">Level 4</span>
+                <span class="level-title">Network ID</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Box Area -->
+    <div class="game-box" id="game-box">
+        <div class="question-text" id="q-text">Loading...</div>
+        <div class="question-detail" id="q-detail">...</div>
+        <div class="options-grid" id="options-container">
+            <!-- Tombol Opsi Jawaban -->
+        </div>
+        <div class="feedback" id="feedback"></div>
+    </div>
+
+    <!-- Victory Screen -->
+    <div class="victory-screen" id="victory-screen">
+        <h2>🎉 Selamat!</h2>
+        <p>Kamu telah menyelesaikan semua level dalam <strong>Seri Network</strong>!</p>
+        <button class="btn" onclick="resetGame()" style="margin-top: 20px;">Main Lagi</button>
+    </div>
+</div>
+
+<script>
+    const levelsData = [
+        {
+            level: 1,
+            title: "IP Detective",
+            instruction: "Apakah IP Address IPv4 berikut ini VALID atau INVALID?",
+            questions: [
+                { detail: "192.168.1.1", answer: "VALID" },
+                { detail: "256.100.0.1", answer: "INVALID" }, // >255
+                { detail: "10.0.0.255", answer: "VALID" },
+                { detail: "172.16.258.1", answer: "INVALID" }
+            ],
+            options: ["VALID", "INVALID"]
+        },
+        {
+            level: 2,
+            title: "Private vs Public",
+            instruction: "Tentukan jenis IP Address berikut (Private atau Public)?",
+            questions: [
+                { detail: "192.168.1.50", answer: "Private" },
+                { detail: "8.8.8.8", answer: "Public" },
+                { detail: "10.10.1.1", answer: "Private" },
+                { detail: "1.1.1.1", answer: "Public" }
+            ],
+            options: ["Private", "Public"]
+        },
+        {
+            level: 3,
+            title: "Kelas IP",
+            instruction: "Tentukan Kelas IP Address (IPv4) berikut!",
+            questions: [
+                { detail: "10.0.0.1", answer: "Kelas A" },
+                { detail: "172.16.0.1", answer: "Kelas B" },
+                { detail: "192.168.1.1", answer: "Kelas C" },
+                { detail: "120.10.5.1", answer: "Kelas A" }
+            ],
+            options: ["Kelas A", "Kelas B", "Kelas C", "Kelas D"]
+        },
+        {
+            level: 4,
+            title: "Network ID",
+            instruction: "Tentukan Network ID dari IP & Subnet Mask berikut!",
+            questions: [
+                { detail: "IP: 192.168.1.45 /24\nSubnet: 255.255.255.0", answer: "192.168.1.0" },
+                { detail: "IP: 10.5.12.3 /8\nSubnet: 255.0.0.0", answer: "10.0.0.0" },
+                { detail: "IP: 172.16.4.10 /16\nSubnet: 255.255.0.0", answer: "172.16.0.0" }
+            ],
+            getDynamicOptions: (q) => {
+                if(q.answer === "192.168.1.0") return ["192.168.1.0", "192.168.1.45", "192.168.0.0", "192.168.1.255"];
+                if(q.answer === "10.0.0.0") return ["10.0.0.0", "10.5.0.0", "10.5.12.0", "0.0.0.0"];
+                if(q.answer === "172.16.0.0") return ["172.16.0.0", "172.16.4.0", "172.0.0.0", "172.16.255.255"];
+            }
+        }
+    ];
+
+    let currentLevelIdx = 0;
+    let currentQuestionIdx = 0;
+
+    function initGame() {
+        renderLevel();
+    }
+
+    function renderLevel() {
+        const level = levelsData[currentLevelIdx];
+        const question = level.questions[currentQuestionIdx];
+
+        document.getElementById("q-text").innerText = level.instruction;
+        document.getElementById("q-detail").innerText = question.detail;
+        document.getElementById("feedback").innerText = "";
+
+        const optionsContainer = document.getElementById("options-container");
+        optionsContainer.innerHTML = "";
+
+        const options = level.getDynamicOptions ? level.getDynamicOptions(question) : level.options;
+
+        options.forEach(opt => {
+            const btn = document.createElement("button");
+            btn.className = "btn";
+            btn.innerText = opt;
+            btn.onclick = () => checkAnswer(opt, question.answer);
+            optionsContainer.appendChild(btn);
+        });
+
+        updateRoadmapUI();
+    }
+
+    function checkAnswer(selected, correct) {
+        const feedback = document.getElementById("feedback");
+
+        if (selected === correct) {
+            feedback.className = "feedback correct";
+            feedback.innerText = "✓ Benar!";
+            
+            setTimeout(() => {
+                currentQuestionIdx++;
+                if (currentQuestionIdx >= levelsData[currentLevelIdx].questions.length) {
+                    currentQuestionIdx = 0;
+                    currentLevelIdx++;
+                }
+
+                if (currentLevelIdx >= levelsData.length) {
+                    showVictory();
+                } else {
+                    renderLevel();
+                }
+            }, 800);
+
+        } else {
+            feedback.className = "feedback wrong";
+            feedback.innerText = "✕ Salah, coba lagi!";
+        }
+    }
+
+    function updateRoadmapUI() {
+        for (let i = 1; i <= 4; i++) {
+            const dot = document.getElementById(`dot-${i}`);
+            const line = document.getElementById(`line-${i}`);
+
+            dot.className = "dot";
+            if (line) line.className = "line";
+
+            if (i - 1 < currentLevelIdx) {
+                dot.classList.add("completed");
+                if (line) line.classList.add("active");
+            } else if (i - 1 === currentLevelIdx) {
+                dot.classList.add("active");
+            }
+        }
+    }
+
+    function showVictory() {
+        document.getElementById("game-box").style.display = "none";
+        document.getElementById("victory-screen").style.display = "block";
+        
+        // Tandai semua dot hijau
+        for (let i = 1; i <= 4; i++) {
+            document.getElementById(`dot-${i}`).className = "dot completed";
+            const line = document.getElementById(`line-${i}`);
+            if(line) line.className = "line active";
+        }
+    }
+
+    function resetGame() {
+        currentLevelIdx = 0;
+        currentQuestionIdx = 0;
+        document.getElementById("game-box").style.display = "block";
+        document.getElementById("victory-screen").style.display = "none";
+        renderLevel();
+    }
+
+    // Jalankan game saat halaman selesai dimuat
+    window.onload = initGame;
+</script>
+
+</body>
+</html>

@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Architect: Tipe Data SQL</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #080c14;
+            color: #f1f5f9;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .game-card {
+            background: #0f172a;
+            border: 2px solid #1e293b;
+            border-radius: 16px;
+            max-width: 520px;
+            width: 100%;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            position: relative;
+        }
+
+        header {
+            text-align: center;
+            border-bottom: 1px solid #1e293b;
+            padding-bottom: 12px;
+        }
+
+        .title {
+            font-size: 18px;
+            font-weight: 800;
+            color: #38bdf8;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        /* Top Bar Info */
+        .top-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: #94a3b8;
+            font-weight: bold;
+        }
+
+        .progress-bar-bg {
+            background: #020617;
+            border: 1px solid #1e293b;
+            height: 10px;
+            border-radius: 99px;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        .progress-bar-fill {
+            background: linear-gradient(90deg, #0284c7, #38bdf8);
+            height: 100%;
+            width: 10%;
+            transition: width 0.3s ease;
+        }
+
+        /* Target Field Box */
+        .field-box {
+            background: #020617;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .field-label {
+            font-size: 11px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .field-name {
+            font-size: 24px;
+            font-weight: 800;
+            color: #f43f5e;
+            font-family: monospace;
+        }
+
+        .field-desc {
+            font-size: 11px;
+            color: #cbd5e1;
+            margin-top: 6px;
+            font-style: italic;
+        }
+
+        /* Options Grid */
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .btn-option {
+            background: #020617;
+            border: 1px solid #1e293b;
+            padding: 12px;
+            border-radius: 10px;
+            color: #f1f5f9;
+            font-size: 13px;
+            font-family: monospace;
+            font-weight: bold;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-option:hover {
+            border-color: #38bdf8;
+            background: rgba(56, 189, 248, 0.05);
+        }
+
+        .btn-option.selected {
+            border-color: #0284c7;
+            background: rgba(2, 132, 199, 0.2);
+            color: #38bdf8;
+        }
+
+        /* Submit Button */
+        .btn-action {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            border: none;
+            font-weight: bold;
+            font-size: 13px;
+            color: #fff;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-blue { background: #0284c7; }
+        .btn-blue:hover { background: #0369a1; }
+        .btn-green { background: #059669; }
+        .btn-green:hover { background: #047857; }
+        .btn-slate { background: #334155; }
+
+        /* Feedback Box */
+        .feedback-box {
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 11px;
+            line-height: 1.5;
+            display: none;
+        }
+
+        .feedback-box.correct {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            color: #34d399;
+        }
+
+        .feedback-box.wrong {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            color: #f87171;
+        }
+
+        /* Final Result Code Box */
+        .code-box {
+            background: #020617;
+            border: 1px solid #1e293b;
+            border-radius: 10px;
+            padding: 12px;
+            font-family: monospace;
+            font-size: 11px;
+            color: #38bdf8;
+            white-space: pre-wrap;
+            text-align: left;
+            max-height: 220px;
+            overflow-y: auto;
+        }
+
+        /* Summary Table */
+        .summary-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 11px;
+            text-align: left;
+        }
+
+        .summary-item {
+            background: #020617;
+            border: 1px solid #1e293b;
+            padding: 6px 10px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-card">
+        <header>
+            <div class="title">🛠️ DATABASE ARCHITECT</div>
+            <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Merancang Tipe Data Tabel 'users' Lab</div>
+        </header>
+
+        <!-- Main Gameplay View -->
+        <div id="view-game" style="display: flex; flex-direction: column; gap: 14px;">
+            <div class="top-info">
+                <div>Level <span id="text-level">1</span> / 10</div>
+                <div>Skor: <span id="text-score" style="color: #38bdf8;">0</span></div>
+                <div>Nyawa: <span id="text-lives">❤️❤️❤️</span></div>
+            </div>
+
+            <div class="progress-bar-bg">
+                <div id="bar-fill" class="progress-bar-fill"></div>
+            </div>
+
+            <div class="field-box">
+                <div class="field-label">Field Database Ke-<span id="field-num">1</span>:</div>
+                <div id="target-field" class="field-name">id</div>
+                <div id="target-desc" class="field-desc">Nomor unik identitas user (Otomatis bertambah).</div>
+            </div>
+
+            <div style="font-size: 11px; color: #94a3b8; font-weight: bold;">Pilih Tipe Data Yang Tepat:</div>
+
+            <div class="options-grid">
+                <button onclick="selectOption('INT')" class="btn-option" id="opt-INT"><span>○</span> INT</button>
+                <button onclick="selectOption('VARCHAR')" class="btn-option" id="opt-VARCHAR"><span>○</span> VARCHAR</button>
+                <button onclick="selectOption('DATE')" class="btn-option" id="opt-DATE"><span>○</span> DATE</button>
+                <button onclick="selectOption('BOOLEAN')" class="btn-option" id="opt-BOOLEAN"><span>○</span> BOOLEAN</button>
+                <button onclick="selectOption('TEXT')" class="btn-option" id="opt-TEXT"><span>○</span> TEXT</button>
+                <button onclick="selectOption('DECIMAL')" class="btn-option" id="opt-DECIMAL"><span>○</span> DECIMAL</button>
+            </div>
+
+            <div id="feedback-box" class="feedback-box"></div>
+
+            <button id="btn-submit" onclick="submitAnswer()" class="btn-action btn-blue">Jawab</button>
+            <button id="btn-next" onclick="nextQuestion()" class="btn-action btn-green" style="display: none;">Level Berikutnya ➡️</button>
+        </div>
+
+        <!-- End Game View -->
+        <div id="view-end" style="display: none; flex-direction: column; gap: 14px; text-align: center;">
+            <div id="end-emoji" style="font-size: 40px;">🏆</div>
+            <h2 id="end-title" style="font-size: 16px; font-weight: 800; color: #fff;">DATABASE BERHASIL DIBUAT!</h2>
+            <p id="end-desc" style="font-size: 11px; color: #94a3b8;"></p>
+
+            <div style="font-size: 11px; font-weight: bold; color: #38bdf8; text-align: left;">📄 Hasil Kueri SQL (CREATE TABLE):</div>
+            <div id="code-result" class="code-box"></div>
+
+            <button onclick="restartGame()" class="btn-action btn-slate">🔄 Main Lagi</button>
+        </div>
+    </div>
+
+    <script>
+        // Web Audio API Synthesizer (Bebas dari file MP3 eksternal / offline-safe)
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'correct') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+                osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.1); // A5
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+            } else if (type === 'wrong') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                osc.frequency.setValueAtTime(100, audioCtx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+            }
+        }
+
+        // Data 10 Level Field Database
+        const levels = [
+            {
+                field: "id",
+                desc: "Nomor ID unik identitas user (angka bulat & otomatis bertambah).",
+                correct: "INT",
+                sqlLine: "    id INT AUTO_INCREMENT PRIMARY KEY,",
+                explanation: "INT digunakan untuk menyimpan angka bulat (tanpa pecahan) seperti ID, jumlah barang, atau nomor urut."
+            },
+            {
+                field: "nama",
+                desc: "Nama lengkap user (teks pendek pendek berkisar 1-100 karakter).",
+                correct: "VARCHAR",
+                sqlLine: "    nama VARCHAR(100),",
+                explanation: "VARCHAR digunakan untuk menyimpan teks/variabel karakter dengan batas panjang tertentu."
+            },
+            {
+                field: "email",
+                desc: "Alamat surel user (karakter teks berformat email).",
+                correct: "VARCHAR",
+                sqlLine: "    email VARCHAR(100),",
+                explanation: "Email berisi kombinasi huruf, angka, dan simbol, sehingga cocok disimpan dalam VARCHAR."
+            },
+            {
+                field: "password",
+                desc: "Kata sandi user yang sudah di-hash (string teks acak 255 karakter).",
+                correct: "VARCHAR",
+                sqlLine: "    password VARCHAR(255),",
+                explanation: "Hasil hash password (seperti BCRYPT/MD5) berbentuk teks acak sehingga disimpan menggunakan VARCHAR."
+            },
+            {
+                field: "tanggal_lahir",
+                desc: "Tanggal lahir user dengan format Tahun-Bulan-Hari.",
+                correct: "DATE",
+                sqlLine: "    tanggal_lahir DATE,",
+                explanation: "DATE khusus digunakan untuk menyimpan informasi tanggal tanpa komponen jam/waktu."
+            },
+            {
+                field: "deskripsi",
+                desc: "Biodata/Profil diri user yang sangat panjang.",
+                correct: "TEXT",
+                sqlLine: "    deskripsi TEXT,",
+                explanation: "TEXT digunakan untuk menyimpan artikel atau paragraf teks yang sangat panjang tanpa batasan kaku."
+            },
+            {
+                field: "status_aktif",
+                desc: "Status akun user: Nilai TRUE (Aktif) atau FALSE (Nonaktif).",
+                correct: "BOOLEAN",
+                sqlLine: "    status_aktif BOOLEAN,",
+                explanation: "BOOLEAN hanya memiliki dua kemungkinan nilai: TRUE (1) atau FALSE (0)."
+            },
+            {
+                field: "harga_saldo",
+                desc: "Nominal saldo uang user (angka desimal bereksplisit presisi tinggi).",
+                correct: "DECIMAL",
+                sqlLine: "    harga_saldo DECIMAL(10,2),",
+                explanation: "DECIMAL digunakan untuk nilai uang/keuangan agar angka di belakang koma tidak mengalamai pembulatan salah."
+            },
+            {
+                field: "foto",
+                desc: "Nama file atau path direktori gambar (misal: 'profile.jpg').",
+                correct: "VARCHAR",
+                sqlLine: "    foto VARCHAR(255),",
+                explanation: "Di database, file gambar disimpan berupa string nama filenya (path VARCHAR), bukan filenya langsung."
+            },
+            {
+                field: "nilai_poin",
+                desc: "Total skor/poin reward user (angka bulat).",
+                correct: "INT",
+                sqlLine: "    nilai_poin INT",
+                explanation: "INT sangat tepat digunakan untuk menghitung skor, jumlah nilai, atau poin bertipe angka bulat."
+            }
+        ];
+
+        let currentLvlIndex = 0;
+        let score = 0;
+        let lives = 3;
+        let selectedType = "";
+        let userChoices = [];
+
+        function loadQuestion() {
+            const data = levels[currentLvlIndex];
+            document.getElementById('text-level').textContent = currentLvlIndex + 1;
+            document.getElementById('text-score').textContent = score;
+            document.getElementById('field-num').textContent = currentLvlIndex + 1;
+            document.getElementById('target-field').textContent = data.field;
+            document.getElementById('target-desc').textContent = data.desc;
+
+            // Update Progress Bar
+            const percent = ((currentLvlIndex + 1) / levels.length) * 100;
+            document.getElementById('bar-fill').style.width = `${percent}%`;
+
+            // Reset Selection & Buttons
+            selectedType = "";
+            document.querySelectorAll('.btn-option').forEach(btn => {
+                btn.className = "btn-option";
+                btn.querySelector('span').textContent = "○";
+            });
+
+            document.getElementById('feedback-box').style.display = "none";
+            document.getElementById('btn-submit').style.display = "block";
+            document.getElementById('btn-next').style.display = "none";
+        }
+
+        function selectOption(type) {
+            selectedType = type;
+            document.querySelectorAll('.btn-option').forEach(btn => {
+                btn.className = "btn-option";
+                btn.querySelector('span').textContent = "○";
+            });
+
+            const activeBtn = document.getElementById(`opt-${type}`);
+            if (activeBtn) {
+                activeBtn.className = "btn-option selected";
+                activeBtn.querySelector('span').textContent = "●";
+            }
+        }
+
+        function submitAnswer() {
+            if (!selectedType) {
+                alert("⚠️ Pilih salah satu tipe data terlebih dahulu!");
+                return;
+            }
+
+            const data = levels[currentLvlIndex];
+            const feedbackBox = document.getElementById('feedback-box');
+            const isCorrect = (selectedType === data.correct);
+
+            userChoices.push({
+                field: data.field,
+                chosenType: selectedType,
+                correctType: data.correct,
+                sqlLine: data.sqlLine
+            });
+
+            if (isCorrect) {
+                score += 10;
+                playSound('correct');
+                feedbackBox.className = "feedback-box correct";
+                feedbackBox.innerHTML = `✅ <strong>Benar!</strong> ${data.explanation}`;
+            } else {
+                lives--;
+                playSound('wrong');
+                updateLivesUI();
+                feedbackBox.className = "feedback-box wrong";
+                feedbackBox.innerHTML = `❌ <strong>Salah!</strong> ${data.correct} lebih tepat. ${data.explanation}`;
+            }
+
+            feedbackBox.style.display = "block";
+            document.getElementById('btn-submit').style.display = "none";
+            document.getElementById('btn-next').style.display = "block";
+
+            if (lives <= 0) {
+                setTimeout(endGame, 1500);
+            }
+        }
+
+        function updateLivesUI() {
+            let hearts = "";
+            for (let i = 0; i < lives; i++) hearts += "❤️";
+            for (let j = lives; j < 3; j++) hearts += "🖤";
+            document.getElementById('text-lives').textContent = hearts;
+        }
+
+        function nextQuestion() {
+            if (lives <= 0) {
+                endGame();
+                return;
+            }
+
+            currentLvlIndex++;
+            if (currentLvlIndex < levels.length) {
+                loadQuestion();
+            } else {
+                endGame();
+            }
+        }
+
+        function endGame() {
+            document.getElementById('view-game').style.display = "none";
+            document.getElementById('view-end').style.display = "flex";
+
+            const endTitle = document.getElementById('end-title');
+            const endDesc = document.getElementById('end-desc');
+            const endEmoji = document.getElementById('end-emoji');
+            const codeBox = document.getElementById('code-result');
+
+            let createTableSQL = "CREATE TABLE users (\n";
+            userChoices.forEach(item => {
+                createTableSQL += `${item.sqlLine}\n`;
+            });
+            createTableSQL += ");";
+
+            if (lives > 0) {
+                endEmoji.textContent = "🏆";
+                endTitle.textContent = "DATABASE BERHASIL DIBUAT!";
+                endDesc.textContent = `Selamat! Kamu menyelesaikan semua level dengan skor ${score}/100. Berikut adalah struktur DDL dari tabel yang kamu rancang:`;
+            } else {
+                endEmoji.textContent = "💥";
+                endTitle.textContent = "PEMBUATAN DATABASE GAGAL!";
+                endDesc.textContent = `Nyawa kamu habis! Coba pelajari lagi karakteristik tipe data SQL di bawah ini:`;
+            }
+
+            codeBox.textContent = createTableSQL;
+        }
+
+        function restartGame() {
+            currentLvlIndex = 0;
+            score = 0;
+            lives = 3;
+            userChoices = [];
+            updateLivesUI();
+
+            document.getElementById('view-game').style.display = "flex";
+            document.getElementById('view-end').style.display = "none";
+            loadQuestion();
+        }
+
+        window.onload = function() {
+            loadQuestion();
+        };
+    </script>
+</body>
+</html>

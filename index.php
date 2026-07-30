@@ -46,6 +46,31 @@ $query_str .= " ORDER BY id DESC";
 $stmt = $pdo->prepare($query_str);
 $stmt->execute($params);
 $all_modules = $stmt->fetchAll(PDO::FETCH_ASSOC); // Variabel penampung looping kartu
+
+// Link Pengumpulan Tugas per kelas, biar siswa gak perlu cari-cari folder kelasnya sendiri.
+// Kelas diambil langsung dari DB (bukan session) supaya selalu akurat.
+$link_tugas_default = 'https://acesse.one/3xcdcbh'; // folder umum, dipakai kalau kelas belum ke-mapping
+$link_tugas_per_kelas = [
+    'X TKJ 1'  => 'https://tinyurl.com/3jbp5czu',
+    'X TKJ 2'  => 'https://tinyurl.com/5kut6wet',
+    'X TKJ 3'  => 'https://tinyurl.com/yvees425',
+    'X TKJ 4'  => 'https://tinyurl.com/yca3dzyr',
+    'XI SIJA'  => 'https://tinyurl.com/frcvraav',
+    'XII SIJA' => 'https://tinyurl.com/2pjy9xnx',
+];
+
+$link_tugas = $link_tugas_default;
+if ($_SESSION['role'] === 'siswa') {
+    $user_id_navbar = $_SESSION['user_id'] ?? $_SESSION['id'] ?? null;
+    if ($user_id_navbar) {
+        $stmtKelasNavbar = $pdo->prepare("SELECT kelas FROM users WHERE id = ?");
+        $stmtKelasNavbar->execute([$user_id_navbar]);
+        $kelas_navbar = $stmtKelasNavbar->fetchColumn();
+        if ($kelas_navbar && isset($link_tugas_per_kelas[$kelas_navbar])) {
+            $link_tugas = $link_tugas_per_kelas[$kelas_navbar];
+        }
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -89,7 +114,7 @@ $all_modules = $stmt->fetchAll(PDO::FETCH_ASSOC); // Variabel penampung looping 
                                 <li class="nav-item"><a class="nav-link" href="rapor_siswa.php">Rapor Saya</a></li>
                                 <?php endif; ?> 
                             </li>
-                             <li class="nav-item"><a class="nav-link" href="https://acesse.one/umdz1td">Pengumpulan Tugas</a></li>
+                             <li class="nav-item"><a class="nav-link" href="<?= htmlspecialchars($link_tugas) ?>" target="_blank" rel="noopener noreferrer">Pengumpulan Tugas</a></li>
                             <?php if ($_SESSION['role'] === 'admin'): ?>
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" id="adminDropdown" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Admin Panel</a>

@@ -88,6 +88,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
     }
 }
 
+$stmtAutoClose = $pdo->prepare("
+    UPDATE kuis_sesi 
+    SET status = 'nonaktif', ditutup_at = NOW() 
+    WHERE status = 'aktif' 
+      AND TIMESTAMPADD(MINUTE, (durasi_menit * 2), dibuka_at) <= NOW()
+");
+$stmtAutoClose->execute();
+
 // Tutup sesi (POST, sudah dilindungi CSRF)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tutup'])) {
     csrf_require_valid_post();
@@ -294,11 +302,16 @@ $level_badge = [
                         <th>Materi</th>
                         <th>Durasi</th>
                         <th>Dibuka Pukul</th>
+                        <th>Batas Auto-Close</th>
                         <th class="text-center">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($sesi_aktif as $s): $lvl = $level_badge[$s['level']] ?? ['-', 'secondary']; ?>
+                     <?php foreach ($sesi_aktif as $s): 
+                        $lvl = $level_badge[$s['level']] ?? ['-', 'secondary']; 
+                        // Hitung estimasi waktu tutup (Dibuka + 2x durasi_menit)
+                        $batas_tutup = date('d M Y, H:i', strtotime($s['dibuka_at'] . " + " . ($s['durasi_menit'] * 2) . " minutes"));
+                    ?>
                     <tr>
                         <td class="fw-semibold"><?= htmlspecialchars($s['kategori']) ?></td>
                         <td><span class="badge bg-<?= $lvl[1] ?>"><?= $lvl[0] ?></span></td>
@@ -306,6 +319,14 @@ $level_badge = [
                         <td><span class="small text-muted"><?= htmlspecialchars($s['materi_target'] ?? 'Semua materi') ?></span></td>
                         <td><?= $s['durasi_menit'] ?> menit</td>
                         <td><?= date('d M Y, H:i', strtotime($s['dibuka_at'])) ?></td>
+                        
+                        <!-- TAMBAHKAN TD INI -->
+                        <td>
+                            <span class="badge bg-light text-dark border">
+                                <i class="bi bi-clock-history text-warning"></i> <?= $batas_tutup ?>
+                            </span>
+                        </td>
+
                         <td class="text-center">
                             <form method="POST" style="display:inline" onsubmit="return confirm('Tutup sesi ini? Siswa tidak bisa mengerjakan lagi.')">
                                 <?= csrf_field() ?>

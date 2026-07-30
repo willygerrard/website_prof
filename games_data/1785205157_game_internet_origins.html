@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asal Usul Internet & IP Address - XI SIJA</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #040814;
+            color: #f1f5f9;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        header {
+            border-bottom: 1px solid #1e293b;
+            background-color: rgba(15, 23, 42, 0.9);
+            padding: 12px 20px;
+            text-align: center;
+        }
+        h1 { font-size: 16px; font-weight: 800; color: #38bdf8; text-transform: uppercase; letter-spacing: 1px; }
+        .subtitle { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+
+        main {
+            max-width: 900px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            flex-grow: 1;
+        }
+
+        .screen-box {
+            background: radial-gradient(circle at center, #0f172a 0%, #020617 100%);
+            border: 2px solid #1e293b;
+            border-radius: 12px;
+            height: 380px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 40px rgba(0,0,0,0.8);
+        }
+
+        canvas { width: 100%; height: 100%; display: block; }
+
+        .panel-control {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .story-text {
+            background: rgba(2, 6, 23, 0.7);
+            border-left: 4px solid #38bdf8;
+            padding: 12px 16px;
+            border-radius: 4px 8px 8px 4px;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #e2e8f0;
+        }
+
+        .btn-grid { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        .btn-act {
+            flex: 1;
+            min-width: 200px;
+            padding: 12px;
+            background: #0284c7;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .btn-act:hover { background: #0369a1; transform: translateY(-2px); }
+        .btn-slate { background: #334155; }
+        .btn-slate:hover { background: #475569; }
+        .btn-act:disabled { background: #1e293b; color: #64748b; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        /* Modal */
+        .modal {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+            display: none; align-items: center; justify-content: center; padding: 15px; z-index: 100;
+        }
+        .modal-body {
+            background: #0f172a; border: 1px solid #38bdf8; max-width: 420px; width: 100%;
+            padding: 24px; border-radius: 12px; text-align: center; display: flex; flex-direction: column; gap: 15px;
+            box-shadow: 0 0 30px rgba(56, 189, 248, 0.2);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>💡 Asal Usul Jaringan & Alamat IP</h1>
+        <div class="subtitle">Animasi Interaktif Konsep Dasar Jaringan Komputer</div>
+    </header>
+
+    <main>
+        <div class="screen-box">
+            <canvas id="canvas-game"></canvas>
+        </div>
+
+        <div class="panel-control">
+            <div id="story-box" class="story-text">Loading konsep...</div>
+            <div id="action-box" class="btn-grid"></div>
+        </div>
+    </main>
+
+    <div id="modal-fact" class="modal">
+        <div class="modal-body">
+            <div id="modal-icon" style="font-size:40px;">💡</div>
+            <h3 id="modal-title" style="color:#fff; font-size:16px; font-weight:800;">Momen 'Aha!'</h3>
+            <p id="modal-desc" style="font-size:12px; color:#cbd5e1; line-height:1.6;"></p>
+            <button onclick="nextLevel()" id="btn-next" class="btn-act">Lanjut ke Tahap Berikutnya ➡️</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas-game');
+        const ctx = canvas.getContext('2d');
+
+        let level = 1;
+        let packets = [];
+        let nodes = [];
+        let links = [];
+        let animationId;
+        let messageLog = "";
+
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            initLevelData();
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        function initLevelData() {
+            const w = canvas.width;
+            const h = canvas.height;
+            nodes = [];
+            links = [];
+            packets = [];
+            messageLog = "";
+
+            if (level === 1) {
+                nodes.push({ id: 'A', x: w * 0.2, y: h * 0.5, label: "💻 Laptop A", color: "#38bdf8", status: "" });
+                nodes.push({ id: 'B', x: w * 0.8, y: h * 0.5, label: "💻 Laptop B", color: "#4ade80", status: "" });
+                links.push({ from: 'A', to: 'B' });
+            } else if (level === 2 || level === 3) {
+                nodes.push({ id: 'SW', x: w * 0.5, y: h * 0.5, label: "🔌 Alat Sambung", color: "#a855f7", status: "" });
+                
+                const labelA = level === 2 ? "💻 Komputer A" : "💻 Komputer '1'";
+                const labelB = level === 2 ? "💻 Komputer B" : "💻 Komputer '2'";
+                const labelC = level === 2 ? "💻 Komputer C" : "💻 Komputer '3'";
+                const labelD = level === 2 ? "💻 Komputer D" : "💻 Komputer '4'";
+
+                nodes.push({ id: 'A', x: w * 0.2, y: h * 0.2, label: labelA, color: "#38bdf8", status: "" });
+                nodes.push({ id: 'B', x: w * 0.8, y: h * 0.2, label: labelB, color: "#94a3b8", status: "" });
+                nodes.push({ id: 'C', x: w * 0.2, y: h * 0.8, label: labelC, color: "#94a3b8", status: "" });
+                nodes.push({ id: 'D', x: w * 0.8, y: h * 0.8, label: labelD, color: "#94a3b8", status: "" });
+
+                links.push({ from: 'A', to: 'SW' });
+                links.push({ from: 'SW', to: 'B' });
+                links.push({ from: 'SW', to: 'C' });
+                links.push({ from: 'SW', to: 'D' });
+            }
+        }
+
+        function getNode(id) { return nodes.find(n => n.id === id); }
+
+        function drawScene() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Links
+            links.forEach(link => {
+                const n1 = getNode(link.from);
+                const n2 = getNode(link.to);
+                ctx.strokeStyle = "#334155";
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(n1.x, n1.y);
+                ctx.lineTo(n2.x, n2.y);
+                ctx.stroke();
+            });
+
+            // Draw Packets (Animasi)
+            for (let i = packets.length - 1; i >= 0; i--) {
+                let p = packets[i];
+                p.progress += p.speed;
+                
+                const n1 = getNode(p.from);
+                const n2 = getNode(p.to);
+                
+                const curX = n1.x + (n2.x - n1.x) * p.progress;
+                const curY = n1.y + (n2.y - n1.y) * p.progress;
+
+                // Efek Glow Paket
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = p.color || "#eab308";
+                ctx.fillStyle = p.color || "#eab308";
+                ctx.beginPath();
+                ctx.arc(curX, curY, 12, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0; // reset
+
+                ctx.fillStyle = "#fff";
+                ctx.font = "12px system-ui";
+                ctx.textAlign = "center";
+                ctx.fillText("✉️", curX, curY + 4);
+
+                if (p.progress >= 1.0) {
+                    if (p.onReach) p.onReach();
+                    packets.splice(i, 1);
+                }
+            }
+
+            // Draw Nodes
+            nodes.forEach(n => {
+                ctx.fillStyle = n.color;
+                ctx.beginPath();
+                ctx.arc(n.x, n.y, 24, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = "#1e293b";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.fillStyle = "#fff";
+                ctx.font = "bold 12px system-ui";
+                ctx.textAlign = "center";
+                ctx.fillText(n.label, n.x, n.y - 32);
+
+                if (n.status) {
+                    ctx.font = "20px system-ui";
+                    ctx.fillText(n.status, n.x, n.y + 6);
+                }
+            });
+
+            // Draw Status Text
+            if (messageLog) {
+                ctx.fillStyle = "#38bdf8";
+                ctx.font = "bold 14px monospace";
+                ctx.textAlign = "center";
+                ctx.fillText(messageLog, canvas.width / 2, canvas.height - 20);
+            }
+
+            animationId = requestAnimationFrame(drawScene);
+        }
+
+        function loadLevelUI() {
+            initLevelData();
+            const storyBox = document.getElementById('story-box');
+            const actBox = document.getElementById('action-box');
+
+            if (level === 1) {
+                storyBox.innerHTML = "<strong>📍 Tahap 1: Sambungan 2 Komputer</strong><br>Bayangkan kamu punya 2 Laptop terhubung oleh 1 kabel. Kamu mau kirim pesan rahasia dari Laptop A ke Laptop B. Apakah di tahap ini kamu butuh menuliskan Alamat Tujuan?";
+                actBox.innerHTML = `
+                    <button onclick="playLvl1(false)" class="btn-act btn-slate">Butuh Alamat Tujuan!</button>
+                    <button onclick="playLvl1(true)" class="btn-act">Langsung Kirim (Gak Butuh Alamat)</button>
+                `;
+            } else if (level === 2) {
+                storyBox.innerHTML = "<strong>📍 Tahap 2: Jaringan Banyak Komputer (Tanpa Nama)</strong><br>Kini ada 4 Komputer yang digabung lewat 1 alat sambung (Switch). Komputer A ingin mengirim foto RAHASIA hanya untuk Komputer C. Mari kita lihat apa jadinya jika dikirim tanpa alamat!";
+                actBox.innerHTML = `
+                    <button onclick="playLvl2()" class="btn-act">Kirim Foto Tanpa Alamat 🚀</button>
+                `;
+            } else if (level === 3) {
+                storyBox.innerHTML = "<strong>📍 Tahap 3: Solusi - Identitas Unik (ALAMAT IP)</strong><br>Agar data tidak bocor, manusia sepakat memberi **Nomor Identitas Unik** pada setiap komputer. Coba kirimkan pesan dari Komputer '1' khusus menuju Komputer '3'!";
+                actBox.innerHTML = `
+                    <button onclick="playLvl3('B', 2)" class="btn-act btn-slate">Tulis Tujuan: Komputer '2'</button>
+                    <button onclick="playLvl3('C', 3)" class="btn-act">Tulis Tujuan: Komputer '3'</button>
+                    <button onclick="playLvl3('D', 4)" class="btn-act btn-slate">Tulis Tujuan: Komputer '4'</button>
+                `;
+            }
+        }
+
+        // FIX BUG: Hanya matikan tombol di panel aksi saja, bukan tombol modal
+        function toggleButtons(disabled) {
+            document.querySelectorAll('#action-box .btn-act').forEach(btn => btn.disabled = disabled);
+        }
+
+        // Animasi Level 1
+        function playLvl1(isCorrect) {
+            if (!isCorrect) {
+                alert("Coba pikirkan lagi: Jalur kabelnya kan cuma satu-satunya menuju Laptop B, masa iya bisa nyasar?");
+                return;
+            }
+            
+            toggleButtons(true);
+            messageLog = "Mengirim data lewat jalur tunggal...";
+            
+            packets.push({
+                from: 'A', to: 'B', progress: 0, speed: 0.02, color: '#38bdf8',
+                onReach: () => {
+                    getNode('B').status = "✅";
+                    setTimeout(() => {
+                        showModal(
+                            "🎉 BENAR SEKALI!",
+                            "Kalau jalurnya cuma satu-satunya (2 komputer), data <strong>tidak akan pernah nyasar</strong>. Jadi kita belum butuh Alamat Tujuan!<br><br>Jaringan paling sederhana itu cuma 2 perangkat yang tersambung fisik.",
+                            "Lanjut ke Tahap 2"
+                        );
+                    }, 500);
+                }
+            });
+        }
+
+        // Animasi Level 2 (Efek Broadcast)
+        function playLvl2() {
+            toggleButtons(true);
+            messageLog = "Data menuju titik pusat...";
+            
+            packets.push({
+                from: 'A', to: 'SW', progress: 0, speed: 0.02, color: '#f87171',
+                onReach: () => {
+                    messageLog = "🚨 BOOM! Data tersebar ke semua arah!";
+                    getNode('SW').status = "💥";
+                    
+                    setTimeout(() => {
+                        getNode('SW').status = "";
+                        ['B', 'C', 'D'].forEach(target => {
+                            packets.push({
+                                from: 'SW', to: target, progress: 0, speed: 0.03, color: '#f87171',
+                                onReach: () => {
+                                    getNode(target).status = target === 'C' ? "✅" : "😱";
+                                }
+                            });
+                        });
+
+                        setTimeout(() => {
+                            showModal(
+                                "🚨 WADUH! DATA BOCOR KE SEMUA ORANG!",
+                                "Karena tidak ada alamat tujuan, alat penyambung bingung dan membagikan pesan itu ke <strong>SEMUA KOMPUTER</strong>!<br><br>Dari musibah inilah manusia sadar: <strong>Setiap komputer di jaringan WAJIB punya Nama/Nomor Unik!</strong>",
+                                "Lihat Solusinya di Tahap 3"
+                            );
+                        }, 1500);
+                    }, 300);
+                }
+            });
+        }
+
+        // Animasi Level 3 (Routing ke Target)
+        function playLvl3(targetNodeId, targetNum) {
+            toggleButtons(true);
+            messageLog = `Mengirim data berlabel tujuan Komputer '${targetNum}'...`;
+            
+            packets.push({
+                from: 'A', to: 'SW', progress: 0, speed: 0.02, color: '#4ade80',
+                onReach: () => {
+                    messageLog = "Alat sambung membaca alamat tujuan...";
+                    getNode('SW').status = "🔍";
+                    
+                    setTimeout(() => {
+                        getNode('SW').status = "";
+                        messageLog = `Meneruskan hanya ke Komputer '${targetNum}'!`;
+                        
+                        packets.push({
+                            from: 'SW', to: targetNodeId, progress: 0, speed: 0.03, color: '#4ade80',
+                            onReach: () => {
+                                getNode(targetNodeId).status = "✅";
+                                
+                                setTimeout(() => {
+                                    if(targetNum === 3) {
+                                        showModal(
+                                            "🏆 OHHH! INI DIA FUNGSI ALAMAT IP!",
+                                            "Sempurna! Karena sudah diberi nomor, alat penyambung bisa mengirim data <strong>Tepat Sasaran</strong> tanpa bocor ke komputer lain.<br><br>Nomor identitas unik inilah yang kelak kita panggil sebagai <strong>IP Address</strong>!",
+                                            "Selesai"
+                                        );
+                                    } else {
+                                        showModal(
+                                            "❌ SALAH ALAMAT!",
+                                            `Pesan rahasiamu malah masuk ke Komputer '${targetNum}'. Ingat, targetmu adalah Komputer '3'! Coba ulangi lagi.`,
+                                            "Ulangi Tahap 3"
+                                        );
+                                    }
+                                }, 800);
+                            }
+                        });
+                    }, 800);
+                }
+            });
+        }
+
+        function showModal(title, desc, btnText) {
+            document.getElementById('modal-title').innerHTML = title;
+            document.getElementById('modal-desc').innerHTML = desc;
+            
+            const btn = document.getElementById('btn-next');
+            btn.innerHTML = btnText;
+            btn.disabled = false; // Memastikan tombol modal SELALU AKTIF
+            
+            if(btnText === "Ulangi Tahap 3") {
+                btn.onclick = () => {
+                    document.getElementById('modal-fact').style.display = 'none';
+                    initLevelData();
+                    toggleButtons(false);
+                };
+            } else if (btnText === "Selesai") {
+                btn.onclick = () => {
+                    document.getElementById('modal-fact').style.display = 'none';
+                    alert("MANTAP! Logika dasar Jaringan & IP Address sudah tuntas terpasang di otakmu!");
+                    level = 1;
+                    loadLevelUI();
+                    toggleButtons(false);
+                };
+            } else {
+                btn.onclick = nextLevel;
+            }
+            
+            document.getElementById('modal-icon').textContent = title.includes("BENAR") || title.includes("FUNGSI") ? "🏆" : (title.includes("BOCOR") ? "🚨" : "💡");
+            document.getElementById('modal-fact').style.display = 'flex';
+        }
+
+        function nextLevel() {
+            document.getElementById('modal-fact').style.display = 'none';
+            level++;
+            loadLevelUI();
+            toggleButtons(false);
+        }
+
+        window.onload = function() {
+            resizeCanvas();
+            loadLevelUI();
+            drawScene();
+        };
+    </script>
+</body>
+</html>

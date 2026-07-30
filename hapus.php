@@ -1,5 +1,6 @@
 <?php
 // 1. Koneksi ke database MariaDB via PDO (Sesuaikan dengan file koneksi Bapak)
+session_start();
 include 'koneksi.php';
 include 'csrf_helper.php';
 

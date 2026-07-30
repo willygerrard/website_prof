@@ -12,19 +12,47 @@ function kirimWA($nomor_tujuan, $pesan) {
         return false;
     }
 
+    // Normalisasi nomor WhatsApp: hapus karakter non-digit.
+    $nomor_tujuan = trim($nomor_tujuan);
+    $nomor_tujuan = preg_replace('/[^0-9]/', '', $nomor_tujuan);
+
+    if ($nomor_tujuan === '') {
+        error_log("Fonnte: nomor tujuan kosong setelah normalisasi");
+        return false;
+    }
+
+    // Selalu kita yang bikin nomor lengkap (format 62xxxxxxxxxx) sendiri,
+    // lalu bypass auto-prefix Fonnte (countryCode = '0') supaya tidak ada
+    // kemungkinan double-prefix sama sekali, apapun asumsi behaviour Fonnte-nya.
+    if (substr($nomor_tujuan, 0, 2) === '62') {
+        // Sudah diawali 62, biarkan apa adanya
+    } elseif (substr($nomor_tujuan, 0, 1) === '0') {
+        // 0812... -> 62812...
+        $nomor_tujuan = '62' . substr($nomor_tujuan, 1);
+    } else {
+        // Nomor lokal tanpa 0 di depan (jarang, tapi jaga-jaga)
+        $nomor_tujuan = '62' . $nomor_tujuan;
+    }
+    $countryCode = '0'; // bypass -- nomor sudah lengkap, jangan diprefix lagi oleh Fonnte
+
     $curl = curl_init();
+    $postFields = http_build_query([
+        'target'      => (string) $nomor_tujuan,
+        'message'     => (string) $pesan,
+        'countryCode' => (string) $countryCode,
+    ]);
+
+    error_log("Fonnte request target=$nomor_tujuan countryCode=$countryCode");
+
     curl_setopt_array($curl, [
         CURLOPT_URL => 'https://api.fonnte.com/send',
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT => 15,
         CURLOPT_CUSTOMREQUEST => 'POST',
-        CURLOPT_POSTFIELDS => [
-            'target'      => $nomor_tujuan,
-            'message'     => $pesan,
-            'countryCode' => '62',
-        ],
+        CURLOPT_POSTFIELDS => $postFields,
         CURLOPT_HTTPHEADER => [
             'Authorization: ' . $token,
+            'Content-Type: application/x-www-form-urlencoded',
         ],
     ]);
 

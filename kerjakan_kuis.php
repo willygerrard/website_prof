@@ -20,13 +20,22 @@ if (!$sesi_id) {
     exit();
 }
 
-// Ambil data sesi, pastikan masih aktif
-$stmt = $pdo->prepare("SELECT * FROM kuis_sesi WHERE id = ? AND status = 'aktif'");
+// Ambil data sesi, pastikan status 'aktif' DAN belum expired (2x durasi)
+$stmt = $pdo->prepare("
+    SELECT * FROM kuis_sesi 
+    WHERE id = ? 
+      AND status = 'aktif'
+      AND TIMESTAMPADD(MINUTE, (durasi_menit * 2), dibuka_at) > NOW()
+");
 $stmt->execute([$sesi_id]);
 $sesi = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$sesi) {
-    die("Sesi kuis ini sudah ditutup atau tidak ditemukan. <a href='kuis.php'>Kembali</a>");
+    // Sekalian update status di DB kalau ternyata ada yang lolos
+    $pdo->prepare("UPDATE kuis_sesi SET status = 'nonaktif', ditutup_at = NOW() WHERE id = ? AND status = 'aktif'")
+        ->execute([$sesi_id]);
+        
+    die("Sesi kuis ini sudah ditutup otomatis oleh sistem atau tidak ditemukan. <a href='kuis.php'>Kembali</a>");
 }
 
 // Pastikan sesi ini memang ditujukan untuk kelas siswa yang login
@@ -113,21 +122,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_kuis'])) {
     }
 }
 
-// ===== AMBIL SOAL (RANDOM, DIFILTER MATERI KALAU DEPLOY MEMBATASI MATERI) =====
-$materiSesi = $pdo->prepare("SELECT materi FROM kuis_sesi_materi WHERE sesi_id = ?");
-$materiSesi->execute([$sesi_id]);
-$materi_dibatasi = $materiSesi->fetchAll(PDO::FETCH_COLUMN);
-
-if (!empty($materi_dibatasi)) {
-    // Sesi ini dibatasi ke materi tertentu
-    $placeholders = implode(',', array_fill(0, count($materi_dibatasi), '?'));
-    $stmt = $pdo->prepare("SELECT * FROM kuis_soal WHERE kategori = ? AND level = ? AND materi IN ($placeholders) ORDER BY RAND()");
-    $stmt->execute(array_merge([$sesi['kategori'], $sesi['level']], $materi_dibatasi));
-} else {
-    // Tidak ada batasan materi, ambil semua soal kategori+level seperti biasa
-    $stmt = $pdo->prepare("SELECT * FROM kuis_soal WHERE kategori = ? AND level = ? ORDER BY RAND()");
-    $stmt->execute([$sesi['kategori'], $sesi['level']]);
-}
+// ===== AMBIL SOAL (RANDOM) =====
+$stmt = $pdo->prepare("SELECT * FROM kuis_soal WHERE kategori = ? AND level = ? ORDER BY RAND()");
+$stmt->execute([$sesi['kategori'], $sesi['level']]);
 $soal_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 if (empty($soal_list)) {
@@ -160,6 +157,8 @@ $durasi_detik = $sesi['durasi_menit'] * 60;
         }
         .soal-card { scroll-margin-top: 80px; }
     </style>
+	<!-- SweetAlert2 CDN -->
+	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
 
@@ -232,23 +231,25 @@ $durasi_detik = $sesi['durasi_menit'] * 60;
         updateTimer();
         setInterval(updateTimer, 1000);
 
-        // ===== ANTI-CHEAT: deteksi pindah tab =====
-        let tabSwitchCount = 0;
-        document.addEventListener('visibilitychange', function () {
-            if (document.hidden) {
-                tabSwitchCount++;
-                console.warn('Tab switch terdeteksi:', tabSwitchCount);
-            }
-        });
+        // ===== ANTI-CHEAT: deteksi pindah tab & shock therapy =====
+		let tabSwitchCount = 0;
 
-        // Kirim tab switch count saat submit (opsional, untuk dicatat)
-        formKuis.addEventListener('submit', function () {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'tab_switch';
-            input.value = tabSwitchCount;
-            formKuis.appendChild(input);
-        });
+		document.addEventListener('visibilitychange', function () {
+			if (document.hidden) {
+				tabSwitchCount++;
+				console.warn('Tab switch terdeteksi:', tabSwitchCount);
+			} else {
+				// Peringatan muncul begitu siswa kembali/fokus lagi ke tab kuis
+				Swal.fire({
+					icon: 'warning',
+					title: 'HAYOO MAU PINDAH KEMANA? 🧐',
+					html: `Aktivitas keluar tab terdeteksi <b>${tabSwitchCount} kali</b>!<br><span class="text-danger fw-bold">Tetap di halaman ini atau nilai kamu akan ditinjau ulang oleh sistem.</span>`,
+					confirmButtonText: 'Ampun Pak, Saya Kembali Kerjakan!',
+					confirmButtonColor: '#dc3545',
+					allowOutsideClick: false // Memaksa siswa menekan tombol konfirmasi
+				});
+			}
+		});
     </script>
 </body>
 </html>

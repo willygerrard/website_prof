@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulator IP & Port - Pak Pos Jaringan Kelas XI SIJA</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #080c14;
+            color: #f1f5f9;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        header {
+            border-bottom: 1px solid #1e293b;
+            background-color: rgba(15, 23, 42, 0.9);
+            padding: 12px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        .header-container {
+            max-width: 1150px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .logo-title { display: flex; align-items: center; gap: 12px; }
+        .logo-icon {
+            background: linear-gradient(135deg, #0284c7, #2563eb);
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-size: 20px;
+        }
+        h1 { font-size: 16px; font-weight: 800; color: #fff; }
+        .badge {
+            background: rgba(56, 189, 248, 0.2);
+            color: #38bdf8;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 99px;
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            margin-left: 6px;
+            font-family: monospace;
+        }
+        .subtitle { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+
+        main {
+            max-width: 1150px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 16px;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            flex-grow: 1;
+        }
+        .left-panel { flex: 2; min-width: 320px; display: flex; flex-direction: column; gap: 15px; }
+        .right-panel { flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 15px; }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            padding: 12px;
+            border-radius: 12px;
+        }
+        .dash-card {
+            background: #020617;
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid #1e293b;
+            text-align: center;
+        }
+        .dash-label { font-size: 10px; color: #94a3b8; font-weight: bold; text-transform: uppercase; }
+        .dash-val-cyan { font-size: 16px; font-weight: 800; color: #38bdf8; font-family: monospace; }
+        .dash-val-green { font-size: 16px; font-weight: 800; color: #4ade80; font-family: monospace; }
+        .dash-val-red { font-size: 16px; font-weight: 800; color: #f87171; font-family: monospace; }
+
+        .game-screen {
+            position: relative;
+            background: #020617;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            overflow: hidden;
+            flex-grow: 1;
+            min-height: 380px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        canvas { width: 100%; height: 100%; display: block; flex-grow: 1; }
+
+        .card-panel {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .control-form {
+            background: #020617;
+            border: 1px solid #1e293b;
+            border-radius: 10px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .form-group { display: flex; flex-direction: column; gap: 4px; }
+        .form-label { font-size: 11px; font-weight: bold; color: #38bdf8; }
+        .form-select, .form-input {
+            background: #0f172a;
+            border: 1px solid #334155;
+            color: #fff;
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-family: monospace;
+            outline: none;
+        }
+        .form-select:focus, .form-input:focus { border-color: #0284c7; }
+
+        .btn-action {
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            color: #fff;
+            width: 100%;
+        }
+        .btn-green { background: #059669; }
+        .btn-green:hover { background: #047857; }
+        .btn-slate { background: #334155; }
+
+        .briefing {
+            background: #020617;
+            border: 1px solid #1e293b;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            color: #cbd5e1;
+            line-height: 1.5;
+        }
+
+        .toast {
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: bold;
+            display: none;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .cheat-sheet {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+            font-size: 10px;
+            margin-top: 4px;
+        }
+        .port-tag {
+            background: #020617;
+            border: 1px solid #1e293b;
+            padding: 4px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        /* Modal */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+            z-index: 100;
+        }
+        .modal-body {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            max-width: 380px;
+            width: 100%;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-container">
+            <div class="logo-title">
+                <div class="logo-icon">📬</div>
+                <div>
+                    <h1>PAK POS IP & PORT <span class="badge">KELAS XI SIJA</span></h1>
+                    <div class="subtitle">Belajar Alamat Rumah (IP Address) & Pintu Kamar Layanan (Port)</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="left-panel">
+            <div class="dashboard">
+                <div class="dash-card">
+                    <div class="dash-label">Target Misi</div>
+                    <div id="label-misi-now" class="dash-val-cyan">Misi 1</div>
+                </div>
+                <div class="dash-card">
+                    <div class="dash-label">Paket Sukses</div>
+                    <div id="label-delivered" class="dash-val-green">0 / 3</div>
+                </div>
+                <div class="dash-card">
+                    <div class="dash-label">Paket Gagal/Ditolak</div>
+                    <div id="label-lost" class="dash-val-red">0</div>
+                </div>
+            </div>
+
+            <div class="game-screen">
+                <canvas id="canvas-game"></canvas>
+                <div id="game-toast" class="toast">📢 <span id="toast-text">Tempelkan alamat IP dan Port yang tepat!</span></div>
+            </div>
+
+            <div style="background: rgba(15,23,42,0.4); border: 1px solid #1e293b; padding: 10px; border-radius: 8px; font-size: 11px; color: #94a3b8;">
+                💡 <strong>Cara Main:</strong> Amati permintaan dari Klien di layar. Pilih <strong>IP Tujuan</strong> dan <strong>Port Layanan</strong> yang tepat pada panel di sebelah kanan, lalu klik <strong>"Kirim Paket Data!"</strong>.
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="card-panel">
+                <h3 style="font-size: 13px; font-weight: bold;">🏷️ Buka Amplop & Tempel Alamat:</h3>
+                
+                <div class="briefing">
+                    <div style="font-weight: bold; font-size: 10px; color: #38bdf8; text-transform: uppercase; margin-bottom: 4px;">📩 Permintaan Klien:</div>
+                    <div id="request-text" style="font-weight: bold; color: #fff;">Memuat instruksi...</div>
+                </div>
+
+                <div class="control-form">
+                    <div class="form-group">
+                        <label class="form-label">1. Pilih IP Tujuan (Gedung/Rumah):</label>
+                        <select id="select-ip" class="form-select">
+                            <option value="">-- Pilih IP Server --</option>
+                            <option value="192.168.1.10">192.168.1.10 (Server Web Utama)</option>
+                            <option value="192.168.1.50">192.168.1.50 (Server File & Media)</option>
+                            <option value="192.168.2.100">192.168.2.100 (Server Remote Lab)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">2. Pilih Port Layanan (Pintu Kamar):</label>
+                        <select id="select-port" class="form-select">
+                            <option value="">-- Pilih Nomor Port --</option>
+                            <option value="80">Port 80 (HTTP - Web Biasa)</option>
+                            <option value="443">Port 443 (HTTPS - Web Aman)</option>
+                            <option value="21">Port 21 (FTP - Transfer File)</option>
+                            <option value="22">Port 22 (SSH - Remote CLI)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button id="btn-send" onclick="sendPacket()" class="btn-action btn-green">🚀 Kirim Paket Data!</button>
+            </div>
+
+            <div class="card-panel" style="font-size: 11px; color: #cbd5e1;">
+                <h3 style="font-size: 12px; font-weight: bold; border-bottom: 1px solid #1e293b; padding-bottom: 6px;">📖 Buku Saku Port Standar (Well-Known)</h3>
+                <div class="cheat-sheet">
+                    <div class="port-tag">🌐 <strong style="color:#38bdf8;">80 / 443</strong>: Web Server</div>
+                    <div class="port-tag">📁 <strong style="color:#34d399;">21</strong>: FTP File</div>
+                    <div class="port-tag">🔑 <strong style="color:#fbbf24;">22</strong>: Remote SSH</div>
+                    <div class="port-tag">✉️ <strong style="color:#c084fc;">25</strong>: Email SMTP</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="modal-result" class="modal">
+        <div class="modal-body">
+            <div id="modal-emoji" style="font-size: 32px;">🎉</div>
+            <h3 id="modal-title" style="font-size: 15px; font-weight: 800; color: #fff;">Evaluasi Misi</h3>
+            <p id="modal-desc" style="font-size: 11px; color: #94a3b8;"></p>
+            <div id="modal-lesson" style="background: #020617; padding: 10px; border-radius: 8px; font-size: 10px; color: #38bdf8; text-align: left; font-family: monospace;"></div>
+            <div style="display: flex; gap: 8px; margin-top: 5px;">
+                <button onclick="closeModal()" class="btn-action btn-slate">Tutup</button>
+                <button id="modal-btn-next" class="btn-action btn-green" style="display:none;">Misi Berikutnya ➡️</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas-game');
+        const ctx = canvas.getContext('2d');
+
+        let currentMission = 0;
+        let deliveredCount = 0;
+        let lostCount = 0;
+        let isAnimating = false;
+
+        // Visualisasi Perangkat
+        const devices = {
+            client: { name: "HP Siswa (Client)", ip: "192.168.1.5", x: 0.15, y: 0.5, color: "#38bdf8" },
+            webServer: { name: "Server Web", ip: "192.168.1.10", x: 0.85, y: 0.25, color: "#22c55e", ports: [80, 443] },
+            fileServer: { name: "Server File", ip: "192.168.1.50", x: 0.85, y: 0.5, color: "#a855f7", ports: [21] },
+            remoteServer: { name: "Server Remote Lab", ip: "192.168.2.100", x: 0.85, y: 0.75, color: "#eab308", ports: [22] }
+        };
+
+        // Daftar Misi Pembelajaran
+        const missions = [
+            {
+                request: "Siswa ingin membuka <strong>Website Sekolah (HTTPS Aman)</strong>.",
+                correctIp: "192.168.1.10",
+                correctPort: "443",
+                targetDevice: "webServer",
+                explanation: "💡 **Logika IP & Port:** Website HTTPS berada di Server Web (`192.168.1.10`) dan mengetuk pintu **Port 443** khusus enkripsi aman."
+            },
+            {
+                request: "Guru ingin mengunduh/upload <strong>File PDF Soal Ujian (FTP)</strong>.",
+                correctIp: "192.168.1.50",
+                correctPort: "21",
+                targetDevice: "fileServer",
+                explanation: "💡 **Logika IP & Port:** Layanan FTP untuk berbagi file ada di Server File (`192.168.1.50`) dan selalu mendengarkan di **Port 21**."
+            },
+            {
+                request: "Admin ingin mengontrol <strong>Layar Terminal Server Lab dari Jauh (Remote SSH)</strong>.",
+                correctIp: "192.168.2.100",
+                correctPort: "22",
+                targetDevice: "remoteServer",
+                explanation: "💡 **Logika IP & Port:** Remote Terminal SSH berjalan di Server Remote (`192.168.2.100`) pada **Port 22**."
+            }
+        ];
+
+        let activePacket = null;
+
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            drawScene();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        function drawScene() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Grid Background
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < canvas.width; i += 40) {
+                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+            }
+            for (let j = 0; j < canvas.height; j += 40) {
+                ctx.beginPath(); ctx.moveTo(0, j); ctx.lineTo(canvas.width, j); ctx.stroke();
+            }
+
+            // Garis Penghubung (Kabel Jaringan)
+            const clientX = devices.client.x * canvas.width;
+            const clientY = devices.client.y * canvas.height;
+
+            ['webServer', 'fileServer', 'remoteServer'].forEach(key => {
+                const dev = devices[key];
+                const devX = dev.x * canvas.width;
+                const devY = dev.y * canvas.height;
+
+                ctx.strokeStyle = '#334155';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(clientX, clientY);
+                ctx.lineTo(devX, devY);
+                ctx.stroke();
+            });
+
+            // Gambar Perangkat Client & Server
+            Object.values(devices).forEach(dev => {
+                const x = dev.x * canvas.width;
+                const y = dev.y * canvas.height;
+
+                ctx.fillStyle = dev.color;
+                ctx.beginPath();
+                ctx.arc(x, y, 18, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 11px system-ui';
+                ctx.textAlign = 'center';
+                ctx.fillText(dev.name, x, y - 28);
+
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = '10px monospace';
+                ctx.fillText(`IP: ${dev.ip}`, x, y + 30);
+
+                if (dev.ports) {
+                    ctx.fillStyle = '#38bdf8';
+                    ctx.font = '9px monospace';
+                    ctx.fillText(`Port Buka: [${dev.ports.join(', ')}]`, x, y + 42);
+                }
+            });
+
+            // Gambar Paket yang Sedang Jalan
+            if (activePacket) {
+                ctx.fillStyle = '#0284c7';
+                ctx.beginPath();
+                ctx.roundRect(activePacket.x - 20, activePacket.y - 12, 40, 24, 6);
+                ctx.fill();
+
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 9px monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(`:${activePacket.port}`, activePacket.x, activePacket.y + 3);
+            }
+        }
+
+        function loadMission() {
+            const m = missions[currentMission];
+            document.getElementById('label-misi-now').textContent = `Misi ${currentMission + 1}`;
+            document.getElementById('request-text').innerHTML = m.request;
+            document.getElementById('select-ip').value = "";
+            document.getElementById('select-port').value = "";
+            activePacket = null;
+            drawScene();
+        }
+
+        function sendPacket() {
+            if (isAnimating) return;
+
+            const selectedIp = document.getElementById('select-ip').value;
+            const selectedPort = document.getElementById('select-port').value;
+
+            if (!selectedIp || !selectedPort) {
+                showToast("⚠️ Pilih IP Tujuan DAN Port terlebih dahulu!");
+                return;
+            }
+
+            isAnimating = true;
+            document.getElementById('btn-send').disabled = true;
+
+            // Cari target fisik berdasarkan IP yang dipilih siswa
+            let targetDevKey = 'webServer';
+            if (selectedIp === '192.168.1.50') targetDevKey = 'fileServer';
+            if (selectedIp === '192.168.2.100') targetDevKey = 'remoteServer';
+
+            const startX = devices.client.x * canvas.width;
+            const startY = devices.client.y * canvas.height;
+            const targetDev = devices[targetDevKey];
+            const endX = targetDev.x * canvas.width;
+            const endY = targetDev.y * canvas.height;
+
+            activePacket = { x: startX, y: startY, port: selectedPort };
+
+            let progress = 0;
+            const animInterval = setInterval(() => {
+                progress += 0.03;
+                activePacket.x = startX + (endX - startX) * progress;
+                activePacket.y = startY + (endY - startY) * progress;
+                drawScene();
+
+                if (progress >= 1.0) {
+                    clearInterval(animInterval);
+                    evaluateResult(selectedIp, selectedPort, targetDevKey);
+                }
+            }, 20);
+        }
+
+        function evaluateResult(ip, port, targetKey) {
+            const m = missions[currentMission];
+            const targetDev = devices[targetKey];
+
+            let isIpCorrect = (ip === m.correctIp);
+            let isPortCorrect = (port === m.correctPort);
+
+            if (isIpCorrect && isPortCorrect) {
+                deliveredCount++;
+                updateDashboardUI();
+                showResultModal(
+                    "🎉 PAKET SUKSES TERSAMBUNG!",
+                    `Mantap! Paket mendarat di IP ${ip} dan diterima oleh Kamar Port ${port}.`,
+                    m.explanation,
+                    true
+                );
+            } else {
+                lostCount++;
+                updateDashboardUI();
+
+                let errorText = "";
+                if (!isIpCorrect) {
+                    errorText = `❌ **Destination Host Unreachable!** IP ${ip} salah alamat. Layanan ini tidak ada di gedung/rumah tersebut.`;
+                } else if (!isPortCorrect) {
+                    errorText = `❌ **Connection Refused!** IP ${ip} benar, tapi Port ${port} tertutup/tidak mendengarkan permintaan ini!`;
+                }
+
+                showResultModal(
+                    "❌ PAKET DITOLAK / NYASAR!",
+                    errorText,
+                    m.explanation,
+                    false
+                );
+            }
+
+            isAnimating = false;
+            document.getElementById('btn-send').disabled = false;
+        }
+
+        function updateDashboardUI() {
+            document.getElementById('label-delivered').textContent = `${deliveredCount} / 3`;
+            document.getElementById('label-lost').textContent = lostCount;
+        }
+
+        function showToast(text) {
+            const toast = document.getElementById('game-toast');
+            document.getElementById('toast-text').innerHTML = text;
+            toast.style.display = 'flex';
+            setTimeout(() => { toast.style.display = 'none'; }, 2500);
+        }
+
+        function showResultModal(title, desc, lesson, isSuccess) {
+            const modal = document.getElementById('modal-result');
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-desc').innerHTML = desc;
+            document.getElementById('modal-lesson').innerHTML = lesson;
+
+            const btnNext = document.getElementById('modal-btn-next');
+            if (isSuccess && currentMission < 2) {
+                btnNext.style.display = 'inline-block';
+                btnNext.onclick = function() {
+                    closeModal();
+                    currentMission++;
+                    loadMission();
+                };
+            } else {
+                btnNext.style.display = 'none';
+            }
+
+            document.getElementById('modal-emoji').textContent = isSuccess ? "🏆" : "💥";
+            modal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('modal-result').style.display = 'none';
+        }
+
+        window.onload = function() {
+            resizeCanvas();
+            loadMission();
+        };
+    </script>
+</body>
+</html>

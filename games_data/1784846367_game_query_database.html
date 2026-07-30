@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulasi CRUD - Inventaris Lab Komputer</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f4f7f6; margin: 20px; color: #333; }
+        h2 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px; }
+        
+        .container { display: flex; gap: 20px; flex-wrap: wrap; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); flex: 1; min-width: 300px; }
+        
+        /* Form Styling */
+        .form-group { margin-bottom: 12px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 0.9em; }
+        input, select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        
+        /* Button Styling */
+        .btn { padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn-add { background: #2ecc71; color: white; width: 100%; }
+        .btn-update { background: #f39c12; color: white; width: 100%; display: none; }
+        .btn-cancel { background: #95a5a6; color: white; width: 100%; display: none; margin-top: 5px; }
+        .btn-edit { background: #f1c40f; color: black; font-size: 0.8em; }
+        .btn-delete { background: #e74c3c; color: white; font-size: 0.8em; }
+        .btn:hover { opacity: 0.85; }
+
+        /* Table Styling */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 0.9em; }
+        th { background-color: #34495e; color: white; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+
+        /* SQL Log Box */
+        .sql-log { background-color: #1e1e1e; color: #00ff66; padding: 15px; border-radius: 6px; font-family: 'Courier New', Courier, monospace; font-size: 0.95em; min-height: 80px; }
+    </style>
+</head>
+<body>
+
+    <h2>💻 Mini Lab Manager: Visualisasi CRUD & SQL</h2>
+    <p>Gunakan form untuk melakukan manipulasi data (CRUD) dan perhatikan perintah SQL yang dieksekusi di panel bawah!</p>
+
+    <div class="container">
+        <!-- FORM PANEL (CREATE & UPDATE) -->
+        <div class="card" style="max-width: 350px;">
+            <h3 id="form-title">➕ Tambah Barang (Create)</h3>
+            <input type="hidden" id="barang-id">
+            
+            <div class="form-group">
+                <label>Nama Perangkat / Barang</label>
+                <input type="text" id="nama-barang" placeholder="Contoh: Router Mikrotik RB951">
+            </div>
+            
+            <div class="form-group">
+                <label>Jumlah (Unit)</label>
+                <input type="number" id="jumlah-barang" placeholder="Contoh: 5">
+            </div>
+
+            <div class="form-group">
+                <label>Kondisi</label>
+                <select id="kondisi-barang">
+                    <option value="Baik">Baik</option>
+                    <option value="Perlu Perbaikan">Perlu Perbaikan</option>
+                    <option value="Rusak Total">Rusak Total</option>
+                </select>
+            </div>
+
+            <button class="btn btn-add" id="btn-save" onclick="tambahData()">INSERT (Simpan Data)</button>
+            <button class="btn btn-update" id="btn-update" onclick="simpanPerubahanData()">UPDATE (Simpan Perubahan)</button>
+            <button class="btn btn-cancel" id="btn-cancel" onclick="resetForm()">Batal Edit</button>
+        </div>
+
+        <!-- TABLE PANEL (READ & DELETE) -->
+        <div class="card">
+            <h3>📋 Data Inventaris Lab (Read)</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nama Barang</th>
+                        <th>Jumlah</th>
+                        <th>Kondisi</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="tabel-body">
+                    <!-- Data dari JS akan dirender di sini -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- SQL LOG MONITOR -->
+    <div class="card" style="margin-top: 20px;">
+        <h3>🖥️ Query SQL yang Baru Saja Dieksekusi:</h3>
+        <div class="sql-log" id="sql-display">-- Perintah SQL akan tampil di sini setiap kali kamu melakukan aksi CRUD.</div>
+    </div>
+
+    <script>
+        // Datastore Sederhana (Array of Objects)
+        let dataInventaris = [
+            { id: 1, nama: "Switch Cisco 2960", jumlah: 4, kondisi: "Baik" },
+            { id: 2, nama: "PC Client Core i3", jumlah: 20, kondisi: "Baik" },
+            { id: 3, nama: "Crimping Tool", jumlah: 12, kondisi: "Perlu Perbaikan" }
+        ];
+
+        let idCounter = 4;
+
+        // READ: Menampilkan data ke tabel
+        function renderTabel() {
+            const tbody = document.getElementById('tabel-body');
+            tbody.innerHTML = '';
+
+            dataInventaris.forEach((item) => {
+                const row = `
+                    <tr>
+                        <td><b>${item.id}</b></td>
+                        <td>${item.nama}</td>
+                        <td>${item.jumlah}</td>
+                        <td>${item.kondisi}</td>
+                        <td>
+                            <button class="btn btn-edit" onclick="persiapanEdit(${item.id})">Edit (Update)</button>
+                            <button class="btn btn-delete" onclick="hapusData(${item.id})">Hapus (Delete)</button>
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+        }
+
+        // CREATE: Menambah data baru
+        function tambahData() {
+            const nama = document.getElementById('nama-barang').value;
+            const jumlah = document.getElementById('jumlah-barang').value;
+            const kondisi = document.getElementById('kondisi-barang').value;
+
+            if(!nama || !jumlah) {
+                alert('Nama dan Jumlah barang wajib diisi!');
+                return;
+            }
+
+            const itemBaru = { id: idCounter++, nama: nama, jumlah: parseInt(jumlah), kondisi: kondisi };
+            dataInventaris.push(itemBaru);
+
+            // Log Query SQL
+            tampilkanSQL(`INSERT INTO inventaris (id, nama_barang, jumlah, kondisi) \nVALUES (${itemBaru.id}, '${nama}', ${jumlah}, '${kondisi}');`);
+
+            resetForm();
+            renderTabel();
+        }
+
+        // UPDATE (Langkah 1): Mengisi form dengan data yang mau diedit
+        function persiapanEdit(id) {
+            const item = dataInventaris.find(d => d.id === id);
+            
+            document.getElementById('barang-id').value = item.id;
+            document.getElementById('nama-barang').value = item.nama;
+            document.getElementById('jumlah-barang').value = item.jumlah;
+            document.getElementById('kondisi-barang').value = item.kondisi;
+
+            // Mengubah tampilan form ke mode EDIT
+            document.getElementById('form-title').innerText = "✏️ Edit Barang (Update)";
+            document.getElementById('btn-save').style.display = "none";
+            document.getElementById('btn-update').style.display = "block";
+            document.getElementById('btn-cancel').style.display = "block";
+
+            // Log Query Read by ID
+            tampilkanSQL(`SELECT * FROM inventaris WHERE id = ${id}; -- (Mengambil data untuk diisi ke form)`);
+        }
+
+        // UPDATE (Langkah 2): Menyimpan hasil edit
+        function simpanPerubahanData() {
+            const id = parseInt(document.getElementById('barang-id').value);
+            const nama = document.getElementById('nama-barang').value;
+            const jumlah = document.getElementById('jumlah-barang').value;
+            const kondisi = document.getElementById('kondisi-barang').value;
+
+            const index = dataInventaris.findIndex(d => d.id === id);
+            if(index !== -1) {
+                dataInventaris[index] = { id, nama, jumlah: parseInt(jumlah), kondisi };
+            }
+
+            // Log Query SQL
+            tampilkanSQL(`UPDATE inventaris \nSET nama_barang = '${nama}', jumlah = ${jumlah}, kondisi = '${kondisi}' \nWHERE id = ${id};`);
+
+            resetForm();
+            renderTabel();
+        }
+
+        // DELETE: Menghapus data berdasarkan ID
+        function hapusData(id) {
+            if(confirm(`Yakin mau menghapus data dengan ID: ${id}?`)) {
+                dataInventaris = dataInventaris.filter(d => d.id !== id);
+
+                // Log Query SQL
+                tampilkanSQL(`DELETE FROM inventaris WHERE id = ${id};`);
+
+                renderTabel();
+            }
+        }
+
+        // Helper: Reset Form ke mode awal (Tambah Data)
+        function resetForm() {
+            document.getElementById('barang-id').value = '';
+            document.getElementById('nama-barang').value = '';
+            document.getElementById('jumlah-barang').value = '';
+            document.getElementById('kondisi-barang').value = 'Baik';
+
+            document.getElementById('form-title').innerText = "➕ Tambah Barang (Create)";
+            document.getElementById('btn-save').style.display = "block";
+            document.getElementById('btn-update').style.display = "none";
+            document.getElementById('btn-cancel').style.display = "none";
+        }
+
+        // Helper: Tampilkan string SQL ke layar log
+        function tampilkanSQL(query) {
+            document.getElementById('sql-display').innerText = query;
+        }
+
+        // Render tabel pertama kali saat halaman dimuat
+        renderTabel();
+    </script>
+</body>
+</html>
