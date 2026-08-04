@@ -39,7 +39,6 @@ if (!$sesi) {
 }
 
 // Pastikan sesi ini memang ditujukan untuk kelas siswa yang login
-// (mencegah akses langsung via URL walau kartunya tidak muncul di kuis.php)
 $stmtKelasSiswa = $pdo->prepare("SELECT kelas FROM users WHERE id = ?");
 $stmtKelasSiswa->execute([$user_id]);
 $kelas_siswa = $stmtKelasSiswa->fetchColumn();
@@ -51,7 +50,7 @@ if (!$cekKelas->fetch()) {
     die("Kuis ini tidak ditujukan untuk kelas kamu. <a href='kuis.php'>Kembali</a>");
 }
 
-// Cek attempt & status lulus sebelum mengizinkan akses (PER SESI, bukan gabungan semua deploy)
+// Cek attempt & status lulus sebelum mengizinkan akses
 $cek = $pdo->prepare("SELECT COUNT(*) as total, MAX(skor) as nilai_terbaik FROM kuis_hasil WHERE user_id = ? AND sesi_id = ?");
 $cek->execute([$user_id, $sesi_id]);
 $status = $cek->fetch(PDO::FETCH_ASSOC);
@@ -93,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_kuis'])) {
 
         $skor = $total_soal > 0 ? round(($benar / $total_soal) * 100) : 0;
 
-        // Simpan hasil (terikat ke sesi_id ini, sehingga deploy lain kategori+level sama tidak tercampur)
+        // Simpan hasil
         $stmt = $pdo->prepare("INSERT INTO kuis_hasil (user_id, kategori, level, sesi_id, skor, total_soal, attempt, dikerjakan_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
         $stmt->execute([$user_id, $sesi['kategori'], $sesi['level'], $sesi_id, $skor, $total_soal, $total_attempt + 1]);
 
@@ -122,19 +121,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_kuis'])) {
     }
 }
 
-// ===== AMBIL SOAL (RANDOM) =====
-$stmt = $pdo->prepare("SELECT * FROM kuis_soal WHERE kategori = ? AND level = ? ORDER BY RAND()");
-$stmt->execute([$sesi['kategori'], $sesi['level']]);
+// ===== AMBIL SOAL (RANDOM & FILTER MATERI) =====
+$stmtMateri = $pdo->prepare("SELECT materi FROM kuis_sesi_materi WHERE sesi_id = ?");
+$stmtMateri->execute([$sesi_id]);
+$materi_terpilih = $stmtMateri->fetchAll(PDO::FETCH_COLUMN);
+
+if (!empty($materi_terpilih)) {
+    // Jika ada materi yang dipilih saat deploy -> Filter berdasarkan materi
+    $placeholders = implode(',', array_fill(0, count($materi_terpilih), '?'));
+    
+    $querySoal = "
+        SELECT * FROM kuis_soal 
+        WHERE kategori = ? AND level = ? AND materi IN ($placeholders)
+        ORDER BY RAND()
+    ";
+    
+    $params = array_merge([$sesi['kategori'], $sesi['level']], $materi_terpilih);
+    $stmt = $pdo->prepare($querySoal);
+    $stmt->execute($params);
+} else {
+    // Jika materi dikosongkan -> Ambil semua materi
+    $stmt = $pdo->prepare("SELECT * FROM kuis_soal WHERE kategori = ? AND level = ? ORDER BY RAND()");
+    $stmt->execute([$sesi['kategori'], $sesi['level']]);
+}
+
 $soal_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 if (empty($soal_list)) {
-    die("Belum ada soal untuk kategori/level ini. Hubungi admin. <a href='kuis.php'>Kembali</a>");
+    die("Belum ada soal untuk kategori/level/materi ini. Hubungi admin. <a href='kuis.php'>Kembali</a>");
 }
 
-// Acak urutan pilihan jawaban per soal (opsional tapi bagus untuk anti-cheat)
+// Acak urutan pilihan jawaban per soal
 foreach ($soal_list as &$soal) {
     $opsi = ['a' => $soal['pilihan_a'], 'b' => $soal['pilihan_b'], 'c' => $soal['pilihan_c'], 'd' => $soal['pilihan_d']];
-    $soal['opsi_acak'] = $opsi; // tetap pakai key asli a/b/c/d agar pengecekan jawaban tetap akurat
+    $soal['opsi_acak'] = $opsi;
 }
 unset($soal);
 
@@ -231,7 +251,7 @@ $durasi_detik = $sesi['durasi_menit'] * 60;
         updateTimer();
         setInterval(updateTimer, 1000);
 
-        // ===== ANTI-CHEAT: deteksi pindah tab & shock therapy =====
+        // ===== ANTI-CHEAT: deteksi pindah tab =====
 		let tabSwitchCount = 0;
 
 		document.addEventListener('visibilitychange', function () {
@@ -239,14 +259,13 @@ $durasi_detik = $sesi['durasi_menit'] * 60;
 				tabSwitchCount++;
 				console.warn('Tab switch terdeteksi:', tabSwitchCount);
 			} else {
-				// Peringatan muncul begitu siswa kembali/fokus lagi ke tab kuis
 				Swal.fire({
 					icon: 'warning',
 					title: 'HAYOO MAU PINDAH KEMANA? 🧐',
 					html: `Aktivitas keluar tab terdeteksi <b>${tabSwitchCount} kali</b>!<br><span class="text-danger fw-bold">Tetap di halaman ini atau nilai kamu akan ditinjau ulang oleh sistem.</span>`,
 					confirmButtonText: 'Ampun Pak, Saya Kembali Kerjakan!',
 					confirmButtonColor: '#dc3545',
-					allowOutsideClick: false // Memaksa siswa menekan tombol konfirmasi
+					allowOutsideClick: false
 				});
 			}
 		});

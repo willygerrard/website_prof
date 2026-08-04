@@ -51,36 +51,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori']) && !isset
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-        /* Pastikan card memenuhi ruang grid */
-    .card { border-radius: 15px; height: 100%; display: flex; flex-direction: column; }
-    
-    /* Gunakan flex-grow agar konten mengisi sisa ruang */
-    .card-body { flex: 1; display: flex; flex-direction: column; }
-    
-    /* Textarea dan preview container disamakan tingginya */
-    #quizRawText { flex-grow: 1; min-height: 300px; resize: none; 
-    width: 100%;
-    padding: 10px;
-    text-align: left; /* Memaksa rata kiri */
-    white-space: pre-wrap; /* Menjaga format baris tapi menghilangkan spasi berlebih */
-    display: block;
-    
-    }
-    #previewContainer { flex-grow: 1; min-height: 300px; overflow-y: auto; }
-    
-    #editSection {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    text-align: left;
-    }
-
-    .card-header { font-weight: 600; }
+        .card { border-radius: 15px; height: 100%; display: flex; flex-direction: column; }
+        .card-body { flex: 1; display: flex; flex-direction: column; }
+        #quizRawText { 
+            flex-grow: 1; 
+            min-height: 300px; 
+            resize: none; 
+            width: 100%;
+            padding: 10px;
+            text-align: left;
+            white-space: pre-wrap;
+            display: block;
+        }
+        #previewContainer { flex-grow: 1; min-height: 300px; overflow-y: auto; }
+        #editSection {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            text-align: left;
+        }
+        .card-header { font-weight: 600; }
     </style>
 </head>
 <body class="bg-light">
 
-     <!-- NAVBAR -->
+    <!-- NAVBAR -->
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
         <div class="container px-4 px-lg-5">
             <a class="navbar-brand" href="index.php">Modul Pembelajaran SIJA</a>
@@ -113,14 +108,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori']) && !isset
     
     <div class="container mt-4">
         <div class="mb-3">
-        <a href="pintu-rahasia-sija" class="btn btn-outline-secondary">
-            <i class="fas fa-arrow-left"></i> Kembali
-        </a>
+            <a href="pintu-rahasia-sija" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Kembali
+            </a>
         </div>
         <?php if ($pesan): ?>
             <div class="alert alert-<?= $pesan_type ?>"><?= $pesan ?></div>
         <?php endif; ?>
 
+        <!-- METADATA PANEL ATAS -->
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-header bg-dark text-white">Metadata Soal</div>
             <div class="card-body">
@@ -152,13 +148,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori']) && !isset
                             <option value="__baru__">+ Tambah materi baru...</option>
                         </select>
                         <input type="text" id="sharedMateriBaru" class="form-control mt-2"
-                               placeholder="Ketik nama materi baru" style="display:none;">
+                               placeholder="Ketik nama materi baru" style="display:none;" oninput="syncSharedMetadata()">
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="row g-4">
+            <!-- TAMBAH SOAL MANUAL -->
             <div class="col-lg-6">
                 <div class="card shadow-sm h-100">
                     <div class="card-header bg-primary text-white">Tambah Soal Manual</div>
@@ -192,7 +189,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori']) && !isset
                                     <option value="__baru__">+ Tambah materi baru...</option>
                                 </select>
                                 <input type="text" name="materi_baru" id="materi_baru_manual" class="form-control mt-2"
-                                       placeholder="Ketik nama materi baru" style="display:none;">
+                                       placeholder="Ketik nama materi baru" style="display:none;" oninput="syncSharedMetadata()">
                             </div>
                             <div class="mb-2">
                                 <label class="form-label">Pertanyaan</label>
@@ -216,6 +213,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori']) && !isset
                 </div>
             </div>
 
+            <!-- AI QUIZ IMPORT (TEXT / JSON) -->
             <div class="col-lg-6">
                 <div class="card shadow-sm h-100">
                     <div class="card-header bg-success text-white">AI Quiz Import</div>
@@ -230,14 +228,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori']) && !isset
                         <div id="editSection" class="d-flex flex-column flex-grow-1">
                         <textarea id="quizRawText" class="form-control mb-3" 
                         placeholder="Paste soal di sini...
-                        1. What is the main database system used in our LMS?
-                        A) MongoDb
-                        B) MariaDB
-                        C) PostgreSQL
-                        D) SQLite
-                        Answer: B"
-
-                        style="min-height: 250px; resize: vertical;"></textarea>           
+1. What is the main database system used in our LMS?
+A) MongoDb
+B) MariaDB
+C) PostgreSQL
+D) SQLite
+Answer: B" style="min-height: 250px; resize: vertical;"></textarea>           
                             <button class="btn btn-success w-100" onclick="generatePreviewFromText()">Generate Preview</button>
                         </div>
                         <div id="previewSection" style="display:none;">
@@ -265,16 +261,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori']) && !isset
             const sharedMateriSelect = document.getElementById('sharedMateri');
             const sharedMateri = sharedMateriSelect?.value || '';
             const sharedMateriBaru = document.getElementById('sharedMateriBaru')?.value.trim() || '';
-            const finalSharedMateri = sharedMateri === '__baru__' ? sharedMateriBaru : sharedMateri;
 
+            // 1. Sinkronisasi ke Form Manual (Sebelah Kiri)
             const manualKategori = document.getElementById('manualKategori');
             const manualLevel = document.getElementById('manualLevel');
-            const manualMateri = document.getElementById('materi_pilih_manual');
+            const manualMateriPilih = document.getElementById('materi_pilih_manual');
+            const manualMateriBaru = document.getElementById('materi_baru_manual');
 
             if (manualKategori) manualKategori.value = sharedKategori;
             if (manualLevel) manualLevel.value = sharedLevel;
-            if (manualMateri) manualMateri.value = sharedMateri;
+            
+            if (manualMateriPilih) {
+                manualMateriPilih.value = sharedMateri;
+                toggleMateriBaru(manualMateriPilih, 'materi_baru_manual');
+            }
+            if (manualMateriBaru) {
+                manualMateriBaru.value = sharedMateriBaru;
+            }
 
+            // 2. Sinkronisasi ke Form AI Import (Sebelah Kanan)
+            const finalSharedMateri = sharedMateri === '__baru__' ? sharedMateriBaru : sharedMateri;
+            
             const inputKategori = document.getElementById('inputKategori');
             const inputLevel = document.getElementById('inputLevel');
             const inputMateri = document.getElementById('inputMateri');
@@ -286,6 +293,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori']) && !isset
 
         function toggleMateriBaru(select, inputId) {
             const inputBaru = document.getElementById(inputId);
+            if (!inputBaru) return;
+
             if (select.value === '__baru__') {
                 inputBaru.style.display = 'block';
             } else {
@@ -295,21 +304,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori']) && !isset
         }
 
         function generatePreviewFromText() {
-            // 1. Ambil nilai metadata dari panel atas
-            const kat = document.getElementById('sharedKategori')?.value || document.querySelector('select[name="kategori"]').value;
-            const lvl = document.getElementById('sharedLevel')?.value || document.querySelector('select[name="level"]').value;
-            const sharedMateriSelect = document.getElementById('sharedMateri');
-            const sharedMateriBaru = document.getElementById('sharedMateriBaru')?.value.trim() || '';
-            const materiPilih = sharedMateriSelect?.value || document.getElementById('materi_pilih_manual').value;
-            const materiBaru = sharedMateriBaru || document.getElementById('materi_baru_manual').value.trim();
-            const materiFinal = materiPilih === '__baru__' ? materiBaru : materiPilih;
+            // Pastikan nilai terbaru tersinkronisasi sebelum parsing
+            syncSharedMetadata();
 
-            // 2. Masukkan ke hidden input di form kanan
-            document.getElementById('inputKategori').value = kat;
-            document.getElementById('inputLevel').value = lvl;
-            document.getElementById('inputMateri').value = materiFinal;
-
-            
             const rawText = document.getElementById('quizRawText').value.trim();
             const previewContainer = document.getElementById('previewContainer');
             
@@ -318,7 +315,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori']) && !isset
                 return;
             }
 
-            // Logic Parsing (sama persis dengan quizparser.php)
+            // Parsing teks menjadi array JSON
             const questionBlocks = rawText.split(/\n\s*\n/);
             const questionsArray = [];
 
@@ -343,32 +340,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori']) && !isset
                     }
                 });
 
-            // Match shorthand (A/B/C) to text
-            if (correctAnswer.length === 1 && ['A','B','C','D'].includes(correctAnswer.toUpperCase())) {
-                const idx = correctAnswer.toUpperCase().charCodeAt(0) - 65;
-                if (options[idx]) correctAnswer = options[idx];
+                // Terapkan pilihan jika jawaban berupa huruf A/B/C/D
+                if (correctAnswer.length === 1 && ['A','B','C','D'].includes(correctAnswer.toUpperCase())) {
+                    const idx = correctAnswer.toUpperCase().charCodeAt(0) - 65;
+                    if (options[idx]) correctAnswer = options[idx];
+                }
+
+                if (questionText && options.length > 0) {
+                    questionsArray.push({ question_text: questionText, options: options, correct_answer: correctAnswer });
+                }
             }
 
-            if (questionText && options.length > 0) {
-                questionsArray.push({ question_text: questionText, options: options, correct_answer: correctAnswer });
-            }
+            // Render Preview HTML
+            previewContainer.innerHTML = "";
+            questionsArray.forEach((q, idx) => {
+                let opts = q.options.map(o => `<li>${o} ${o === q.correct_answer ? '✓' : ''}</li>`).join('');
+                previewContainer.innerHTML += `<div class="mb-3 p-2 border"><strong>Q${idx + 1}: ${q.question_text}</strong><ul>${opts}</ul></div>`;
+            });
+
+            // Set ke hidden input
+            document.getElementById('finalJsonData').value = JSON.stringify({ questions: questionsArray });
+
+            // Sembunyikan editor, tampilkan preview
+            document.getElementById('editSection').style.display = 'none';
+            document.getElementById('previewSection').style.display = 'block';
         }
 
-        // Tampilkan ke Preview
-        previewContainer.innerHTML = "";
-        questionsArray.forEach((q, idx) => {
-            let opts = q.options.map(o => `<li>${o} ${o === q.correct_answer ? '✓' : ''}</li>`).join('');
-            previewContainer.innerHTML += `<div class="mb-3 p-2 border"><strong>Q${idx + 1}: ${q.question_text}</strong><ul>${opts}</ul></div>`;
-        });
-
-        // Set ke input hidden agar bisa dikirim ke save-quiz.php
-        document.getElementById('finalJsonData').value = JSON.stringify({ questions: questionsArray });
-
-        // Toggle UI
-        document.getElementById('editSection').style.display = 'none';
-        document.getElementById('previewSection').style.display = 'block';
-        }
-            
         function backToEdit() {
             document.getElementById('editSection').style.display = 'block';
             document.getElementById('previewSection').style.display = 'none';

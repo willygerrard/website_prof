@@ -197,8 +197,6 @@ $csrf_token = csrf_token();
     </style>
 </head>
 <body>
-
-<div class="table-responsive">
     <h2>Dashboard Admin: Management User</h2>
     <p>Halo <strong><?= htmlspecialchars($_SESSION['username']); ?></strong>, Ini daftar siswa yang terdaftar.</p>
     <p style="color: #888; font-size: 13px;">💡 Nonaktifkan siswa yang sudah lulus/keluar — riwayat nilai tetap tersimpan untuk arsip.</p>
@@ -335,6 +333,7 @@ $csrf_token = csrf_token();
     </table>
 
     <a href="index.php" class="back-link">← Kembali ke Dashboard Materi</a>
+    </div>
 </div>
 
 <script>

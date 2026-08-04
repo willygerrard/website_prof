@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Kurir Internet - Belajar IP Address</title>
+
+<style>
+
+body{
+    margin:0;
+    font-family:Arial;
+    background:linear-gradient(#8ed6ff,#dff6ff);
+    overflow:hidden;
+}
+
+h1{
+    text-align:center;
+    margin:10px;
+}
+
+#panel{
+    display:flex;
+    justify-content:space-around;
+    font-size:22px;
+    font-weight:bold;
+    margin-bottom:10px;
+}
+
+#goal{
+    text-align:center;
+    font-size:32px;
+    background:white;
+    width:420px;
+    margin:auto;
+    padding:10px;
+    border-radius:15px;
+    box-shadow:0 0 15px gray;
+}
+
+#village{
+    width:900px;
+    margin:25px auto;
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:25px;
+}
+
+.house{
+
+    background:white;
+    border-radius:20px;
+    cursor:pointer;
+    text-align:center;
+    padding:25px;
+    transition:.25s;
+    user-select:none;
+    box-shadow:0 6px 12px rgba(0,0,0,.2);
+
+}
+
+.house:hover{
+
+    transform:scale(1.08);
+
+}
+
+.house span{
+
+    font-size:70px;
+    display:block;
+
+}
+
+.correct{
+
+    background:#5cff72 !important;
+
+}
+
+.wrong{
+
+    background:#ff6b6b !important;
+
+}
+
+#msg{
+
+    text-align:center;
+    font-size:40px;
+    height:50px;
+    margin-top:15px;
+    font-weight:bold;
+
+}
+
+button{
+
+    display:block;
+    margin:20px auto;
+    font-size:20px;
+    padding:10px 30px;
+
+}
+
+</style>
+
+</head>
+<body>
+
+<h1>📦 Kurir Internet</h1>
+
+<div id="panel">
+
+<div>⭐ Skor : <span id="score">0</span></div>
+
+<div>❤️ Nyawa : <span id="life">3</span></div>
+
+<div>⏰ Waktu : <span id="time">60</span></div>
+
+</div>
+
+<div id="goal">
+
+Kirim Paket ke<br>
+
+<b id="target"></b>
+
+</div>
+
+<div id="village"></div>
+
+<div id="msg"></div>
+
+<button onclick="startGame()">Main Lagi</button>
+
+<script>
+
+const village=document.getElementById("village");
+
+const target=document.getElementById("target");
+
+const scoreTxt=document.getElementById("score");
+
+const lifeTxt=document.getElementById("life");
+
+const msg=document.getElementById("msg");
+
+const timerTxt=document.getElementById("time");
+
+let houses=[];
+
+let targetIP="";
+
+let score=0;
+
+let life=3;
+
+let time=60;
+
+let timer;
+
+function buildVillage(){
+
+village.innerHTML="";
+
+houses=[];
+
+for(let i=1;i<=8;i++){
+
+let ip="192.168.1."+i;
+
+houses.push(ip);
+
+let div=document.createElement("div");
+
+div.className="house";
+
+div.dataset.ip=ip;
+
+div.innerHTML="<span>🏠</span>"+ip;
+
+div.onclick=()=>clickHouse(div);
+
+village.appendChild(div);
+
+}
+
+}
+
+function randomTarget(){
+
+targetIP=houses[Math.floor(Math.random()*houses.length)];
+
+target.innerHTML=targetIP;
+
+}
+
+function clickHouse(div){
+
+if(time<=0)return;
+
+let ip=div.dataset.ip;
+
+if(ip==targetIP){
+
+score+=10;
+
+scoreTxt.innerHTML=score;
+
+msg.innerHTML="✅ Paket Sampai!";
+
+div.classList.add("correct");
+
+setTimeout(()=>div.classList.remove("correct"),300);
+
+}else{
+
+life--;
+
+lifeTxt.innerHTML=life;
+
+msg.innerHTML="❌ Salah Rumah!";
+
+div.classList.add("wrong");
+
+setTimeout(()=>div.classList.remove("wrong"),300);
+
+if(life<=0){
+
+gameOver();
+
+return;
+
+}
+
+}
+
+randomTarget();
+
+}
+
+function gameOver(){
+
+clearInterval(timer);
+
+alert("Game Over!\n\nSkor : "+score);
+
+}
+
+function startGame(){
+
+score=0;
+
+life=3;
+
+time=60;
+
+scoreTxt.innerHTML=score;
+
+lifeTxt.innerHTML=life;
+
+timerTxt.innerHTML=time;
+
+msg.innerHTML="";
+
+buildVillage();
+
+randomTarget();
+
+clearInterval(timer);
+
+timer=setInterval(()=>{
+
+time--;
+
+timerTxt.innerHTML=time;
+
+if(time<=0){
+
+clearInterval(timer);
+
+alert("Waktu Habis!\n\nSkor Kamu : "+score);
+
+}
+
+},1000);
+
+}
+
+startGame();
+
+</script>
+
+</body>
+</html>

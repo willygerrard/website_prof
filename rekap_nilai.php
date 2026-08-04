@@ -132,12 +132,18 @@ foreach ($ringkasan as $r) {
         </div>
     </header>
 
+</div>
     <!-- KONTEN -->
     <div class="container mt-5 mb-5">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h4 class="fw-bold m-0 text-dark">📊 Rekap Nilai Kuis</h4>
             <a href="pintu-rahasia-sija" class="btn btn-outline-secondary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Kembali">
                 <i class="bi bi-arrow-counterclockwise"></i>
+            </a>
+            <!-- Tombol Export Ringkasan Excel -->
+            <a href="export_nilai.php?mode=ringkasan<?= $kelas_filter ? '&kelas='.urlencode($kelas_filter) : '' ?><?= $kategori_filter ? '&kategori='.urlencode($kategori_filter) : '' ?><?= $level_filter ? '&level='.urlencode($level_filter) : '' ?>" 
+           class="btn btn-success btn-sm fw-bold">
+            <i class="bi bi-file-earmark-excel"></i> Export Ringkasan
             </a>
         </div>
 <h5 class="fw-bold mb-3">📁 Pilih Rekap Per Kelas</h5>
