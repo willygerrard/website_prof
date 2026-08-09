@@ -22,44 +22,7 @@ include 'csrf_helper.php';
     </style>
 </head>
 <body class="bg-light">
-
-    <!-- 1. NAVBAR (Sama persis seperti index.php Bapak) -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
-            <div class="container px-4 px-lg-5">
-                <a class="navbar-brand" href="index.php">Modul Pembelajaran SIJA</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
-                <div class="collapse navbar-collapse" id="navbarSupportedContent">
-                    <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4">
-                    
-                </ul>
-                <div class="d-flex align-items-center gap-3">
-                    <?php if (isset($_SESSION['username'])) : ?>
-                     <span class="text-secondary fw-medium d-none d-md-inline small">
-                         👋 Hai, <strong class="text-dark"><?= htmlspecialchars($_SESSION['username']); ?></strong>
-                    </span>
-                 <?php endif; ?>
-                </div>
-            </div>
-        </div>
-    </nav>
-
-        <!-- Header-->
- <header class="py-5" style="
-    background: linear-gradient(to bottom, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.9)), 
-                url('https://images.unsplash.com/photo-1558494949-ef010cbdcc31?q=80&w=800'); 
-    background-size: cover; 
-    background-position: center;">
-    
-    <div class="container px-4 px-lg-5 my-5">
-        <div class="text-center text-white">
-            <h1 class="display-4 fw-bolder"> 
-                Pusat Pembelajaran SIJA
-            </h1>
-            <p class="lead fw-normal text-white-50 mb-0">
-               Selamat datang di portal lab kendali materi mandiri</p>
-            </div>
-    </div>
-</header>
+    <?php include 'includes/admin_header.php'; ?>
             <div class="card shadow-sm border-0 rounded-3">
                 <div class="card-header bg-primary text-white py-3">
                     <h5 class="card-title mb-0 fw-bold">🚀 Tambah Modul Baru</h5>
@@ -131,10 +94,7 @@ include 'csrf_helper.php';
                     </form>
                 </div>
             </div> </div>
-    <!-- Footer-->
-        <footer class="py-5 bg-dark">
-            <div class="container"><p class="m-0 text-center text-white">Copyright &copy; SIJA Website 2026</p></div>
-        </footer>
+    <?php include 'includes/footer.php'; ?>
         <!-- Bootstrap core JS-->
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

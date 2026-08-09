@@ -46,13 +46,7 @@ $is_aktif = ($status_sekarang['status'] ?? 'nonaktif') === 'aktif';
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
 </head>
 <body class="bg-light">
-
-    <!-- NAVBAR -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
-        <div class="container px-4 px-lg-5">
-            <a class="navbar-brand" href="index.php">Modul Pembelajaran SIJA</a>
-        </div>
-    </nav>
+    <?php include 'includes/admin_header.php'; ?>
 
     <!-- KONTEN -->
     <div class="container mt-5 mb-5" style="max-width: 500px;">
@@ -107,6 +101,8 @@ $is_aktif = ($status_sekarang['status'] ?? 'nonaktif') === 'aktif';
             <a href="index.php" class="text-muted small text-decoration-none">← Kembali ke Beranda</a>
         </div>
     </div>
+
+    <?php include 'includes/footer.php'; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

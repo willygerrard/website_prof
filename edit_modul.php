@@ -127,31 +127,12 @@ try {
     </style>
 </head>
 <body class="bg-light">
-
-    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom sticky-top py-3">
-        <div class="container">
-            <a class="navbar-brand fw-bold text-dark" href="index.php">Modul Pembelajaran SIJA</a>
-            <div class="ms-auto d-flex align-items-center gap-3">
-                 <?php if (isset($_SESSION['username'])) : ?>
-        <span class="text-secondary fw-medium d-none d-md-inline small">
-            👋 Hai, <strong class="text-dark"><?= htmlspecialchars($_SESSION['username']); ?></strong>
-        </span>
-    <?php endif; ?>
-            </div>
-        </div>
-    </nav>
-
-    <div class="hero-banner shadow-sm">
-        <div class="container">
-            <h1 class="display-5 fw-bold">Pusat Pembelajaran SIJA</h1>
-            <p class="lead text-white-50 fs-6 m-0">Selamat datang di portal lab kendali materi mandiri.</p>
-        </div>
-    </div>
+    <?php include 'includes/admin_header.php'; ?>
 
     <div class="container mt-5 mb-5" style="max-width: 650px;">
         <div class="d-flex align-items-center justify-content-between mb-4">
             <h4 class="fw-bold m-0 text-dark">📝 Edit Modul Praktik</h4>
-            <a href="management_modul.php" class="btn btn-outline-secondary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+            <a href="gerbang-rahasia-sija" class="btn btn-outline-secondary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
                 <i class="bi bi-arrow-counterclockwise"></i>
             </a>
         </div>
@@ -216,6 +197,8 @@ try {
             </form>
         </div>
     </div>
+
+    <?php include 'includes/footer.php'; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
