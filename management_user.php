@@ -39,8 +39,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'nonaktifkan' && isset($_GET['
         } else {
             $pesan = "<div style='color: #ff3333; margin-bottom: 15px;'>❌ Gagal! Akun tidak ditemukan.</div>";
         }
-    } catch (PDOException $e) {
-        $pesan = "<div style='color: #ff3333; margin-bottom: 15px;'>Error: " . htmlspecialchars($e->getMessage()) . "</div>";
+} catch (PDOException $e) {
+        error_log('DB Error [nonaktifkan user]: ' . $e->getMessage());
+        $pesan = "<div style='color: #ff3333; margin-bottom: 15px;'>Terjadi kesalahan pada sistem. Silakan hubungi administrator.</div>";
     }
 }
 
@@ -51,10 +52,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'aktifkan' && isset($_GET['id'
 
     try {
         $stmt_update = $pdo->prepare("UPDATE users SET status = 'aktif' WHERE id = :id AND role != 'admin'");
-        $stmt_update->execute(['id' => $id_target]);
+$stmt_update->execute(['id' => $id_target]);
         $pesan = "<div style='color: #00ff66; margin-bottom: 15px;'>✅ Akun siswa diaktifkan kembali.</div>";
     } catch (PDOException $e) {
-        $pesan = "<div style='color: #ff3333; margin-bottom: 15px;'>Error: " . htmlspecialchars($e->getMessage()) . "</div>";
+        error_log('DB Error [aktifkan user]: ' . $e->getMessage());
+        $pesan = "<div style='color: #ff3333; margin-bottom: 15px;'>Terjadi kesalahan pada sistem. Silakan hubungi administrator.</div>";
     }
 }
 
@@ -87,9 +89,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'hapus_permanen' && isset($_GE
 
             $pesan = "<div style='color: #ff4444; margin-bottom: 15px;'>🗑️ Akun permanen dihapus! (Belum ada riwayat nilai, aman dihapus).</div>";
         }
-    } catch (PDOException $e) {
+} catch (PDOException $e) {
         $pdo->rollBack();
-        $pesan = "<div style='color: #ff3333; margin-bottom: 15px;'>Error: " . htmlspecialchars($e->getMessage()) . "</div>";
+        error_log('DB Error [hapus permanen user]: ' . $e->getMessage());
+        $pesan = "<div style='color: #ff3333; margin-bottom: 15px;'>Terjadi kesalahan pada sistem. Silakan hubungi administrator.</div>";
     }
 }
 
@@ -102,10 +105,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     if ($id_target && $nama_baru !== '') {
         try {
             $stmt_nama = $pdo->prepare("UPDATE users SET nama_asli = ? WHERE id = ? AND role != 'admin'");
-            $stmt_nama->execute([$nama_baru, $id_target]);
+$stmt_nama->execute([$nama_baru, $id_target]);
             $pesan = "<div style='color: #00ccff; margin-bottom: 15px;'>✅ Nama siswa diperbarui.</div>";
         } catch (PDOException $e) {
-            $pesan = "<div style='color: #ff3333; margin-bottom: 15px;'>Error: " . htmlspecialchars($e->getMessage()) . "</div>";
+            error_log('DB Error [update nama user]: ' . $e->getMessage());
+            $pesan = "<div style='color: #ff3333; margin-bottom: 15px;'>Terjadi kesalahan pada sistem. Silakan hubungi administrator.</div>";
         }
     } else {
         $pesan = "<div style='color: #ff9933; margin-bottom: 15px;'>⚠️ Nama tidak boleh kosong.</div>";
@@ -121,7 +125,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'reset_password' && isset($_GE
 
     try {
         $stmt_reset = $pdo->prepare("UPDATE users SET password = ? WHERE id = ? AND role != 'admin'");
-        $stmt_reset->execute([$hash_baru, $id_target]);
+$stmt_reset->execute([$hash_baru, $id_target]);
 
         if ($stmt_reset->rowCount() > 0) {
             $pesan = "<div style='color: #00ccff; margin-bottom: 15px;'>🔑 Password berhasil direset menjadi: <strong>$password_default</strong> — beritahu siswa untuk login dengan password baru ini.</div>";
@@ -129,7 +133,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'reset_password' && isset($_GE
             $pesan = "<div style='color: #ff3333; margin-bottom: 15px;'>❌ Gagal reset password. Akun tidak ditemukan.</div>";
         }
     } catch (PDOException $e) {
-        $pesan = "<div style='color: #ff3333; margin-bottom: 15px;'>Error: " . htmlspecialchars($e->getMessage()) . "</div>";
+        error_log('DB Error [reset password user]: ' . $e->getMessage());
+        $pesan = "<div style='color: #ff3333; margin-bottom: 15px;'>Terjadi kesalahan pada sistem. Silakan hubungi administrator.</div>";
     }
 }
 
@@ -160,7 +165,7 @@ try {
     $stmt_read->execute($params);
     $daftar_siswa = $stmt_read->fetchAll();
 } catch (PDOException $e) {
-    die("Gagal njupuk data siswa: " . $e->getMessage());
+    db_error($e);
 }
 
 // Token CSRF untuk semua link aksi

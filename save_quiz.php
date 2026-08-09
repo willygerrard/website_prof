@@ -128,5 +128,5 @@ try {
         $pdo->rollBack();
     }
 
-    die("Error: " . $e->getMessage());
+    db_error($e);
 }

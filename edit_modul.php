@@ -103,7 +103,7 @@ try {
     exit();
 
     } catch (PDOException $e) {
-    die("Gagal Update ke MariaDB karena: " . $e->getMessage());
+        db_error($e);
     }
 }
 ?>

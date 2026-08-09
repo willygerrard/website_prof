@@ -93,8 +93,8 @@ if ($jenis == 'video') {
         echo "<script>alert('Mantap Pak Komandan! Modul baru berhasil dicatat!'); window.location.href = 'gerbang-rahasia-sija';</script>";
         exit();
 
-    } catch (PDOException $e) {
-        die("Gagal menyimpan ke MariaDB, Pak! Karena: " . $e->getMessage());
+} catch (PDOException $e) {
+        db_error($e);
     }
 
 } else {

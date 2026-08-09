@@ -26,6 +26,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
         // LOGIN SUKSES! Buat tanda bukti session
+        session_regenerate_id(true);
+
         $_SESSION['is_login'] = true;
         $_SESSION['username'] = $user['username'];
         // Setelah password_verify sukses

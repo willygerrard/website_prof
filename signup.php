@@ -65,8 +65,9 @@ if (isset($_POST['register'])) {
                     $pesan = "<div style='color: #00ff66; margin-bottom: 15px;'>Akun siswa sukses dibuat. Silahkan kembali ke halaman Login!</div>";
                 }
             }
-        } catch (PDOException $e) {
-            $pesan = "<div style='color: #ff3333; margin-bottom: 15px;'>Gagal Error: " . htmlspecialchars($e->getMessage()) . "</div>";
+} catch (PDOException $e) {
+            error_log('DB Error [signup]: ' . $e->getMessage());
+            $pesan = "<div style='color: #ff3333; margin-bottom: 15px;'>Terjadi kesalahan pada sistem. Silakan hubungi administrator.</div>";
         }
     }
 }

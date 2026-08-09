@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </script>";
         exit();
     } catch (PDOException $e) {
-        die("Gagal update: " . $e->getMessage());
+        db_error($e);
     }
 }
 ?>

@@ -42,8 +42,8 @@ if (!empty($id)) {
             echo "<script>alert('Data modul tidak ditemukan, Pak!'); window.location.href = 'gerbang-rahasia-sija';</script>";
         }
 
-    } catch (PDOException $e) {
-        die("Waduh, Query Hapus Gagal karena: " . $e->getMessage());
+} catch (PDOException $e) {
+        db_error($e);
     }
 } else {
     header("Location: management_modul.php");
