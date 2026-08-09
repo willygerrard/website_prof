@@ -30,6 +30,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $_SESSION['is_login'] = true;
         $_SESSION['username'] = $user['username'];
+
+        // Jika siswa login dengan password default hasil reset, tandai agar
+        // diarahkan mengganti password dulu (lihat index.php & akun_saya.php).
+        if (($user['role'] ?? '') === 'siswa' && password_verify(DEFAULT_RESET_PASSWORD, $user['password'])) {
+            $_SESSION['butuh_ganti_password'] = true;
+        } else {
+            $_SESSION['butuh_ganti_password'] = false;
+        }
         // Setelah password_verify sukses
         $_SESSION['role']     = $user['role']; // <-- Catat status admin/siswa di sini
         $_SESSION['user_id'] = $user['id'];  // tambah ini

@@ -13,6 +13,13 @@ if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
     exit();
 }
 
+// Siswa yang login dengan password default hasil reset diarahkan ke akun_saya.php
+// agar diwajibkan mengganti password terlebih dahulu sebelum mengakses dashboard.
+if (!empty($_SESSION['butuh_ganti_password'])) {
+    header("Location: akun_saya.php");
+    exit();
+}
+
 $search           = trim($_GET['keyword'] ?? '');
 $filter_jenis     = $_GET['jenis'] ?? 'semua';
 $kategori_pilihan = $_GET['kategori'] ?? 'Semua Materi';

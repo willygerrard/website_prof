@@ -71,4 +71,12 @@ function db_error(PDOException $e) {
     error_log('DB Error [' . date('Y-m-d H:i:s') . ']: ' . $e->getMessage());
     die('Terjadi kesalahan pada sistem. Silakan hubungi administrator.');
 }
+
+/**
+ * DEFAULT_RESET_PASSWORD
+ * Password default saat admin mereset password siswa melalui management_user.php.
+ * Nilai ini TIDAK boleh ditampilkan ke admin/user — siswa diwajibkan mengganti password
+ * saat login menggunakan password default ini (lihat proses_login.php & index.php).
+ */
+const DEFAULT_RESET_PASSWORD = 'sija2026';
 ?>

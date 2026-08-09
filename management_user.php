@@ -120,15 +120,20 @@ $stmt_nama->execute([$nama_baru, $id_target]);
 if (isset($_GET['action']) && $_GET['action'] === 'reset_password' && isset($_GET['id'])) {
     validate_csrf_get();
     $id_target = (int)$_GET['id'];
-    $password_default = 'sija2026';
-    $hash_baru = password_hash($password_default, PASSWORD_DEFAULT);
+    // Gunakan konstanta default dari koneksi.php (TIDAK ditampilkan ke admin).
+    $hash_baru = password_hash(DEFAULT_RESET_PASSWORD, PASSWORD_DEFAULT);
 
     try {
         $stmt_reset = $pdo->prepare("UPDATE users SET password = ? WHERE id = ? AND role != 'admin'");
 $stmt_reset->execute([$hash_baru, $id_target]);
 
         if ($stmt_reset->rowCount() > 0) {
-            $pesan = "<div style='color: #00ccff; margin-bottom: 15px;'>🔑 Password berhasil direset menjadi: <strong>$password_default</strong> — beritahu siswa untuk login dengan password baru ini.</div>";
+            // Ambil username siswa untuk pesan yang informatif tanpa membocorkan password.
+            $stmt_nama_reset = $pdo->prepare("SELECT username FROM users WHERE id = ?");
+            $stmt_nama_reset->execute([$id_target]);
+            $nama_reset = $stmt_nama_reset->fetchColumn();
+
+            $pesan = "<div style='color: #00ccff; margin-bottom: 15px;'>🔑 Reset password untuk user <strong>" . htmlspecialchars($nama_reset) . "</strong> berhasil. Siswa diminta mengganti password saat login.</div>";
         } else {
             $pesan = "<div style='color: #ff3333; margin-bottom: 15px;'>❌ Gagal reset password. Akun tidak ditemukan.</div>";
         }
@@ -311,7 +316,7 @@ $csrf_token = csrf_token();
                             <a href="?action=reset_password&id=<?= $siswa['id']; ?>&csrf_token=<?= urlencode($csrf_token) ?>&search=<?= urlencode($search) ?>&sort=<?= urlencode($sort) ?>"
                                class="btn-action"
                                style="background: #0099cc; color: #fff;"
-                               onclick="return confirm('Reset password jadi \"sija2026\"? Beritahu siswa untuk ganti password setelah login.')">
+                               onclick="return confirm('Yakin reset password untuk siswa ini? Siswa akan diminta mengganti password saat login berikutnya.')">
                                🔑 Reset PW
                             </a>
 
