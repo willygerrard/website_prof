@@ -1,6 +1,8 @@
 <?php
 include 'koneksi.php';
+include 'csrf_helper.php'; // Helper CSRF yang sudah Anda buat
 session_start();
+
 if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
     header("Location: login.php");
     exit();
@@ -31,14 +33,14 @@ $stmt->execute([$sesi_id]);
 $sesi = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$sesi) {
-    // Sekalian update status di DB kalau ternyata ada yang lolos
+    // Update status di DB jika ada yang lolos batas waktu
     $pdo->prepare("UPDATE kuis_sesi SET status = 'nonaktif', ditutup_at = NOW() WHERE id = ? AND status = 'aktif'")
         ->execute([$sesi_id]);
         
     die("Sesi kuis ini sudah ditutup otomatis oleh sistem atau tidak ditemukan. <a href='kuis.php'>Kembali</a>");
 }
 
-// Pastikan sesi ini memang ditujukan untuk kelas siswa yang login
+// Pastikan sesi ini ditujukan untuk kelas siswa yang login
 $stmtKelasSiswa = $pdo->prepare("SELECT kelas FROM users WHERE id = ?");
 $stmtKelasSiswa->execute([$user_id]);
 $kelas_siswa = $stmtKelasSiswa->fetchColumn();
@@ -50,7 +52,7 @@ if (!$cekKelas->fetch()) {
     die("Kuis ini tidak ditujukan untuk kelas kamu. <a href='kuis.php'>Kembali</a>");
 }
 
-// Cek attempt & status lulus sebelum mengizinkan akses
+// Cek attempt & status lulus
 $cek = $pdo->prepare("SELECT COUNT(*) as total, MAX(skor) as nilai_terbaik FROM kuis_hasil WHERE user_id = ? AND sesi_id = ?");
 $cek->execute([$user_id, $sesi_id]);
 $status = $cek->fetch(PDO::FETCH_ASSOC);
@@ -67,26 +69,40 @@ if ($total_attempt >= MAX_ATTEMPT) {
 
 $pesan_error = '';
 
-// ===== HANDLE SUBMIT =====
+// ===== HANDLE SUBMIT (KEBAL MANIPULASI POST) =====
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_kuis'])) {
-    $soal_ids = $_POST['soal_id'] ?? [];
-    $jawaban_siswa = $_POST['jawaban'] ?? [];
+    // Validasi CSRF Token
+    if (function_exists('csrf_require_valid_post')) {
+        csrf_require_valid_post();
+    }
 
-    if (empty($soal_ids)) {
-        $pesan_error = "Terjadi kesalahan, silakan coba lagi.";
+    // AMBIL ID SOAL RESMI DARI SESSION (Abaikan $_POST['soal_id'] suntikan)
+    $session_key = 'kuis_soal_ids_sesi_' . $sesi_id . '_user_' . $user_id;
+    $soal_ids_resmi = $_SESSION[$session_key] ?? [];
+    $jawaban_siswa  = $_POST['jawaban'] ?? [];
+
+    if (empty($soal_ids_resmi)) {
+        $pesan_error = "Sesi kuis tidak valid atau telah kedaluwarsa. Silakan muat ulang halaman.";
     } else {
         $benar = 0;
-        $total_soal = count($soal_ids);
+        $total_soal = count($soal_ids_resmi);
 
-        foreach ($soal_ids as $soal_id) {
+        // Prepare query sekali di luar loop untuk efisiensi
+        $stmt_kunci = $pdo->prepare("SELECT jawaban FROM kuis_soal WHERE id = ?");
+
+        foreach ($soal_ids_resmi as $soal_id) {
             $soal_id = (int)$soal_id;
-            $stmt = $pdo->prepare("SELECT jawaban FROM kuis_soal WHERE id = ?");
-            $stmt->execute([$soal_id]);
-            $kunci = $stmt->fetchColumn();
+            
+            $stmt_kunci->execute([$soal_id]);
+            $kunci = $stmt_kunci->fetchColumn();
 
             $jawab_user = $jawaban_siswa[$soal_id] ?? null;
-            if ($jawab_user !== null && $jawab_user === $kunci) {
-                $benar++;
+
+            // Sanitasi: Pastikan input hanya string a, b, c, atau d
+            if ($jawab_user !== null && in_array(strtolower($jawab_user), ['a', 'b', 'c', 'd'], true)) {
+                if (strtolower($jawab_user) === strtolower($kunci)) {
+                    $benar++;
+                }
             }
         }
 
@@ -95,6 +111,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_kuis'])) {
         // Simpan hasil
         $stmt = $pdo->prepare("INSERT INTO kuis_hasil (user_id, kategori, level, sesi_id, skor, total_soal, attempt, dikerjakan_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
         $stmt->execute([$user_id, $sesi['kategori'], $sesi['level'], $sesi_id, $skor, $total_soal, $total_attempt + 1]);
+
+        // Bersihkan session ID Soal kuis setelah berhasil submit
+        unset($_SESSION[$session_key]);
 
         // Kirim notifikasi WA ke ortu
         $stmt_wa = $pdo->prepare("SELECT no_wa_ortu FROM users WHERE id = ?");
@@ -127,20 +146,16 @@ $stmtMateri->execute([$sesi_id]);
 $materi_terpilih = $stmtMateri->fetchAll(PDO::FETCH_COLUMN);
 
 if (!empty($materi_terpilih)) {
-    // Jika ada materi yang dipilih saat deploy -> Filter berdasarkan materi
     $placeholders = implode(',', array_fill(0, count($materi_terpilih), '?'));
-    
     $querySoal = "
         SELECT * FROM kuis_soal 
         WHERE kategori = ? AND level = ? AND materi IN ($placeholders)
         ORDER BY RAND()
     ";
-    
     $params = array_merge([$sesi['kategori'], $sesi['level']], $materi_terpilih);
     $stmt = $pdo->prepare($querySoal);
     $stmt->execute($params);
 } else {
-    // Jika materi dikosongkan -> Ambil semua materi
     $stmt = $pdo->prepare("SELECT * FROM kuis_soal WHERE kategori = ? AND level = ? ORDER BY RAND()");
     $stmt->execute([$sesi['kategori'], $sesi['level']]);
 }
@@ -150,6 +165,10 @@ $soal_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
 if (empty($soal_list)) {
     die("Belum ada soal untuk kategori/level/materi ini. Hubungi admin. <a href='kuis.php'>Kembali</a>");
 }
+
+// SIMPAN ID SOAL RESMI KE SESSION UNTUK DIVALIDASI SAAT SUBMIT POST
+$session_key = 'kuis_soal_ids_sesi_' . $sesi_id . '_user_' . $user_id;
+$_SESSION[$session_key] = array_map('intval', array_column($soal_list, 'id'));
 
 // Acak urutan pilihan jawaban per soal
 foreach ($soal_list as &$soal) {
@@ -177,8 +196,8 @@ $durasi_detik = $sesi['durasi_menit'] * 60;
         }
         .soal-card { scroll-margin-top: 80px; }
     </style>
-	<!-- SweetAlert2 CDN -->
-	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- SweetAlert2 CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
 
@@ -194,17 +213,19 @@ $durasi_detik = $sesi['durasi_menit'] * 60;
         </div>
 
         <?php if ($pesan_error): ?>
-        <div class="alert alert-danger"><?= $pesan_error ?></div>
+        <div class="alert alert-danger"><?= htmlspecialchars($pesan_error) ?></div>
         <?php endif; ?>
 
         <form method="POST" id="form-kuis">
+            <!-- Hidden CSRF Token (sesuai fungsi csrf_helper Anda) -->
+            <?php if (function_exists('csrf_field')) { echo csrf_field(); } ?>
+
             <input type="hidden" name="sesi_id" value="<?= $sesi_id ?>">
 
             <?php $no = 1; foreach ($soal_list as $soal): ?>
             <div class="card mb-3 shadow-sm border-0 rounded-3 soal-card">
                 <div class="card-body p-4">
                     <p class="fw-semibold mb-3"><?= $no++ ?>. <?= htmlspecialchars($soal['pertanyaan']) ?></p>
-                    <input type="hidden" name="soal_id[]" value="<?= $soal['id'] ?>">
 
                     <?php foreach (['a','b','c','d'] as $huruf): ?>
                     <div class="form-check mb-2">
@@ -251,24 +272,24 @@ $durasi_detik = $sesi['durasi_menit'] * 60;
         updateTimer();
         setInterval(updateTimer, 1000);
 
-        // ===== ANTI-CHEAT: deteksi pindah tab =====
-		let tabSwitchCount = 0;
+        // ===== ANTI-CHEAT: Deteksi Pindah Tab =====
+        let tabSwitchCount = 0;
 
-		document.addEventListener('visibilitychange', function () {
-			if (document.hidden) {
-				tabSwitchCount++;
-				console.warn('Tab switch terdeteksi:', tabSwitchCount);
-			} else {
-				Swal.fire({
-					icon: 'warning',
-					title: 'HAYOO MAU PINDAH KEMANA? 🧐',
-					html: `Aktivitas keluar tab terdeteksi <b>${tabSwitchCount} kali</b>!<br><span class="text-danger fw-bold">Tetap di halaman ini atau nilai kamu akan ditinjau ulang oleh sistem.</span>`,
-					confirmButtonText: 'Ampun Pak, Saya Kembali Kerjakan!',
-					confirmButtonColor: '#dc3545',
-					allowOutsideClick: false
-				});
-			}
-		});
+        document.addEventListener('visibilitychange', function () {
+            if (document.hidden) {
+                tabSwitchCount++;
+                console.warn('Tab switch terdeteksi:', tabSwitchCount);
+            } else {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'HAYOO MAU PINDAH KEMANA? 🧐',
+                    html: `Aktivitas keluar tab terdeteksi <b>${tabSwitchCount} kali</b>!<br><span class="text-danger fw-bold">Tetap di halaman ini atau nilai kamu akan ditinjau ulang oleh sistem.</span>`,
+                    confirmButtonText: 'Ampun Pak, Saya Kembali Kerjakan!',
+                    confirmButtonColor: '#dc3545',
+                    allowOutsideClick: false
+                });
+            }
+        });
     </script>
 </body>
 </html>
