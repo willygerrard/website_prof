@@ -1,5 +1,6 @@
 <?php
 include 'koneksi.php';
+include __DIR__ . '/includes/soal_writer.php';
 include 'csrf_helper.php';
 session_start();
 if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
@@ -32,12 +33,6 @@ if (!is_array($data) || empty($data) || !$kategori || !in_array($level, $allowed
 try {
     $pdo->beginTransaction();
 
-    $stmt = $pdo->prepare(
-        "UPDATE kuis_soal
-         SET kategori = ?, level = ?, materi = ?, pertanyaan = ?, pilihan_a = ?, pilihan_b = ?, pilihan_c = ?, pilihan_d = ?, jawaban = ?
-         WHERE id = ?"
-    );
-
     foreach ($data as $row) {
         $id         = (int)($row['id'] ?? 0);
         $pertanyaan = trim($row['pertanyaan'] ?? '');
@@ -53,7 +48,17 @@ try {
             throw new Exception("Data soal id={$id} tidak lengkap atau tidak valid.");
         }
 
-        $stmt->execute([$kategori, $level, $materi, $pertanyaan, $pilihan_a, $pilihan_b, $pilihan_c, $pilihan_d, $jawaban, $id]);
+        updateSoalPilgan($pdo, $id, [
+            'kategori'   => $kategori,
+            'level'      => $level,
+            'materi'     => $materi,
+            'pertanyaan' => $pertanyaan,
+            'pilihan_a'  => $pilihan_a,
+            'pilihan_b'  => $pilihan_b,
+            'pilihan_c'  => $pilihan_c,
+            'pilihan_d'  => $pilihan_d,
+            'jawaban'    => $jawaban,
+        ]);
     }
 
     $pdo->commit();

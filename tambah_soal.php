@@ -1,5 +1,6 @@
 <?php
 include 'koneksi.php';
+include __DIR__ . '/includes/soal_writer.php';
 session_start();
 include 'csrf_helper.php';
 
@@ -18,27 +19,64 @@ $materi_list = $pdo->query("SELECT DISTINCT materi FROM kuis_soal WHERE materi I
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori']) && !isset($_POST['quiz_json'])) {
     csrf_require_valid_post();
 
+    $jenis_soal = ($_POST['jenis_soal'] ?? '') === 'isian' ? 'isian' : 'pilgan';
     $kategori   = trim($_POST['kategori'] ?? '');
     $pertanyaan = trim($_POST['pertanyaan'] ?? '');
-    $pilihan_a  = trim($_POST['pilihan_a'] ?? '');
-    $pilihan_b  = trim($_POST['pilihan_b'] ?? '');
-    $pilihan_c  = trim($_POST['pilihan_c'] ?? '');
-    $pilihan_d  = trim($_POST['pilihan_d'] ?? '');
-    $jawaban    = trim($_POST['jawaban'] ?? '');
     $level      = trim($_POST['level'] ?? '');
 
     $materi_baru  = trim($_POST['materi_baru'] ?? '');
     $materi_pilih = trim($_POST['materi_pilih'] ?? '');
     $materi       = $materi_baru !== '' ? $materi_baru : ($materi_pilih !== '' ? $materi_pilih : null);
 
-    if ($kategori && $pertanyaan && $pilihan_a && $pilihan_b && $pilihan_c && $pilihan_d && $jawaban && $level) {
-        $stmt = $pdo->prepare("INSERT INTO kuis_soal (kategori, level, materi, pertanyaan, pilihan_a, pilihan_b, pilihan_c, pilihan_d, jawaban) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$kategori, $level, $materi, $pertanyaan, $pilihan_a, $pilihan_b, $pilihan_c, $pilihan_d, $jawaban]);
-        $pesan = '✅ Soal berhasil ditambahkan!';
-        $pesan_type = 'success';
+    if ($jenis_soal === 'pilgan') {
+        $pilihan_a  = trim($_POST['pilihan_a'] ?? '');
+        $pilihan_b  = trim($_POST['pilihan_b'] ?? '');
+        $pilihan_c  = trim($_POST['pilihan_c'] ?? '');
+        $pilihan_d  = trim($_POST['pilihan_d'] ?? '');
+        $jawaban    = trim($_POST['jawaban'] ?? '');
+
+        if ($kategori && $pertanyaan && $pilihan_a && $pilihan_b && $pilihan_c && $pilihan_d && $jawaban && $level) {
+            simpanSoalPilgan($pdo, [
+                'kategori'   => $kategori,
+                'level'      => $level,
+                'materi'     => $materi,
+                'pertanyaan' => $pertanyaan,
+                'pilihan_a'  => $pilihan_a,
+                'pilihan_b'  => $pilihan_b,
+                'pilihan_c'  => $pilihan_c,
+                'pilihan_d'  => $pilihan_d,
+                'jawaban'    => $jawaban,
+            ]);
+            $pesan = '✅ Soal pilihan ganda berhasil ditambahkan!';
+            $pesan_type = 'success';
+        } else {
+            $pesan = '⚠️ Semua field wajib diisi!';
+            $pesan_type = 'danger';
+        }
     } else {
-        $pesan = '⚠️ Semua field wajib diisi!';
-        $pesan_type = 'danger';
+        // Isian pendek: 1 baris = 1 alternatif jawaban yang diterima
+        $alternatif_raw = $_POST['jawaban_alternatif'] ?? '';
+        $alternatif_list = array_values(array_filter(array_map('trim', explode("\n", $alternatif_raw))));
+
+        if ($kategori && $pertanyaan && $level && !empty($alternatif_list)) {
+            try {
+                simpanSoalIsian($pdo, [
+                    'kategori'   => $kategori,
+                    'level'      => $level,
+                    'materi'     => $materi,
+                    'pertanyaan' => $pertanyaan,
+                    'alternatif' => $alternatif_list,
+                ]);
+                $pesan = '✅ Soal isian berhasil ditambahkan dengan ' . count($alternatif_list) . ' alternatif jawaban!';
+                $pesan_type = 'success';
+            } catch (Exception $e) {
+                $pesan = '❌ Gagal menyimpan soal isian.';
+                $pesan_type = 'danger';
+            }
+        } else {
+            $pesan = '⚠️ Pertanyaan dan minimal 1 alternatif jawaban wajib diisi!';
+            $pesan_type = 'danger';
+        }
     }
 }
 ?>
@@ -91,7 +129,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori']) && !isset
             <div class="card-header bg-dark text-white">Metadata Soal</div>
             <div class="card-body">
                 <div class="row g-3">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
+                        <label class="form-label">Jenis Soal</label>
+                        <select class="form-select" id="sharedJenisSoal" onchange="syncSharedMetadata(); toggleJenisSoalUI()">
+                            <option value="pilgan">Pilihan Ganda</option>
+                            <option value="isian">Isian Pendek</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
                         <label class="form-label">Kategori</label>
                         <select class="form-select" id="sharedKategori" onchange="syncSharedMetadata()">
                             <option value="Network">Network</option>
@@ -100,7 +145,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori']) && !isset
                             <option value="DevOps">DevOps</option>
                         </select>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="form-label">Level</label>
                         <select class="form-select" id="sharedLevel" onchange="syncSharedMetadata()">
                             <option value="pemula">Pemula</option>
@@ -108,7 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori']) && !isset
                             <option value="mahir">Mahir</option>
                         </select>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="form-label">Materi</label>
                         <select class="form-select" id="sharedMateri" onchange="syncSharedMetadata(); toggleMateriBaru(this, 'sharedMateriBaru')">
                             <option value="">-- Belum Ditandai --</option>
@@ -132,6 +177,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori']) && !isset
                     <div class="card-body">
                         <form method="POST">
                             <?= csrf_field() ?>
+                            <input type="hidden" name="jenis_soal" id="manualJenisSoal" value="pilgan">
                             <div class="mb-2">
                                 <label class="form-label">Kategori</label>
                                 <select class="form-select" name="kategori" id="manualKategori" required>
@@ -165,18 +211,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori']) && !isset
                                 <label class="form-label">Pertanyaan</label>
                                 <textarea class="form-control" name="pertanyaan" rows="2" required></textarea>
                             </div>
-                            <div class="row g-2">
-                                <?php foreach(['a','b','c','d'] as $h): ?>
-                                    <div class="col-6"><input type="text" class="form-control" name="pilihan_<?= $h ?>" placeholder="Pilihan <?= strtoupper($h) ?>" required></div>
-                                <?php endforeach; ?>
+
+                            <!-- Bagian khusus Pilihan Ganda -->
+                            <div id="bagianPilgan">
+                                <div class="row g-2">
+                                    <?php foreach(['a','b','c','d'] as $h): ?>
+                                        <div class="col-6"><input type="text" class="form-control" name="pilihan_<?= $h ?>" placeholder="Pilihan <?= strtoupper($h) ?>"></div>
+                                    <?php endforeach; ?>
+                                </div>
+                                <div class="mt-2">
+                                    <label class="form-label">Jawaban Benar</label>
+                                    <select class="form-select" name="jawaban">
+                                        <option value="a">A</option><option value="b">B</option>
+                                        <option value="c">C</option><option value="d">D</option>
+                                    </select>
+                                </div>
                             </div>
-                            <div class="mt-2">
-                                <label class="form-label">Jawaban Benar</label>
-                                <select class="form-select" name="jawaban" required>
-                                    <option value="a">A</option><option value="b">B</option>
-                                    <option value="c">C</option><option value="d">D</option>
-                                </select>
+
+                            <!-- Bagian khusus Isian Pendek -->
+                            <div id="bagianIsian" style="display:none;">
+                                <label class="form-label">Alternatif Jawaban Benar</label>
+                                <textarea class="form-control" name="jawaban_alternatif" rows="3"
+                                          placeholder="Satu alternatif per baris, misal:&#10;IP address&#10;alamat IP&#10;Internet Protocol"></textarea>
+                                <div class="form-text">
+                                    Tulis semua variasi istilah yang dianggap benar, 1 baris = 1 alternatif.
+                                    Sistem otomatis abaikan besar-kecil huruf, spasi berlebih, dan tanda baca saat mencocokkan.
+                                </div>
                             </div>
+
                             <button type="submit" class="btn btn-primary w-100 mt-3">Simpan Soal</button>
                         </form>
                     </div>
@@ -224,8 +286,27 @@ Answer: B" style="min-height: 250px; resize: vertical;"></textarea>
         </div>
     </div>
 
+    <script src="js/quiz_parser.js"></script>
     <script>
+        function toggleJenisSoalUI() {
+            const jenis = document.getElementById('sharedJenisSoal')?.value || 'pilgan';
+            const bagianPilgan = document.getElementById('bagianPilgan');
+            const bagianIsian = document.getElementById('bagianIsian');
+            const pilihanInputs = document.querySelectorAll('#bagianPilgan input, #bagianPilgan select');
+
+            if (jenis === 'isian') {
+                bagianPilgan.style.display = 'none';
+                bagianIsian.style.display = 'block';
+                pilihanInputs.forEach(el => el.required = false);
+            } else {
+                bagianPilgan.style.display = 'block';
+                bagianIsian.style.display = 'none';
+                pilihanInputs.forEach(el => { if (el.tagName === 'INPUT') el.required = true; });
+            }
+        }
+
         function syncSharedMetadata() {
+            const sharedJenisSoal = document.getElementById('sharedJenisSoal')?.value || 'pilgan';
             const sharedKategori = document.getElementById('sharedKategori')?.value || '';
             const sharedLevel = document.getElementById('sharedLevel')?.value || '';
             const sharedMateriSelect = document.getElementById('sharedMateri');
@@ -233,11 +314,13 @@ Answer: B" style="min-height: 250px; resize: vertical;"></textarea>
             const sharedMateriBaru = document.getElementById('sharedMateriBaru')?.value.trim() || '';
 
             // 1. Sinkronisasi ke Form Manual (Sebelah Kiri)
+            const manualJenisSoal = document.getElementById('manualJenisSoal');
             const manualKategori = document.getElementById('manualKategori');
             const manualLevel = document.getElementById('manualLevel');
             const manualMateriPilih = document.getElementById('materi_pilih_manual');
             const manualMateriBaru = document.getElementById('materi_baru_manual');
 
+            if (manualJenisSoal) manualJenisSoal.value = sharedJenisSoal;
             if (manualKategori) manualKategori.value = sharedKategori;
             if (manualLevel) manualLevel.value = sharedLevel;
             
@@ -285,41 +368,8 @@ Answer: B" style="min-height: 250px; resize: vertical;"></textarea>
                 return;
             }
 
-            // Parsing teks menjadi array JSON
-            const questionBlocks = rawText.split(/\n\s*\n/);
-            const questionsArray = [];
-
-            for (let block of questionBlocks) {
-                block = block.trim();
-                if (!block) continue;
-                const lines = block.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-                
-                let questionText = "";
-                let options = [];
-                let correctAnswer = "";
-
-                lines.forEach(line => {
-                    if (line.match(/^(ans|answer|correct|key)\s*:\s*/i)) {
-                        correctAnswer = line.replace(/^(ans|answer|correct|key)\s*:\s*/i, '').trim();
-                    } else if (line.match(/^[A-E][\)|\]\.]\s*/i)) {
-                        options.push(line.replace(/^[A-E][\)|\]\.]\s*/i, '').trim());
-                    } else if (line.match(/^\d+[\.\)]\s*/)) {
-                        questionText = line.replace(/^\d+[\.\)]\s*/, '').trim();
-                    } else {
-                        if (!questionText) questionText = line;
-                    }
-                });
-
-                // Terapkan pilihan jika jawaban berupa huruf A/B/C/D
-                if (correctAnswer.length === 1 && ['A','B','C','D'].includes(correctAnswer.toUpperCase())) {
-                    const idx = correctAnswer.toUpperCase().charCodeAt(0) - 65;
-                    if (options[idx]) correctAnswer = options[idx];
-                }
-
-                if (questionText && options.length > 0) {
-                    questionsArray.push({ question_text: questionText, options: options, correct_answer: correctAnswer });
-                }
-            }
+            // Parsing teks menjadi array JSON (fungsi parseQuizText dari js/quiz_parser.js)
+            const questionsArray = parseQuizText(rawText);
 
             // Render Preview HTML
             previewContainer.innerHTML = "";
@@ -343,6 +393,7 @@ Answer: B" style="min-height: 250px; resize: vertical;"></textarea>
 
         document.addEventListener('DOMContentLoaded', function () {
             syncSharedMetadata();
+            toggleJenisSoalUI();
         });
     </script>
     <?php include 'includes/footer.php'; ?>

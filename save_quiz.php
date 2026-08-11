@@ -2,6 +2,7 @@
 
 // 2. KONEKSI KE MARIADB (Sesuaikan konfigurasi database Anda)
 include 'koneksi.php'; 
+include __DIR__ . '/includes/soal_writer.php';
 include 'csrf_helper.php';
 session_start();
 
@@ -34,38 +35,6 @@ if (!$data || !isset($data['questions'])) {
 $kategori  = $_POST['kategori'] ?? 'Network'; // Default fallback
 $level     = $_POST['level'] ?? 'pemula';    // Default fallback
 $materi    = trim($_POST['materi'] ?? '') !== '' ? trim($_POST['materi']) : null;
-
-
-// =========================
-// PREPARE INSERT
-// =========================
-
-$sql = "INSERT INTO kuis_soal
-(
-kategori,
-materi,
-pertanyaan,
-pilihan_a,
-pilihan_b,
-pilihan_c,
-pilihan_d,
-jawaban,
-level
-)
-VALUES
-(
-:kategori,
-:materi,
-:pertanyaan,
-:a,
-:b,
-:c,
-:d,
-:jawaban,
-:level
-)";
-
-$stmt = $pdo->prepare($sql);
 
 $total = 0;
 
@@ -102,16 +71,16 @@ try {
         else
             continue;
 
-        $stmt->execute([
-            ":kategori"   => $kategori,
-            ":materi"     => $materi,
-            ":pertanyaan" => trim($q['question_text']),
-            ":a"          => $a,
-            ":b"          => $b,
-            ":c"          => $c,
-            ":d"          => $d,
-            ":jawaban"    => $jawaban,
-            ":level"      => $level
+        simpanSoalPilgan($pdo, [
+            'kategori'   => $kategori,
+            'level'      => $level,
+            'materi'     => $materi,
+            'pertanyaan' => trim($q['question_text']),
+            'pilihan_a'  => $a,
+            'pilihan_b'  => $b,
+            'pilihan_c'  => $c,
+            'pilihan_d'  => $d,
+            'jawaban'    => $jawaban,
         ]);
 
         $total++;
@@ -128,5 +97,5 @@ try {
         $pdo->rollBack();
     }
 
-    db_error($e);
+    die("Error: " . $e->getMessage());
 }

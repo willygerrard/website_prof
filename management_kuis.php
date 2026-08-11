@@ -16,8 +16,9 @@ if (strpos($_SERVER['REQUEST_URI'], 'pintu-rahasia-sija') === false) {
     exit();
 }
 
-// Handle hapus soal
+// Handle hapus soal (wajib token CSRF — pola sama dengan management_game.php)
 if (isset($_GET['hapus'])) {
+    csrf_require_valid_get();
     $id = (int)$_GET['hapus'];
     $stmt = $pdo->prepare("DELETE FROM kuis_soal WHERE id = ?");
     $stmt->execute([$id]);
@@ -55,10 +56,15 @@ $materi_list_filter = $pdo->query("SELECT DISTINCT materi FROM kuis_soal WHERE m
                            ->fetchAll(PDO::FETCH_COLUMN);
 
 $level_badge = [
-    'pemula'   => ['🟢 Pemula', 'success'],
-    'menengah' => ['🟡 Menengah', 'warning'],
-    'mahir'    => ['🔴 Mahir', 'danger'],
+    'pemula'   => ['🌱 Pemula', 'success'],
+    'menengah' => ['🔥 Menengah', 'warning'],
+    'mahir'    => ['⚡ Mahir', 'danger'],
 ];
+
+// Prepare query untuk mengambil alternatif jawaban isian jika jenis_soal = 'isian'
+$stmt_alt = $pdo->prepare("SELECT jawaban_alternatif FROM kuis_soal_alternatif_isian WHERE soal_id = ? ORDER BY id ASC");
+
+$delete_token = csrf_token();
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -76,12 +82,12 @@ $level_badge = [
     <!-- KONTEN -->
     <div class="container mt-5 mb-5">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h4 class="fw-bold m-0 text-dark">📝 Daftar Soal Kuis</h4>
+            <h4 class="fw-bold m-0 text-dark">📋 Daftar Soal Kuis</h4>
             <div class="btn-group gap-2">
                 <a href="index.php" class="btn btn-outline-secondary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Kembali ke Beranda">
                     <i class="bi bi-arrow-counterclockwise"></i>
                 </a>
-                <a href="deploy_kuis.php" class="btn btn-primary rounded-circle ..." title="Deploy Kuis">
+                <a href="deploy_kuis.php" class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Deploy Kuis">
                     <i class="bi bi-rocket-takeoff"></i>
                 </a>
                 <a href="tambah_soal.php" class="btn btn-success rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Tambah Soal Baru">
@@ -93,7 +99,7 @@ $level_badge = [
                 <button type="submit" form="bulkDeleteForm" formaction="bulk_edit.php" class="btn btn-warning rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Edit Massal Soal Terpilih">
                     <i class="bi bi-pencil-square"></i>
                 </button>
-                <button type="submit" form="bulkDeleteForm" formaction="bulkdelete.php" class="btn btn-success rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Hapus Masal Soal Terpilih">
+                <button type="submit" form="bulkDeleteForm" formaction="bulkdelete.php" class="btn btn-danger rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Hapus Masal Soal Terpilih">
                     <i class="bi bi-trash"></i>
                 </button>
             </div>
@@ -148,17 +154,19 @@ $level_badge = [
                     <tr>
                         <th style="width: 4%"><input type="checkbox" class="form-check-input" id="checkAll" title="Pilih semua"></th>
                         <th style="width: 4%">No</th>
-                        <th style="width: 28%">Pertanyaan</th>
-                        <th style="width: 12%">Kategori</th>
-                        <th style="width: 11%">Level</th>
-                        <th style="width: 14%">Materi</th>
-                        <th style="width: 16%">Jawaban</th>
-                        <th style="width: 15%" class="text-center">Aksi</th>
+                        <th style="width: 26%">Pertanyaan</th>
+                        <th style="width: 10%">Kategori</th>
+                        <th style="width: 10%">Level</th>
+                        <th style="width: 12%">Materi</th>
+                        <th style="width: 10%">Jenis</th>
+                        <th style="width: 14%">Jawaban</th>
+                        <th style="width: 10%" class="text-center">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php $no = 1; while ($row = $query->fetch(PDO::FETCH_ASSOC)) :
                         $lvl = $level_badge[$row['level']] ?? ['-', 'secondary'];
+                        $jenis = $row['jenis_soal'] ?? 'pilgan';
                     ?>
                     <tr>
                         <td>
@@ -176,24 +184,56 @@ $level_badge = [
                             <?php endif; ?>
                         </td>
                         <td>
-                            <span class="badge bg-success">
+                            <?php if ($jenis === 'isian'): ?>
+                                <span class="badge bg-primary"><i class="bi bi-pencil-square me-1"></i>Isian</span>
+                            <?php else: ?>
+                                <span class="badge bg-dark"><i class="bi bi-list-check me-1"></i>Pilgan</span>
+                            <?php endif; ?>
+                        </td>
+                        <td>
+                            <?php if ($jenis === 'isian'): ?>
                                 <?php
-                                $jwb = strtoupper($row['jawaban']);
-                                echo $jwb . '. ' . htmlspecialchars($row['pilihan_' . strtolower($row['jawaban'])] ?? '');
+                                $stmt_alt->execute([$row['id']]);
+                                $alternatif_list = $stmt_alt->fetchAll(PDO::FETCH_COLUMN);
                                 ?>
-                            </span>
+                                <?php if (!empty($alternatif_list)): ?>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        <?php foreach ($alternatif_list as $alt): ?>
+                                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle">
+                                                <?= htmlspecialchars($alt) ?>
+                                            </span>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php else: ?>
+                                    <span class="badge bg-warning text-dark">Belum ada alternatif</span>
+                                <?php endif; ?>
+                            <?php else: ?>
+                                <?php
+                                $jwb = strtolower(trim((string)($row['jawaban'] ?? '')));
+                                if (in_array($jwb, ['a', 'b', 'c', 'd'], true)):
+                                    $pilihanKey = 'pilihan_' . $jwb;
+                                ?>
+                                    <span class="badge bg-success">
+                                        <?= strtoupper($jwb) ?>. <?= htmlspecialchars($row[$pilihanKey] ?? '', ENT_QUOTES, 'UTF-8') ?>
+                                    </span>
+                                <?php else: ?>
+                                    <span class="badge bg-warning text-dark">
+                                        <?= htmlspecialchars($row['jawaban'] ?? '-', ENT_QUOTES, 'UTF-8') ?>
+                                    </span>
+                                <?php endif; ?>
+                            <?php endif; ?>
                         </td>
                         <td class="text-center">
                             <div class="btn-group btn-group-sm">
-                                <a href="edit-soal-sija?id=<?= $row['id']; ?>" class="btn btn-warning fw-bold text-dark px-2">E</a>
-                                <a href="?hapus=<?= $row['id']; ?>" class="btn btn-danger fw-bold px-2" onclick="return confirm('Yakin hapus soal ini?')"><i class="bi bi-trash"></i></a>
+                                <a href="edit-soal-sija?id=<?= $row['id']; ?>" class="btn btn-warning fw-bold text-dark px-2" title="Edit">E</a>
+                                <a href="?hapus=<?= (int)$row['id']; ?>&token=<?= urlencode($delete_token) ?>" class="btn btn-danger fw-bold px-2" onclick="return confirm('Yakin hapus soal ini?')" title="Hapus"><i class="bi bi-trash"></i></a>
                             </div>
                         </td>
                     </tr>
                     <?php endwhile; ?>
                     <?php if ($no === 1): ?>
                     <tr>
-                        <td colspan="8" class="text-center text-muted py-4">Belum ada soal untuk filter ini.</td>
+                        <td colspan="9" class="text-center text-muted py-4">Belum ada soal untuk filter ini.</td>
                     </tr>
                     <?php endif; ?>
                 </tbody>

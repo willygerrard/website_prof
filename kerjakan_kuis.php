@@ -1,6 +1,7 @@
 <?php
 include 'koneksi.php';
 include 'csrf_helper.php'; // Helper CSRF yang sudah Anda buat
+include __DIR__ . '/includes/normalisasi_helper.php';
 session_start();
 
 if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
@@ -86,22 +87,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_kuis'])) {
     } else {
         $benar = 0;
         $total_soal = count($soal_ids_resmi);
+        $jawaban_isian_untuk_disimpan = []; // dikumpulkan dulu, disimpan setelah kuis_hasil punya id
 
         // Prepare query sekali di luar loop untuk efisiensi
-        $stmt_kunci = $pdo->prepare("SELECT jawaban FROM kuis_soal WHERE id = ?");
+        $stmt_kunci = $pdo->prepare("SELECT jenis_soal, jawaban FROM kuis_soal WHERE id = ?");
+        $stmt_alt   = $pdo->prepare("SELECT jawaban_alternatif FROM kuis_soal_alternatif_isian WHERE soal_id = ?");
 
         foreach ($soal_ids_resmi as $soal_id) {
             $soal_id = (int)$soal_id;
-            
+
             $stmt_kunci->execute([$soal_id]);
-            $kunci = $stmt_kunci->fetchColumn();
+            $soal_info = $stmt_kunci->fetch(PDO::FETCH_ASSOC);
+            if (!$soal_info) continue;
 
-            $jawab_user = $jawaban_siswa[$soal_id] ?? null;
+            if ($soal_info['jenis_soal'] === 'isian') {
+                $jawab_user = trim($jawaban_siswa[$soal_id] ?? '');
+                $jawab_user_normal = normalisasi_jawaban($jawab_user);
 
-            // Sanitasi: Pastikan input hanya string a, b, c, atau d
-            if ($jawab_user !== null && in_array(strtolower($jawab_user), ['a', 'b', 'c', 'd'], true)) {
-                if (strtolower($jawab_user) === strtolower($kunci)) {
-                    $benar++;
+                $stmt_alt->execute([$soal_id]);
+                $alternatif_list = $stmt_alt->fetchAll(PDO::FETCH_COLUMN);
+
+                $cocok = false;
+                foreach ($alternatif_list as $alt) {
+                    if ($jawab_user_normal !== '' && normalisasi_jawaban($alt) === $jawab_user_normal) {
+                        $cocok = true;
+                        break;
+                    }
+                }
+
+                if ($cocok) $benar++;
+
+                // Simpan jawaban mentah untuk audit guru nanti, terlepas cocok atau tidak
+                $jawaban_isian_untuk_disimpan[] = [
+                    'soal_id' => $soal_id,
+                    'jawaban_siswa' => $jawab_user,
+                    'cocok_otomatis' => $cocok ? 1 : 0,
+                ];
+            } else {
+                $kunci = $soal_info['jawaban'];
+                $jawab_user = $jawaban_siswa[$soal_id] ?? null;
+
+                // Sanitasi: Pastikan input hanya string a, b, c, atau d (khusus pilihan ganda)
+                if ($jawab_user !== null && in_array(strtolower($jawab_user), ['a', 'b', 'c', 'd'], true)) {
+                    if (strtolower($jawab_user) === strtolower($kunci)) {
+                        $benar++;
+                    }
                 }
             }
         }
@@ -111,6 +141,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_kuis'])) {
         // Simpan hasil
         $stmt = $pdo->prepare("INSERT INTO kuis_hasil (user_id, kategori, level, sesi_id, skor, total_soal, attempt, dikerjakan_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
         $stmt->execute([$user_id, $sesi['kategori'], $sesi['level'], $sesi_id, $skor, $total_soal, $total_attempt + 1]);
+        $hasil_id = $pdo->lastInsertId();
+
+        // Simpan jawaban isian mentah, terikat ke hasil_id yang baru saja dibuat
+        if (!empty($jawaban_isian_untuk_disimpan)) {
+            $stmtSimpanIsian = $pdo->prepare("INSERT INTO kuis_jawaban_isian (hasil_id, soal_id, jawaban_siswa, cocok_otomatis) VALUES (?, ?, ?, ?)");
+            foreach ($jawaban_isian_untuk_disimpan as $j) {
+                $stmtSimpanIsian->execute([$hasil_id, $j['soal_id'], $j['jawaban_siswa'], $j['cocok_otomatis']]);
+            }
+        }
 
         // Bersihkan session ID Soal kuis setelah berhasil submit
         unset($_SESSION[$session_key]);
@@ -170,7 +209,7 @@ if (empty($soal_list)) {
 $session_key = 'kuis_soal_ids_sesi_' . $sesi_id . '_user_' . $user_id;
 $_SESSION[$session_key] = array_map('intval', array_column($soal_list, 'id'));
 
-// Acak urutan pilihan jawaban per soal
+// Acak urutan pilihan jawaban per soal (hanya relevan untuk pilihan ganda)
 foreach ($soal_list as &$soal) {
     $opsi = ['a' => $soal['pilihan_a'], 'b' => $soal['pilihan_b'], 'c' => $soal['pilihan_c'], 'd' => $soal['pilihan_d']];
     $soal['opsi_acak'] = $opsi;
@@ -227,17 +266,24 @@ $durasi_detik = $sesi['durasi_menit'] * 60;
                 <div class="card-body p-4">
                     <p class="fw-semibold mb-3"><?= $no++ ?>. <?= htmlspecialchars($soal['pertanyaan']) ?></p>
 
-                    <?php foreach (['a','b','c','d'] as $huruf): ?>
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="radio"
-                               name="jawaban[<?= $soal['id'] ?>]"
-                               id="soal<?= $soal['id'] ?>_<?= $huruf ?>"
-                               value="<?= $huruf ?>" required>
-                        <label class="form-check-label" for="soal<?= $soal['id'] ?>_<?= $huruf ?>">
-                            <?= strtoupper($huruf) ?>. <?= htmlspecialchars($soal['opsi_acak'][$huruf]) ?>
-                        </label>
-                    </div>
-                    <?php endforeach; ?>
+                    <?php if ($soal['jenis_soal'] === 'isian'): ?>
+                        <div class="mb-2">
+                            <input type="text" class="form-control" name="jawaban[<?= $soal['id'] ?>]"
+                                   placeholder="Ketik jawabanmu di sini..." required autocomplete="off">
+                        </div>
+                    <?php else: ?>
+                        <?php foreach (['a','b','c','d'] as $huruf): ?>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio"
+                                   name="jawaban[<?= $soal['id'] ?>]"
+                                   id="soal<?= $soal['id'] ?>_<?= $huruf ?>"
+                                   value="<?= $huruf ?>" required>
+                            <label class="form-check-label" for="soal<?= $soal['id'] ?>_<?= $huruf ?>">
+                                <?= strtoupper($huruf) ?>. <?= htmlspecialchars($soal['opsi_acak'][$huruf]) ?>
+                            </label>
+                        </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </div>
             </div>
             <?php endforeach; ?>

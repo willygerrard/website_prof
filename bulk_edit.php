@@ -100,7 +100,8 @@ if (empty($soal_list)) {
     </style>
 </head>
 <body class="bg-light">
-    <?php include 'includes/admin_header.php'; ?>
+
+    <?php $hero_subtitle = 'Edit soal secara massal'; include __DIR__ . '/includes/admin_header.php'; ?>
 
     <div class="container mt-4 mb-5">
         <div class="mb-3">
@@ -171,56 +172,20 @@ if (empty($soal_list)) {
         <?php endif; ?>
     </div>
 
-    <?php include 'includes/footer.php'; ?>
+    <!-- FOOTER -->
+    <footer class="py-5 bg-dark">
+        <div class="container"><p class="m-0 text-center text-white">Copyright &copy; SIJA Website 2026</p></div>
+    </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/quiz_parser.js"></script>
     <?php if (!$error): ?>
     <script>
         // Data asli dari DB, dipakai untuk validasi jumlah blok & diff preview
         const originalData = <?= json_encode($original_data, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS) ?>;
         const originalIds  = <?= json_encode($original_ids) ?>;
 
-        // Parser sama persis dengan tambah_soal.php (AI Quiz Import) supaya format konsisten
-        function parseQuizText(rawText) {
-            const questionBlocks = rawText.split(/\n\s*\n/);
-            const questionsArray = [];
-
-            for (let block of questionBlocks) {
-                block = block.trim();
-                if (!block) continue;
-                const lines = block.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-
-                let questionText = "";
-                let options = [];
-                let correctAnswer = "";
-                let materiText = "";
-
-                lines.forEach(line => {
-                    if (line.match(/^(ans|answer|correct|key)\s*:\s*/i)) {
-                        correctAnswer = line.replace(/^(ans|answer|correct|key)\s*:\s*/i, '').trim();
-                    } else if (line.match(/^materi\s*:\s*/i)) {
-                        materiText = line.replace(/^materi\s*:\s*/i, '').trim();
-                    } else if (line.match(/^[A-E][\)|\]\.]\s*/i)) {
-                        options.push(line.replace(/^[A-E][\)|\]\.]\s*/i, '').trim());
-                    } else if (line.match(/^\d+[\.\)]\s*/)) {
-                        questionText = line.replace(/^\d+[\.\)]\s*/, '').trim();
-                    } else {
-                        if (!questionText) questionText = line;
-                    }
-                });
-
-                // Match shorthand (A/B/C/D) ke teks pilihan
-                if (correctAnswer.length === 1 && ['A', 'B', 'C', 'D'].includes(correctAnswer.toUpperCase())) {
-                    const idx = correctAnswer.toUpperCase().charCodeAt(0) - 65;
-                    if (options[idx]) correctAnswer = options[idx];
-                }
-
-                if (questionText && options.length > 0) {
-                    questionsArray.push({ question_text: questionText, options: options, correct_answer: correctAnswer, materi: materiText });
-                }
-            }
-            return questionsArray;
-        }
+        // Parser dipindah ke js/quiz_parser.js (dipakai bareng tambah_soal.php), lihat <script src> di bawah.
 
         function diffSpan(oldVal, newVal) {
             if (oldVal === newVal) {

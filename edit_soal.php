@@ -2,6 +2,7 @@
 session_start();
 include 'koneksi.php';
 include 'csrf_helper.php';
+include __DIR__ . '/includes/soal_writer.php';
 
 if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
     header("Location: login.php");
@@ -27,6 +28,13 @@ if (!$data) {
     die("Data soal tidak ditemukan!");
 }
 
+// Halaman ini masih khusus soal pilihan ganda. Edit soal isian belum
+// didukung di sini (rencananya Versi 2) -- jangan izinkan proses UPDATE
+// menimpa soal isian jadi pilgan kosong secara tidak sengaja.
+if (($data['jenis_soal'] ?? 'pilgan') === 'isian') {
+    die("Soal ini bertipe isian pendek. Edit soal isian belum didukung di halaman ini. <a href='pintu-rahasia-sija'>Kembali</a>");
+}
+
 // Daftar materi yang sudah ada, untuk dropdown + opsi tambah baru
 $materi_list = $pdo->query("SELECT DISTINCT materi FROM kuis_soal WHERE materi IS NOT NULL AND materi <> '' ORDER BY materi")
                     ->fetchAll(PDO::FETCH_COLUMN);
@@ -48,8 +56,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $materi        = $materi_baru !== '' ? $materi_baru : ($materi_pilih !== '' ? $materi_pilih : null);
 
     try {
-        $stmt = $pdo->prepare("UPDATE kuis_soal SET kategori=?, level=?, materi=?, pertanyaan=?, pilihan_a=?, pilihan_b=?, pilihan_c=?, pilihan_d=?, jawaban=? WHERE id=?");
-        $stmt->execute([$kategori, $level, $materi, $pertanyaan, $pilihan_a, $pilihan_b, $pilihan_c, $pilihan_d, $jawaban, $id]);
+        updateSoalPilgan($pdo, (int)$id, [
+            'kategori'   => $kategori,
+            'level'      => $level,
+            'materi'     => $materi,
+            'pertanyaan' => $pertanyaan,
+            'pilihan_a'  => $pilihan_a,
+            'pilihan_b'  => $pilihan_b,
+            'pilihan_c'  => $pilihan_c,
+            'pilihan_d'  => $pilihan_d,
+            'jawaban'    => $jawaban,
+        ]);
 
         echo "<script>
             alert('Soal berhasil diperbarui!');
@@ -57,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </script>";
         exit();
     } catch (PDOException $e) {
-        db_error($e);
+        die("Gagal update: " . $e->getMessage());
     }
 }
 ?>

@@ -42,7 +42,7 @@ try {
 
 // Delete
 if (isset($_GET['delete']) && $_GET['delete']) {
-    csrf_require_valid_get();
+    csrf_require_valid_get('csrf_token');
     $id = (int)$_GET['delete'];
     $stmt = $pdo->prepare('DELETE FROM checkpoint_modul WHERE id = ?');
     $stmt->execute([$id]);
