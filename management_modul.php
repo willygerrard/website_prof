@@ -22,7 +22,9 @@ if (strpos($_SERVER['REQUEST_URI'], 'gerbang-rahasia-sija') === false) {
 }
 
 // Query ambil data untuk tabel
-$query = $pdo->query("SELECT * FROM modules ORDER BY id DESC");
+$stmt = $pdo->prepare("SELECT * FROM modules ORDER BY id DESC");
+$stmt->execute();
+$query = $stmt;
 $delete_token = csrf_token();
 ?>
 <!DOCTYPE html>
@@ -69,8 +71,12 @@ $delete_token = csrf_token();
                         <td><span class="badge bg-info text-dark px-2.5 py-1.5"><?= htmlspecialchars($row['category'] ?? ''); ?></span></td>
                         <td class="text-center">
                             <div class="btn-group btn-group-sm">
-                                <a href="edit_modul.php?id=<?= $row['id']; ?>" class="btn btn-warning fw-bold text-dark px-2.5">E</a>
-                                <a href="hapus.php?id=<?= $row['id']; ?>&csrf_token=<?= urlencode($delete_token); ?>" class="btn btn-danger fw-bold px-2.5" onclick="return confirm('Yakin hapus, Pak?')"><i class="bi bi-trash"></i></a>
+                                <a href="edit_modul.php?id=<?= (int)$row['id']; ?>" class="btn btn-warning fw-bold text-dark px-2.5">E</a>
+                                <form method="POST" action="hapus.php" style="display:inline;" onsubmit="return confirm('Yakin hapus, Pak?')">
+                                    <input type="hidden" name="id" value="<?= (int)$row['id']; ?>">
+                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($delete_token); ?>">
+                                    <button type="submit" class="btn btn-danger fw-bold px-2.5" title="Hapus"><i class="bi bi-trash"></i></button>
+                                </form>
                             </div>
                         </td>
                     </tr>

@@ -1,7 +1,7 @@
 <?php
+session_start();
 include 'koneksi.php';
 include 'csrf_helper.php';
-session_start();
 if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
     header("Location: login.php");
     exit();
@@ -16,10 +16,14 @@ if (strpos($_SERVER['REQUEST_URI'], 'pintu-rahasia-sija') === false) {
     exit();
 }
 
-// Handle hapus soal (wajib token CSRF — pola sama dengan management_game.php)
-if (isset($_GET['hapus'])) {
-    csrf_require_valid_get();
-    $id = (int)$_GET['hapus'];
+// CSRF validation for POST actions (bulk delete/edit)
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_require_valid_post();
+}
+
+// Handle hapus soal (wajib POST + CSRF — bukan GET)
+if (isset($_POST['hapus'])) {
+    $id = (int)$_POST['hapus'];
     $stmt = $pdo->prepare("DELETE FROM kuis_soal WHERE id = ?");
     $stmt->execute([$id]);
     header("Location: /pintu-rahasia-sija");
@@ -225,8 +229,12 @@ $delete_token = csrf_token();
                         </td>
                         <td class="text-center">
                             <div class="btn-group btn-group-sm">
-                                <a href="edit-soal-sija?id=<?= $row['id']; ?>" class="btn btn-warning fw-bold text-dark px-2" title="Edit">E</a>
-                                <a href="?hapus=<?= (int)$row['id']; ?>&token=<?= urlencode($delete_token) ?>" class="btn btn-danger fw-bold px-2" onclick="return confirm('Yakin hapus soal ini?')" title="Hapus"><i class="bi bi-trash"></i></a>
+                                <a href="edit-soal-sija?id=<?= (int)$row['id']; ?>" class="btn btn-warning fw-bold text-dark px-2" title="Edit">E</a>
+                                <form method="POST" action="" style="display:inline;" onsubmit="return confirm('Yakin hapus soal ini?')">
+                                    <input type="hidden" name="hapus" value="<?= (int)$row['id']; ?>">
+                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($delete_token) ?>">
+                                    <button type="submit" class="btn btn-danger fw-bold px-2" title="Hapus" style="border:none;background:none;padding:0;margin:0;cursor:pointer;"><i class="bi bi-trash"></i></button>
+                                </form>
                             </div>
                         </td>
                     </tr>

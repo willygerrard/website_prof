@@ -111,10 +111,55 @@ $error = $_GET['error'] ?? '';
             box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
         }
 
+        /* Container Header Logo */
+        .header-logos {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+            padding: 0 10px;
+            perspective: 600px;
+        }
+
+        /* Frame Logo halus */
+        .logo-frame {
+            width: 58px;
+            height: 58px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+            cursor: pointer;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s ease;
+        }
+
+        .logo-frame:hover {
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Efek Putar Horizontal 360 Derajat saat diklik */
+        .logo-frame.rotated {
+            transform: rotateY(360deg);
+        }
+
+        .logo-img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            /* mix-blend-mode dihapus agar PNG transparan tampil bersih tanpa latar putih */
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+            pointer-events: none;
+        }
+
         .brand {
             width: 56px;
             height: 56px;
-            margin: 0 auto 14px;
             display: grid;
             place-items: center;
             border-radius: 16px;
@@ -266,7 +311,18 @@ $error = $_GET['error'] ?? '';
 
 <div class="login-shell">
     <div class="login-box">
-        <div class="brand">🎓</div>
+        <div class="header-logos">
+            <div class="logo-frame" onclick="this.classList.toggle('rotated')">
+                <img src="jatim-logo.png" alt="Logo Jawa Timur" class="logo-img">
+            </div>
+            
+            <div class="brand">🎓</div>
+            
+            <div class="logo-frame" onclick="this.classList.toggle('rotated')">
+                <img src="images.jpeg" alt="Logo SMKN 11 Malang" class="logo-img">
+            </div>
+        </div>
+
         <h3>Welcome Back</h3>
         <p class="subtitle">Masuk untuk melanjutkan perjalanan belajar Anda</p>
 
@@ -294,7 +350,6 @@ $error = $_GET['error'] ?? '';
         </form>
     </div>
 </div>
-  
 
 </body>
 </html>

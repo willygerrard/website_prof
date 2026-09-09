@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Match Subnet CIDR - Kelas X</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #fff; text-align: center; padding: 20px; }
+        .container { max-width: 600px; margin: auto; background: #1e293b; padding: 25px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        h1 { color: #38bdf8; margin-bottom: 5px; }
+        p { color: #94a3b8; font-size: 14px; }
+        .card { background: #334155; padding: 15px; margin: 15px 0; border-radius: 8px; font-size: 20px; font-weight: bold; color: #f2994a; }
+        .options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        button { background: #0284c7; color: white; border: none; padding: 12px; border-radius: 6px; font-size: 16px; cursor: pointer; transition: 0.2s; }
+        button:hover { background: #0369a1; }
+        .score { font-size: 18px; margin-top: 15px; color: #4ade80; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>⚡ Subnet Speed Challenge</h1>
+    <p>Pilih Subnet Mask Dotted Decimal yang tepat untuk prefix di bawah!</p>
+    
+    <div class="card" id="question">Loading...</div>
+    <div class="options" id="options"></div>
+    <div class="score" id="score">Skor: 0</div>
+</div>
+
+<script>
+    const data = [
+        { prefix: "/24", mask: "255.255.255.0", ops: ["255.255.255.0", "255.255.255.128", "255.255.255.192", "255.255.255.252"] },
+        { prefix: "/25", mask: "255.255.255.128", ops: ["255.255.255.0", "255.255.255.128", "255.255.255.224", "255.255.255.192"] },
+        { prefix: "/26", mask: "255.255.255.192", ops: ["255.255.255.128", "255.255.255.240", "255.255.255.192", "255.255.255.224"] },
+        { prefix: "/30", mask: "255.255.255.252", ops: ["255.255.255.248", "255.255.255.252", "255.255.255.240", "255.255.255.192"] }
+    ];
+
+    let currentIdx = 0;
+    let score = 0;
+
+    function loadQuestion() {
+        if(currentIdx >= data.length) {
+            document.getElementById('question').innerText = "🎉 Selesai! Kamu Hebat!";
+            document.getElementById('options').innerHTML = "";
+            return;
+        }
+        let q = data[currentIdx];
+        document.getElementById('question').innerText = "Prefix: " + q.prefix;
+        let btnHtml = "";
+        q.ops.forEach(op => {
+            btnHtml += `<button onclick="checkAnswer('${op}')">${op}</button>`;
+        });
+        document.getElementById('options').innerHTML = btnHtml;
+    }
+
+    function checkAnswer(ans) {
+        if(ans === data[currentIdx].mask) {
+            score += 25;
+            alert("✅ Benar!");
+        } else {
+            alert("❌ Salah! Jawaban benar: " + data[currentIdx].mask);
+        }
+        document.getElementById('score').innerText = "Skor: " + score;
+        currentIdx++;
+        loadQuestion();
+    }
+
+    loadQuestion();
+</script>
+</body>
+</html>

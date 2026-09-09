@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juru Ukur Tanah Subnetting CIDR - XI SIJA</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #080c14;
+            color: #f1f5f9;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+        }
+        header {
+            text-align: center;
+            border-bottom: 1px solid #1e293b;
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+        }
+        h1 { font-size: 18px; color: #38bdf8; font-weight: 800; }
+        .subtitle { font-size: 12px; color: #94a3b8; }
+
+        main {
+            max-width: 850px;
+            width: 100%;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .card {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .mission-box {
+            background: #020617;
+            border: 1px solid #38bdf8;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 13px;
+            color: #e2e8f0;
+            line-height: 1.5;
+        }
+
+        /* Visual Bar Kapling Tanah */
+        .land-container {
+            background: #020617;
+            border: 2px solid #334155;
+            border-radius: 8px;
+            height: 60px;
+            display: flex;
+            overflow: hidden;
+            position: relative;
+        }
+        .land-block {
+            height: 100%;
+            border-right: 2px dashed #0f172a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: bold;
+            font-family: monospace;
+            color: #fff;
+            transition: all 0.3s;
+        }
+
+        .cidr-selector {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+        .btn-cidr {
+            padding: 10px;
+            background: #020617;
+            border: 1px solid #334155;
+            color: #cbd5e1;
+            border-radius: 6px;
+            font-family: monospace;
+            font-weight: bold;
+            cursor: pointer;
+            text-align: center;
+        }
+        .btn-cidr:hover { border-color: #38bdf8; color: #fff; }
+        .btn-cidr.selected { background: #0284c7; border-color: #38bdf8; color: #fff; }
+
+        .btn-action {
+            padding: 12px;
+            background: #059669;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .btn-action:hover { background: #047857; }
+
+        /* Detail Komponen */
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            font-size: 11px;
+            font-family: monospace;
+        }
+        .detail-item {
+            background: #020617;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #1e293b;
+        }
+        .detail-label { color: #94a3b8; font-size: 9px; text-transform: uppercase; }
+        .detail-val { color: #38bdf8; font-weight: bold; font-size: 13px; }
+
+        /* Modal */
+        .modal {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+            display: none; align-items: center; justify-content: center; padding: 15px; z-index: 100;
+        }
+        .modal-body {
+            background: #0f172a; border: 1px solid #38bdf8; max-width: 420px; width: 100%;
+            padding: 20px; border-radius: 12px; text-align: center; display: flex; flex-direction: column; gap: 12px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>✂️ JURU UKUR TANAH SUBNETTING (CIDR)</h1>
+        <div class="subtitle">Potong Kapling Tanah IP 192.168.1.0 Sesuai Kebutuhan Rumah!</div>
+    </header>
+
+    <main>
+        <div class="card">
+            <div class="mission-box">
+                <div style="font-weight: bold; color: #38bdf8; text-transform: uppercase; margin-bottom: 4px;">📜 Surat Tugas Misi:</div>
+                <div id="mission-text">Memuat misi...</div>
+            </div>
+
+            <div style="font-size: 11px; font-weight: bold; color: #cbd5e1;">Pilih Ukuran Guntingan (CIDR) Yang Pas:</div>
+            <div class="cidr-selector">
+                <button class="btn-cidr" onclick="selectCIDR(25)">/25 (128 Kapling)</button>
+                <button class="btn-cidr" onclick="selectCIDR(26)">/26 (64 Kapling)</button>
+                <button class="btn-cidr" onclick="selectCIDR(27)">/27 (32 Kapling)</button>
+                <button class="btn-cidr" onclick="selectCIDR(28)">/28 (16 Kapling)</button>
+            </div>
+
+            <div style="font-size: 11px; font-weight: bold; color: #cbd5e1;">Visual Potongan Kapling (Total 256):</div>
+            <div id="land-bar" class="land-container">
+                <!-- Visual Kapling Terpotong Dinamis -->
+            </div>
+
+            <div class="details-grid">
+                <div class="detail-item">
+                    <div class="detail-label">Pagar Depan (NetID)</div>
+                    <div id="val-netid" class="detail-val">192.168.1.0</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Kapasitas HP (Host)</div>
+                    <div id="val-host" class="detail-val">-</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Speaker (Broadcast)</div>
+                    <div id="val-bc" class="detail-val">-</div>
+                </div>
+            </div>
+
+            <button onclick="checkAnswer()" class="btn-action">✅ Eksekusi Potong Kapling!</button>
+        </div>
+    </main>
+
+    <div id="modal-fact" class="modal">
+        <div class="modal-body">
+            <div id="modal-icon" style="font-size:40px;">🏆</div>
+            <h3 id="modal-title" style="color:#fff; font-size:16px;">Hasil Pemotongan</h3>
+            <p id="modal-desc" style="font-size:12px; color:#cbd5e1; line-height:1.5;"></p>
+            <button onclick="nextMission()" class="btn-action">Misi Berikutnya ➡️</button>
+        </div>
+    </div>
+
+    <script>
+        let currentMissionIndex = 0;
+        let selectedCidrVal = 0;
+
+        const missions = [
+            {
+                reqHost: 20,
+                text: "Bos Lab butuh jaringan untuk <strong>20 Komputer Siswa</strong>. Pilih /CIDR yang muat penampung 20 komputer tapi paling hemat tanah!",
+                correctCidr: 27,
+                explanation: "💡 <strong>Logika Gunting:</strong> /27 menghasilkan 32 kapling. Dikurangi 2 (Pagar NetID & Speaker Broadcast), sisanya <strong>30 Rumah HP Warga</strong>. Cukup banget buat 20 Komputer!"
+            },
+            {
+                reqHost: 50,
+                text: "Sekolah mau buat jaringan baru untuk <strong>50 Laptop Guru</strong>. Manakah guntingan CIDR yang pas?",
+                correctCidr: 26,
+                explanation: "💡 <strong>Logika Gunting:</strong> /26 menghasilkan 64 kapling. Dikurangi 2 (NetID & Broadcast) = <strong>62 Rumah HP Warga</strong>. Muat untuk 50 laptop!"
+            },
+            {
+                reqHost: 10,
+                text: "Ruang Server cuma punya <strong>10 Komputer Utama</strong>. Pilih CIDR paling hemat!",
+                correctCidr: 28,
+                explanation: "💡 <strong>Logika Gunting:</strong> /28 menghasilkan 16 kapling. Dikurangi 2 = <strong>14 Rumah HP Warga</strong>. Hemat tanah & pas buat 10 komputer!"
+            }
+        ];
+
+        function loadMission() {
+            const m = missions[currentMissionIndex];
+            document.getElementById('mission-text').innerHTML = m.text;
+            selectedCidrVal = 0;
+            
+            document.querySelectorAll('.btn-cidr').forEach(btn => btn.classList.remove('selected'));
+            document.getElementById('val-host').textContent = "-";
+            document.getElementById('val-bc').textContent = "-";
+            
+            renderLandBar(24); // Default /24 (utuh)
+        }
+
+        function selectCIDR(cidr) {
+            selectedCidrVal = cidr;
+            document.querySelectorAll('.btn-cidr').forEach(btn => {
+                btn.classList.toggle('selected', btn.textContent.includes(`/${cidr}`));
+            });
+
+            const totalKapling = Math.pow(2, 32 - cidr);
+            const usableHost = totalKapling - 2;
+
+            document.getElementById('val-host').textContent = `${usableHost} HP`;
+            document.getElementById('val-bc').textContent = `192.168.1.${totalKapling - 1}`;
+
+            renderLandBar(cidr);
+        }
+
+        function renderLandBar(cidr) {
+            const bar = document.getElementById('land-bar');
+            bar.innerHTML = "";
+
+            const totalBlocks = Math.pow(2, cidr - 24);
+            const sizePerBlock = 256 / totalBlocks;
+
+            const colors = ['#0284c7', '#0369a1', '#075985', '#0c4a6e'];
+
+            for (let i = 0; i < totalBlocks; i++) {
+                const div = document.createElement('div');
+                div.className = 'land-block';
+                div.style.width = `${100 / totalBlocks}%`;
+                div.style.backgroundColor = colors[i % colors.length];
+                div.innerHTML = `Block ${i+1}<br>(${sizePerBlock})`;
+                bar.appendChild(div);
+            }
+        }
+
+        function checkAnswer() {
+            if (!selectedCidrVal) {
+                alert("⚠️ Pilih ukuran guntingan CIDR terlebih dahulu!");
+                return;
+            }
+
+            const m = missions[currentMissionIndex];
+            const isCorrect = (selectedCidrVal === m.correctCidr);
+
+            const modal = document.getElementById('modal-fact');
+            document.getElementById('modal-title').textContent = isCorrect ? "🎉 POTONGAN PAS!" : "❌ KEPOTONGAN / BOROS!";
+            document.getElementById('modal-desc').innerHTML = isCorrect ? m.explanation : `Aduh, pilihan /${selectedCidrVal} kurang pas untuk ${m.reqHost} komputer. Coba hitung lagi kapasitas kaplingnya!`;
+            document.getElementById('modal-icon').textContent = isCorrect ? "🏆" : "💥";
+
+            modal.style.display = "flex";
+        }
+
+        function nextMission() {
+            document.getElementById('modal-fact').style.display = "none";
+            if (selectedCidrVal === missions[currentMissionIndex].correctCidr) {
+                currentMissionIndex++;
+                if (currentMissionIndex < missions.length) {
+                    loadMission();
+                } else {
+                    alert("MANTAP! Kamu sudah lulus jadi Juru Ukur Kapling Subnetting!");
+                    currentMissionIndex = 0;
+                    loadMission();
+                }
+            }
+        }
+
+        window.onload = function() {
+            loadMission();
+        };
+    </script>
+</body>
+</html>

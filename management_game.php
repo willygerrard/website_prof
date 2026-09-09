@@ -1,7 +1,7 @@
 <?php
+session_start();
 include 'koneksi.php';
 include 'csrf_helper.php';
-session_start();
 
 // 1. Validasi Keamanan: Hanya Admin yang boleh masuk
 if (!isset($_SESSION['is_login']) || $_SESSION['role'] !== 'admin') {
@@ -14,21 +14,25 @@ if (strpos($_SERVER['REQUEST_URI'], 'pintu-game-sija') === false) {
     exit();
 }
 
+// CSRF validation for POST actions
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_require_valid_post();
+}
+
 $pesan = '';
 
 // 2. Buat folder 'games_data' otomatis jika belum ada di server
 $upload_dir = 'games_data/';
 if (!is_dir($upload_dir)) {
-    mkdir($upload_dir, 0777, true);
+    mkdir($upload_dir, 0755, true);
 }
 
 // 3. PROSES TAMBAH & UPLOAD GAME BARU
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tambah_game'])) {
-   csrf_require_valid_post();
-    $title       = trim($_POST['title']);
-    $description = trim($_POST['description']);
-    $category    = trim($_POST['category']);
-    $image_path  = trim($_POST['image_path']); // URL cover gambar opsional
+    $title       = htmlspecialchars(trim($_POST['title'] ?? ''), ENT_QUOTES, 'UTF-8');
+    $description = htmlspecialchars(trim($_POST['description'] ?? ''), ENT_QUOTES, 'UTF-8');
+    $category    = htmlspecialchars(trim($_POST['category'] ?? ''), ENT_QUOTES, 'UTF-8');
+    $image_path  = htmlspecialchars(trim($_POST['image_path'] ?? ''), ENT_QUOTES, 'UTF-8');
 
     // Cek apakah ada file HTML yang diupload
     if (isset($_FILES['game_file']) && $_FILES['game_file']['error'] === UPLOAD_ERR_OK) {
@@ -65,10 +69,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tambah_game'])) {
 }
 
 // 4. PROSES HAPUS GAME & BERSIHKAN FILE DARI SERVER
-if (isset($_GET['hapus'])) {
-    csrf_require_valid_get();
-    $id = (int)$_GET['hapus'];
-    
+if (isset($_POST['hapus_game'])) {
+    $id = (int)($_POST['hapus_game'] ?? 0);
+
     // Cari tahu dulu letak file HTML-nya di server
     $stmt_find = $pdo->prepare("SELECT file_path FROM games WHERE id = ?");
     $stmt_find->execute([$id]);
@@ -223,13 +226,14 @@ $games = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         <a href="<?= htmlspecialchars($g['file_path']) ?>" target="_blank" class="btn btn-sm btn-success" title="Tes Mainkan">
                                             <i class="bi bi-play-fill"></i> Tes
                                         </a>
-                                        <!-- Tombol Hapus -->
-                                      <a href="<?= '/pintu-game-sija?hapus=' . (int)$g['id'] . '&token=' . csrf_token() ?>" 
-                                        class="btn btn-sm btn-danger" 
-                                        onclick="return confirm('Yakin ingin menghapus game ini?');" 
-                                        title="Hapus Game">
-                                            <i class="bi bi-trash"></i>
-                                        </a>
+                                        <!-- Tombol Hapus via POST form -->
+                                        <form method="POST" action="" style="display:inline;" onsubmit="return confirm('Yakin ingin menghapus game ini?');">
+                                            <input type="hidden" name="hapus_game" value="<?= (int)$g['id'] ?>">
+                                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>">
+                                            <button type="submit" class="btn btn-sm btn-danger" title="Hapus Game">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
                                     </div>
                                 </td>
                             </tr>

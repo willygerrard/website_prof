@@ -26,9 +26,7 @@ $pesan_type = 'success';
 $mode = $_GET['mode'] ?? 'create';
 $edit_id = (int)($_GET['id'] ?? 0);
 
-if (!isset($_SESSION['checkpoint_checkpoint_modul_cache'])) {
-    $_SESSION['checkpoint_checkpoint_modul_cache'] = [];
-}
+// Dead code removed: checkpoint_checkpoint_modul_cache was declared but never used
 
 // Ambil modul
 $modules = $pdo->query("SELECT id, title FROM modules ORDER BY id DESC")->fetchAll(PDO::FETCH_ASSOC);
@@ -42,7 +40,7 @@ try {
 
 // Delete
 if (isset($_GET['delete']) && $_GET['delete']) {
-    csrf_require_valid_get('csrf_token');
+    csrf_require_valid_get('token');
     $id = (int)$_GET['delete'];
     $stmt = $pdo->prepare('DELETE FROM checkpoint_modul WHERE id = ?');
     $stmt->execute([$id]);
@@ -82,19 +80,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pesan = 'Checkpoint berhasil diperbarui.';
         } else {
             // Upsert berdasarkan modul_id (1 checkpoint per modul)
-            $stmt = $pdo->prepare('SELECT id FROM checkpoint_modul WHERE modul_id = ? LIMIT 1');
-            $stmt->execute([$modul_id]);
-            $existing = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if ($existing) {
-                $stmt2 = $pdo->prepare('UPDATE checkpoint_modul SET pertanyaan=?, opsi_a=?, opsi_b=?, jawaban_benar=?, updated_at=NOW() WHERE modul_id=?');
-                $stmt2->execute([$pertanyaan, $opsi_a, $opsi_b, $jawaban_benar, $modul_id]);
-                $pesan = 'Checkpoint modul sudah ada, datanya diupdate.';
-            } else {
-                $stmt3 = $pdo->prepare('INSERT INTO checkpoint_modul (modul_id, pertanyaan, opsi_a, opsi_b, jawaban_benar, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())');
-                $stmt3->execute([$modul_id, $pertanyaan, $opsi_a, $opsi_b, $jawaban_benar]);
-                $pesan = 'Checkpoint berhasil disimpan.';
-            }
+            $stmt3 = $pdo->prepare('INSERT INTO checkpoint_modul (modul_id, pertanyaan, opsi_a, opsi_b, jawaban_benar, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW()) ON DUPLICATE KEY UPDATE pertanyaan=VALUES(pertanyaan), opsi_a=VALUES(opsi_a), opsi_b=VALUES(opsi_b), jawaban_benar=VALUES(jawaban_benar), updated_at=NOW()');
+            $stmt3->execute([$modul_id, $pertanyaan, $opsi_a, $opsi_b, $jawaban_benar]);
+            $pesan = 'Checkpoint berhasil disimpan.';
         }
         $pesan_type = 'success';
     }
@@ -251,7 +239,7 @@ $deleteToken = csrf_token();
                                             <td class="text-center">
                                                 <div class="btn-group btn-group-sm">
                                                     <a class="btn btn-warning" href="management_checkpoint.php?mode=edit&id=<?= (int)$c['id'] ?>">E</a>
-                                                    <a class="btn btn-danger" href="management_checkpoint.php?delete=<?= (int)$c['id'] ?>&csrf_token=<?= htmlspecialchars($deleteToken) ?>" onclick="return confirm('Hapus checkpoint modul ini?')">-</a>
+                                                    <a class="btn btn-danger" href="management_checkpoint.php?delete=<?= (int)$c['id'] ?>&token=<?= htmlspecialchars($deleteToken) ?>" onclick="return confirm('Hapus checkpoint modul ini?')">-</a>
                                                 </div>
                                             </td>
                                         </tr>

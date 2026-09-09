@@ -6,8 +6,10 @@
  */
 
 function csrf_token() {
-    if (empty($_SESSION['csrf_token'])) {
+    if (session_status() !== PHP_SESSION_ACTIVE || empty($_SESSION['csrf_token'])) {
+        if (session_status() !== PHP_SESSION_ACTIVE) session_start();
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        // session_regenerate_id(true) dihapus — tidak bisa dipanggil setelah header terkirim (misal saat render form)
     }
     return $_SESSION['csrf_token'];
 }

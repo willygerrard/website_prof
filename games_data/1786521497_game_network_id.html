@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network ID vs Host ID - Sort Challenge</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --net-color: #0284c7;
+            --host-color: #16a34a;
+            --text-color: #f8fafc;
+            --accent: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            color: var(--accent);
+            font-size: 26px;
+            margin-bottom: 5px;
+        }
+
+        .stats-bar {
+            display: flex;
+            gap: 20px;
+            background: var(--card-bg);
+            padding: 10px 25px;
+            border-radius: 30px;
+            margin-bottom: 20px;
+            font-weight: bold;
+            font-size: 18px;
+            border: 1px solid #334155;
+        }
+
+        .hint-box {
+            background: #334155;
+            padding: 15px;
+            border-radius: 10px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+            margin-bottom: 25px;
+            border-left: 5px solid var(--accent);
+            font-size: 15px;
+            line-height: 1.4;
+        }
+
+        .hint-box span {
+            color: var(--accent);
+            font-weight: bold;
+        }
+
+        /* Target Areas */
+        .drop-zones {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            max-width: 600px;
+            width: 100%;
+            margin-bottom: 25px;
+        }
+
+        .zone {
+            background: var(--card-bg);
+            border: 2px dashed #475569;
+            border-radius: 12px;
+            padding: 20px;
+            min-height: 160px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: 0.2s;
+        }
+
+        .zone.drag-over {
+            border-color: var(--accent);
+            background: #334155;
+        }
+
+        .zone-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .zone-sub {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .zone-net .zone-title { color: #38bdf8; }
+        .zone-host .zone-title { color: #4ade80; }
+
+        /* Draggable Items */
+        .items-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+            max-width: 600px;
+            width: 100%;
+            min-height: 100px;
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #334155;
+        }
+
+        .drag-item {
+            background: #475569;
+            color: white;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: grab;
+            user-select: none;
+            transition: transform 0.1s, background 0.2s;
+            font-size: 16px;
+            display: inline-block;
+        }
+
+        .drag-item:active {
+            cursor: grabbing;
+            transform: scale(1.05);
+        }
+
+        .drag-item.correct {
+            background: #16a34a !important;
+        }
+
+        .drag-item.wrong {
+            background: #dc2626 !important;
+        }
+
+        /* Modal Overlay */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+            border: 2px solid var(--accent);
+        }
+
+        .modal h2 {
+            color: var(--accent);
+            margin-bottom: 10px;
+        }
+
+        .btn {
+            background: var(--net-color);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+            width: 100%;
+            transition: 0.2s;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>🌐 IP Address Sorter</h1>
+        <p style="color: #94a3b8; font-size: 14px;">Materi: Memisahkan Network ID & Host ID</p>
+    </div>
+
+    <div class="stats-bar">
+        <div>Skor: <span id="score" style="color: var(--accent);">0</span></div>
+        <div>Level: <span id="level" style="color: #38bdf8;">1</span>/3</div>
+    </div>
+
+    <div class="hint-box">
+        <div id="target-ip-display">IP Target: <span id="current-ip">192.168.1.50</span></div>
+        <div id="target-mask-display" style="font-size: 13px; color: #cbd5e1; margin-top: 4px;">
+            Subnet Mask: <b>255.255.255.0 (Kelas C)</b>
+        </div>
+    </div>
+
+    <div class="drop-zones">
+        <div class="zone zone-net" id="zone-net" ondragover="allowDrop(event)" ondragleave="dragLeave(event)" ondrop="drop(event, 'NET')">
+            <div class="zone-title">NETWORK ID</div>
+            <div class="zone-sub">Alamat Jaringan / Nama Jalan</div>
+        </div>
+        <div class="zone zone-host" id="zone-host" ondragover="allowDrop(event)" ondragleave="dragLeave(event)" ondrop="drop(event, 'HOST')">
+            <div class="zone-title">HOST ID</div>
+            <div class="zone-sub">Alamat Perangkat / Nomor Rumah</div>
+        </div>
+    </div>
+
+    <p style="margin-bottom: 10px; font-size: 14px; color: #94a3b8;">Tarik blok angka di bawah ke kotak yang sesuai:</p>
+    <div class="items-container" id="items-container">
+        <!-- Blok Angka Oktet Diberikan via JS -->
+    </div>
+
+    <!-- Modal Hasil Level / Win -->
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <h2 id="modal-title">Level Selesai! 🎉</h2>
+            <p id="modal-desc" style="margin-top: 10px; line-height: 1.5;"></p>
+            <button class="btn" id="modal-btn" onclick="nextLevel()">Lanjut Level Berikutnya</button>
+        </div>
+    </div>
+
+    <script>
+        // Data Game: Skenario IP dan Pembagian
+        const levels = [
+            {
+                ip: "192.168.10.25",
+                mask: "255.255.255.0 (Kelas C)",
+                octets: [
+                    { val: "192", type: "NET" },
+                    { val: "168", type: "NET" },
+                    { val: "10",  type: "NET" },
+                    { val: "25",  type: "HOST" }
+                ],
+                explanation: "Pada Kelas C (255.255.255.0), <b>3 oktet pertama</b> adalah Network ID dan <b>1 oktet terakhir</b> adalah Host ID."
+            },
+            {
+                ip: "172.16.50.4",
+                mask: "255.255.0.0 (Kelas B)",
+                octets: [
+                    { val: "172", type: "NET" },
+                    { val: "16",  type: "NET" },
+                    { val: "50",  type: "HOST" },
+                    { val: "4",   type: "HOST" }
+                ],
+                explanation: "Pada Kelas B (255.255.0.0), <b>2 oktet pertama</b> adalah Network ID dan <b>2 oktet terakhir</b> adalah Host ID."
+            },
+            {
+                ip: "10.0.12.8",
+                mask: "255.0.0.0 (Kelas A)",
+                octets: [
+                    { val: "10", type: "NET" },
+                    { val: "0",  type: "HOST" },
+                    { val: "12", type: "HOST" },
+                    { val: "8",  type: "HOST" }
+                ],
+                explanation: "Pada Kelas A (255.0.0.0), <b>1 oktet pertama</b> adalah Network ID dan <b>3 oktet terakhir</b> adalah Host ID."
+            }
+        ];
+
+        let currentLevelIdx = 0;
+        let score = 0;
+        let placedCount = 0;
+
+        function loadLevel() {
+            placedCount = 0;
+            const lvl = levels[currentLevelIdx];
+            
+            document.getElementById('current-ip').innerText = lvl.ip;
+            document.getElementById('target-mask-display').innerHTML = "Subnet Mask: <b>" + lvl.mask + "</b>";
+            document.getElementById('level').innerText = currentLevelIdx + 1;
+            
+            // Clear Drop Zones
+            document.getElementById('zone-net').querySelectorAll('.drag-item').forEach(e => e.remove());
+            document.getElementById('zone-host').querySelectorAll('.drag-item').forEach(e => e.remove());
+
+            // Render Items Container
+            const container = document.getElementById('items-container');
+            container.innerHTML = "";
+
+            // Acak urutan agar tidak selalu dari kiri ke kanan
+            let shuffledOctets = [...lvl.octets].sort(() => Math.random() - 0.5);
+
+            shuffledOctets.forEach((item, idx) => {
+                const el = document.createElement('div');
+                el.className = 'drag-item';
+                el.innerText = item.val;
+                el.id = 'octet-' + idx;
+                el.draggable = true;
+                el.dataset.type = item.type;
+
+                el.ondragstart = (e) => {
+                    e.dataTransfer.setData('text/plain', JSON.stringify({ id: el.id, type: item.type }));
+                };
+
+                container.appendChild(el);
+            });
+        }
+
+        function allowDrop(e) {
+            e.preventDefault();
+            e.currentTarget.classList.add('drag-over');
+        }
+
+        function dragLeave(e) {
+            e.currentTarget.classList.remove('drag-over');
+        }
+
+        function drop(e, zoneType) {
+            e.preventDefault();
+            const zone = e.currentTarget;
+            zone.classList.remove('drag-over');
+
+            const dataRaw = e.dataTransfer.getData('text/plain');
+            if(!dataRaw) return;
+
+            const data = JSON.parse(dataRaw);
+            const itemEl = document.getElementById(data.id);
+
+            if(!itemEl || itemEl.parentElement === zone) return;
+
+            // Pindahkan element ke dalam zone
+            zone.appendChild(itemEl);
+            itemEl.draggable = false; // Kunci setelah ditaruh
+
+            // Pengecekan Jawaban
+            if(data.type === zoneType) {
+                itemEl.classList.add('correct');
+                score += 25;
+                document.getElementById('score').innerText = score;
+            } else {
+                itemEl.classList.add('wrong');
+            }
+
+            placedCount++;
+
+            // Jika 4 oktet sudah selesai dipasang
+            if(placedCount === 4) {
+                setTimeout(showLevelResult, 500);
+            }
+        }
+
+        function showLevelResult() {
+            const modal = document.getElementById('modal');
+            const lvl = levels[currentLevelIdx];
+            
+            document.getElementById('modal-desc').innerHTML = lvl.explanation;
+
+            if(currentLevelIdx < levels.length - 1) {
+                document.getElementById('modal-title').innerText = "Level " + (currentLevelIdx + 1) + " Selesai!";
+                document.getElementById('modal-btn').innerText = "Lanjut Level " + (currentLevelIdx + 2);
+            } else {
+                document.getElementById('modal-title').innerText = "🏆 Selamat, Kamu Tamat!";
+                document.getElementById('modal-desc').innerHTML += `<br><br><b>Total Skor Akhir Kamu: ${score}</b>`;
+                document.getElementById('modal-btn').innerText = "Main Lagi Dari Awal";
+            }
+
+            modal.style.display = "flex";
+        }
+
+        function nextLevel() {
+            document.getElementById('modal').style.display = "none";
+            
+            if(currentLevelIdx < levels.length - 1) {
+                currentLevelIdx++;
+            } else {
+                currentLevelIdx = 0;
+                score = 0;
+                document.getElementById('score').innerText = score;
+            }
+            
+            loadLevel();
+        }
+
+        // Jalankan game saat pertama dimuat
+        loadLevel();
+    </script>
+</body>
+</html>

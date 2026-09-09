@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Binary Converter Challenge - X TKJ / SIJA</title>
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: #111827;
+            --accent-green: #10b981;
+            --accent-blue: #3b82f6;
+            --text-color: #f3f4f6;
+            --switch-off: #1f2937;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Courier New', Courier, monospace; }
+        body { background-color: var(--bg-color); color: var(--text-color); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+
+        .container { max-width: 750px; width: 100%; }
+
+        .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #1e293b; padding-bottom: 15px; }
+        .header h1 { color: var(--accent-green); font-size: 26px; font-family: sans-serif; }
+        .header p { color: #9ca3af; font-size: 14px; margin-top: 5px; font-family: sans-serif; }
+
+        .score-board { display: flex; justify-content: space-between; background: var(--card-bg); padding: 12px 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #1f2937; font-family: sans-serif; }
+        .score-item { font-weight: bold; }
+        .score-item span { color: var(--accent-green); }
+
+        .game-card { background: var(--card-bg); border-radius: 12px; padding: 25px; border: 1px solid #1f2937; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+
+        .mode-badge { display: inline-block; background: #1e293b; color: var(--accent-blue); padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; margin-bottom: 15px; font-family: sans-serif; }
+
+        .target-display { font-size: 32px; font-weight: bold; margin-bottom: 20px; color: #fff; letter-spacing: 2px; }
+
+        /* SAKLAR BINER AREA */
+        .bits-container { display: flex; justify-content: center; gap: 8px; margin-bottom: 25px; flex-wrap: wrap; }
+        
+        .bit-box { display: flex; flex-direction: column; align-items: center; }
+        .bit-val { font-size: 12px; color: #6b7280; margin-bottom: 6px; font-weight: bold; font-family: sans-serif; }
+
+        .switch-btn {
+            width: 65px;
+            height: 75px;
+            background: var(--switch-off);
+            border: 2px solid #374151;
+            border-radius: 8px;
+            color: #4b5563;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+            user-select: none;
+        }
+
+        .switch-btn.on {
+            background: var(--accent-green);
+            color: #000;
+            border-color: #34d399;
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+        }
+
+        .switch-btn:disabled { cursor: not-allowed; opacity: 0.8; }
+
+        /* INPUT MODE DESIMAL */
+        .decimal-input-area { display: none; margin-bottom: 25px; }
+        .dec-input {
+            background: #1f2937;
+            border: 2px solid #374151;
+            color: #fff;
+            padding: 10px 15px;
+            font-size: 24px;
+            border-radius: 8px;
+            width: 180px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        /* LIVE MATH MONITOR */
+        .math-monitor {
+            background: #0f172a;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #94a3b8;
+            margin-bottom: 20px;
+            border: 1px dashed #334155;
+            min-height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-action {
+            background: var(--accent-blue);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+            font-family: sans-serif;
+            width: 100%;
+        }
+
+        .btn-action:hover { opacity: 0.9; }
+
+        /* MODAL FEEDBACK */
+        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); justify-content: center; align-items: center; padding: 20px; }
+        .modal-box { background: var(--card-bg); border-radius: 12px; padding: 25px; max-width: 400px; width: 100%; text-align: center; border: 2px solid var(--accent-green); font-family: sans-serif; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>⚡ Binary Bit Switch</h1>
+        <p>Game Konversi Desimal ⇆ Biner 8-Bit</p>
+    </div>
+
+    <div class="score-board">
+        <div class="score-item">Skor: <span id="score">0</span></div>
+        <div class="score-item">Soal: <span id="question-count">1</span>/5</div>
+    </div>
+
+    <div class="game-card">
+        <div class="mode-badge" id="mode-badge">MODE: DESIMAL ➔ BINER</div>
+        
+        <div style="font-size: 14px; color: #9ca3af; margin-bottom: 5px; font-family: sans-serif;">Ubahlah Nilai Ini:</div>
+        <div class="target-display" id="target-display">168</div>
+
+        <!-- MODE BINER (SWITCHES) -->
+        <div class="bits-container" id="bits-container">
+            <!-- 8 Bit Boxes generated by JS -->
+        </div>
+
+        <!-- MODE DESIMAL (INPUT) -->
+        <div class="decimal-input-area" id="decimal-input-area">
+            <input type="number" id="dec-input" class="dec-input" placeholder="0-255" min="0" max="255">
+        </div>
+
+        <!-- PERHITUNGAN TRANSPARAN -->
+        <div class="math-monitor" id="math-monitor">
+            Hitungan: 0
+        </div>
+
+        <button class="btn-action" onclick="checkAnswer()">SUBMIT JAWABAN</button>
+    </div>
+</div>
+
+<!-- RESULT MODAL -->
+<div class="modal" id="modal">
+    <div class="modal-box">
+        <h2 id="modal-title" style="margin-bottom: 10px;">Jawaban Benar! 🎉</h2>
+        <p id="modal-desc" style="color: #9ca3af; font-size: 14px; line-height: 1.5; margin-bottom: 20px;"></p>
+        <button class="btn-action" id="modal-btn" onclick="nextQuestion()">Lanjut Soal Berikutnya</button>
+    </div>
+</div>
+
+<script>
+    const bitValues = [128, 64, 32, 16, 8, 4, 2, 1];
+    let currentBitState = [0, 0, 0, 0, 0, 0, 0, 0];
+    
+    let currentMode = "DEC_TO_BIN"; // "DEC_TO_BIN" or "BIN_TO_DEC"
+    let targetValue = 0;
+    let score = 0;
+    let qCount = 1;
+    const maxQuestions = 5;
+
+    function initBits() {
+        const container = document.getElementById('bits-container');
+        container.innerHTML = "";
+        
+        bitValues.forEach((val, idx) => {
+            const box = document.createElement('div');
+            box.className = 'bit-box';
+            box.innerHTML = `
+                <div class="bit-val">${val}</div>
+                <button class="switch-btn" id="bit-${idx}" onclick="toggleBit(${idx})">0</button>
+            `;
+            container.appendChild(box);
+        });
+    }
+
+    function toggleBit(idx) {
+        if(currentMode === "BIN_TO_DEC") return; // Nonaktifkan klik saklar jika sedang menebak angka desimal
+
+        currentBitState[idx] = currentBitState[idx] === 0 ? 1 : 0;
+        const btn = document.getElementById(`bit-${idx}`);
+        
+        if (currentBitState[idx] === 1) {
+            btn.innerText = "1";
+            btn.classList.add('on');
+        } else {
+            btn.innerText = "0";
+            btn.classList.remove('on');
+        }
+
+        updateMathMonitor();
+    }
+
+    function updateMathMonitor() {
+        const monitor = document.getElementById('math-monitor');
+        let sum = 0;
+        let activeParts = [];
+
+        bitValues.forEach((val, idx) => {
+            if (currentBitState[idx] === 1) {
+                sum += val;
+                activeParts.push(val);
+            }
+        });
+
+        if (currentMode === "DEC_TO_BIN") {
+            if (activeParts.length > 0) {
+                monitor.innerHTML = activeParts.join(" + ") + " = <b>" + sum + "</b>";
+            } else {
+                monitor.innerHTML = "Klik saklar di atas untuk menjumlahkan bit!";
+            }
+        } else {
+            monitor.innerHTML = "Tebak total penjumlahan dari bit berangka <b>1</b> di atas!";
+        }
+    }
+
+    function generateQuestion() {
+        // Acak Angka 1-254
+        targetValue = Math.floor(Math.random() * 254) + 1;
+        currentBitState = [0, 0, 0, 0, 0, 0, 0, 0];
+        
+        // Randomize Mode
+        currentMode = Math.random() > 0.5 ? "DEC_TO_BIN" : "BIN_TO_DEC";
+        
+        const modeBadge = document.getElementById('mode-badge');
+        const targetDisplay = document.getElementById('target-display');
+        const decInputArea = document.getElementById('decimal-input-area');
+        
+        initBits();
+
+        if (currentMode === "DEC_TO_BIN") {
+            modeBadge.innerText = "MODE 1: UBAH DESIMAL ➔ BINER";
+            modeBadge.style.color = "var(--accent-green)";
+            targetDisplay.innerText = targetValue;
+            decInputArea.style.display = "none";
+        } else {
+            modeBadge.innerText = "MODE 2: UBAH BINER ➔ DESIMAL";
+            modeBadge.style.color = "var(--accent-blue)";
+            
+            // Convert targetValue to binary array for displays
+            let tempVal = targetValue;
+            bitValues.forEach((val, idx) => {
+                if (tempVal >= val) {
+                    currentBitState[idx] = 1;
+                    tempVal -= val;
+                }
+            });
+
+            // Update saklar visual (locked)
+            bitValues.forEach((val, idx) => {
+                const btn = document.getElementById(`bit-${idx}`);
+                btn.disabled = true;
+                if (currentBitState[idx] === 1) {
+                    btn.innerText = "1";
+                    btn.classList.add('on');
+                }
+            });
+
+            targetDisplay.innerText = currentBitState.join("");
+            decInputArea.style.display = "block";
+            document.getElementById('dec-input').value = "";
+        }
+
+        updateMathMonitor();
+    }
+
+    function checkAnswer() {
+        let isCorrect = false;
+        let userOutput = "";
+        let correctBinaryStr = "";
+
+        // Hitung string biner jawaban yang benar
+        let tempVal = targetValue;
+        let targetBits = [];
+        bitValues.forEach(val => {
+            if (tempVal >= val) {
+                targetBits.push(1);
+                tempVal -= val;
+            } else {
+                targetBits.push(0);
+            }
+        });
+        correctBinaryStr = targetBits.join("");
+
+        if (currentMode === "DEC_TO_BIN") {
+            userOutput = currentBitState.join("");
+            isCorrect = userOutput === correctBinaryStr;
+        } else {
+            const inputVal = parseInt(document.getElementById('dec-input').value);
+            isCorrect = inputVal === targetValue;
+            userOutput = inputVal || 0;
+        }
+
+        showModal(isCorrect, correctBinaryStr);
+    }
+
+    function showModal(isCorrect, correctBinaryStr) {
+        const modal = document.getElementById('modal');
+        const title = document.getElementById('modal-title');
+        const desc = document.getElementById('modal-desc');
+        const btn = document.getElementById('modal-btn');
+
+        if (isCorrect) {
+            score += 20;
+            document.getElementById('score').innerText = score;
+            title.innerText = "🎉 JAWABAN BENAR!";
+            title.style.color = "var(--accent-green)";
+            desc.innerHTML = `Mantap! <b>${targetValue}</b> memang bernilai biner <b>${correctBinaryStr}</b>.`;
+        } else {
+            title.innerText = "❌ MASIH SALAH!";
+            title.style.color = "#ef4444";
+            desc.innerHTML = `Angka <b>${targetValue}</b> seharusnya adalah <b>${correctBinaryStr}</b>.<br><small style="color:#6b7280">(Penjumlahan saklar ON: ${targetBitsExplanation(correctBinaryStr)})</small>`;
+        }
+
+        if (qCount < maxQuestions) {
+            btn.innerText = "Soal Berikutnya";
+            btn.onclick = () => { modal.style.display = "none"; qCount++; document.getElementById('question-count').innerText = qCount; generateQuestion(); };
+        } else {
+            btn.innerText = "Lihat Hasil Akhir";
+            btn.onclick = () => { 
+                modal.style.display = "none";
+                alert(`Game Selesai!\nTotal Skor Kamu: ${score} dari 100`);
+                qCount = 1;
+                score = 0;
+                document.getElementById('score').innerText = score;
+                document.getElementById('question-count').innerText = qCount;
+                generateQuestion();
+            };
+        }
+
+        modal.style.display = "flex";
+    }
+
+    function targetBitsExplanation(binStr) {
+        let parts = [];
+        binStr.split('').forEach((b, idx) => {
+            if(b === '1') parts.push(bitValues[idx]);
+        });
+        return parts.join(" + ");
+    }
+
+    // Start Game
+    generateQuestion();
+</script>
+
+</body>
+</html>
