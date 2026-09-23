@@ -95,6 +95,10 @@ if (isset($_POST['hapus_game'])) {
 // 5. Ambil semua daftar game dari database
 $stmt = $pdo->query("SELECT * FROM games ORDER BY id DESC");
 $games = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Set hero header variables for admin_header
+$hero_title = "Manajemen Game Edukasi 🎮";
+$hero_subtitle = "Kelola dan upload game HTML edukasi untuk siswa";
 ?>
 
 <!DOCTYPE html>
@@ -111,26 +115,10 @@ $games = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css" rel="stylesheet" />
 </head>
 <body class="bg-light">
-    <!-- Navbar simpel khusus Admin -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 shadow-sm">
-        <div class="container">
-            <a class="navbar-brand fw-bold" href="#">⚙️ Admin Panel - SIJA</a>
-            <div class="d-flex">
-                <a href="index.php" class="btn btn-outline-light btn-sm d-flex align-items-center gap-2">
-                    <i class="bi bi-house-door"></i> Kembali ke LMS
-                </a>
-            </div>
-        </div>
-    </nav>
+    <?php include 'includes/admin_header.php'; ?>
 
     <div class="container pb-5">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <div>
-                <h3 class="fw-bold mb-0">🎮 Manajemen Game Edukasi HTML</h3>
-                <p class="text-muted small mb-0">Upload file game HTML tunggal (.html) langsung ke server LMS.</p>
-            </div>
-        </div>
-
+       
         <?= $pesan ?>
         <?php if (isset($_GET['status']) && $_GET['status'] == 'deleted'): ?>
             <div class="alert alert-warning alert-dismissible fade show" role="alert">
@@ -244,6 +232,8 @@ $games = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
         </div>
     </div>
+
+    <?php include 'includes/footer.php'; ?>
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
