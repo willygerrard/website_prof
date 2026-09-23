@@ -10824,3 +10824,6 @@ textarea.form-control-lg {
     display: none !important;
   }
 }
+/* Sticky footer: lihat head.php (d-flex flex-column min-vh-100 di body)
+   dan footer.php (mt-auto di footer) — kombinasi itu yang benar-benar
+   mendorong footer ke dasar viewport kalau konten halaman pendek. */

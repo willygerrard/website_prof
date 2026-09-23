@@ -11,6 +11,7 @@ services:
 
     volumes:
       - /var/www/html/website_prof:/var/www/html
+      - /mnt/hdd2tb/uploads_lms:/var/www/html/uploads
 
     working_dir: /var/www/html
 

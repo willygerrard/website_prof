@@ -6,4 +6,4 @@
     <title><?= isset($page_title) ? htmlspecialchars($page_title) : 'Pusat Pembelajaran SIJA' ?></title>
     <?= $extra_head ?? '' ?>
 </head>
-<body class="<?= isset($body_class) ? htmlspecialchars($body_class) : 'bg-light' ?>">
+<body class="d-flex flex-column min-vh-100 <?= isset($body_class) ? htmlspecialchars($body_class) : 'bg-light' ?>">
