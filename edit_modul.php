@@ -150,7 +150,7 @@ try {
                     <label for="category" class="form-label fw-semibold text-secondary">category Pembelajaran</label>
                     <select class="form-select p-2.5" id="category" name="category" required>
                         <option value="Network" <?= $data['category'] === 'Network' ? 'selected' : ''; ?>>Network</option>
-                        <option value="IoT" <?= $data['category'] === 'IoT' ? 'selected' : ''; ?>>Internet of Things (IoT)</option>
+                        <option value="System Administration" <?= $data['category'] === 'System Administration' ? 'selected' : ''; ?>>System Administration</option>
                         <option value="Cloud Computing" <?= $data['category'] === 'Cloud Computing' ? 'selected' : ''; ?>>Cloud Computing</option>
                         <option value="DevOps" <?= $data['category'] === 'DevOps' ? 'selected' : ''; ?>>DevOps</option>
                     </select>

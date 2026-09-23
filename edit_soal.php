@@ -137,7 +137,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <label class="form-label fw-semibold text-secondary">Kategori</label>
                     <select class="form-select" name="kategori" required>
                         <option value="Network"        <?= $data['kategori'] === 'Network' ? 'selected' : '' ?>>Network</option>
-                        <option value="IoT"            <?= $data['kategori'] === 'IoT' ? 'selected' : '' ?>>Internet of Things (IoT)</option>
+                        <option value="System Administration" <?= $data['kategori'] === 'System Administration' ? 'selected' : '' ?>>System Administration</option>
                         <option value="Cloud Computing" <?= $data['kategori'] === 'Cloud Computing' ? 'selected' : '' ?>>Cloud Computing</option>
                         <option value="DevOps"         <?= $data['kategori'] === 'DevOps' ? 'selected' : '' ?>>DevOps</option>
                     </select>
