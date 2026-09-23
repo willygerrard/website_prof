@@ -5,6 +5,8 @@
  * Nilai koneksi dibaca dari environment variable atau file .env.
  */
 
+date_default_timezone_set('Asia/Jakarta');
+
 function load_env_file($path) {
     if (!is_file($path) || !is_readable($path)) {
         return [];
@@ -56,6 +58,7 @@ try {
     $pdo = new PDO("mysql:host=$host;dbname=$db;port=$port;charset=utf8mb4", $user, $pass);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+    $pdo->exec("SET time_zone = '+07:00'");
 } catch (PDOException $e) {
     error_log('Koneksi database GAGAL: ' . $e->getMessage());
     die('Aduh Pak, koneksi database GAGAL ❌ Silakan hubungi administrator.');
@@ -71,6 +74,7 @@ function db_error(PDOException $e) {
     error_log('DB Error [' . date('Y-m-d H:i:s') . ']: ' . $e->getMessage());
     die('Terjadi kesalahan pada sistem. Silakan hubungi administrator.');
 }
+
 
 /**
  * DEFAULT_RESET_PASSWORD
