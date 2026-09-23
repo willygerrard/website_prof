@@ -27,3 +27,7 @@ Thumbs.db
 node_modules/
 mariadb_data/
 .env
+
+# Runtime artifacts (jangan di-push)
+games_data/
+img/icon_*
