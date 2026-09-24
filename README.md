@@ -47,6 +47,20 @@ I picked up while working on this as a learning project:
   intentionally hostile bot behavior, which I'm reading as "the limiter is doing its job," not
   as a bug to chase down further.
 
+## 🤖 AI Learning Navigator & Smart Search
+
+Implemented an intelligent AI-powered learning navigator that transforms student career goals and questions into precise module searches:
+
+* **Dual-Mode Search System:** Combines traditional SQL precision search with AI-powered intent recognition for optimal results
+* **Career-to-Keyword Mapping:** Automatically maps career aspirations (web developer, sysadmin, network engineer, etc.) to relevant technical keywords and topics
+* **Smart Intent Extraction:** Uses Gemini AI to analyze student input and extract structured search parameters (keywords, categories, resource types)
+* **Fallback Engine:** Intelligent fallback to keyword-based search when AI services are unavailable
+* **Cross-Level Guidance:** Provides motivational notes when students explore topics typically taught in higher grade levels
+* **Animated CLIpper AI Mode:** Modern, animated search interface with ripple effects and gradient bars for engaging user experience
+* **Multi-Language Support:** Handles both Indonesian and English keywords for broader accessibility
+
+The AI Learning Navigator transforms student questions like "Aku pengen jadi network engineer" into targeted searches for networking modules, automatically extracting relevant keywords like ['jaringan', 'network', 'kabel', 'ip', 'router', 'switch', 'wifi', 'lan', 'osi', 'tcp/ip', 'vlan', 'subnetting'].
+
 ## 🎯 Recent Updates: Class Targeting, Topic Tagging & Short-Answer Questions
 
 A larger round of changes aimed at making quiz deployment more precise (right questions,
@@ -119,3 +133,9 @@ intentionally left as-is for now:
 
 I'd rather list these honestly than pretend the project is more airtight than it is — happy to
 revisit any of them if the scope actually calls for it.
+
+## 👥 Management User — Filter Kelas & UI Modern
+
+* **Filter Per Kelas:** Tombol filter kelas (`📦 Kelas X`) seperti `rekap_nilai`, bekerja bersama `search` dan `sort`.
+* **Dashboard Statistik:** Card statistik (Total Siswa, Aktif, Nonaktif, Total Kelas) dengan filter interaktif.
+* **UI Rompak Total (`management_user_new.php`):** Bootstrap 5 (`bg-light`, card, shadow, badge), tabel DataTables, tombol aksi `btn-outline-*`, form edit nama inline.

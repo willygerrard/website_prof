@@ -161,12 +161,40 @@ if (isset($_GET['action']) && $_GET['action'] === 'reset_password' && isset($_GE
     }
 }
 
+// --- AKSI: PROMOSI BULK (Pindahkan kelas) ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'promosi_bulk') {
+    csrf_require_valid_post();
+    $id_targets   = $_POST['ids'] ?? [];
+    $kelas_baru   = trim($_POST['kelas_tujuan'] ?? '');
+    $id_targets   = array_map('intval', array_filter($id_targets));
+
+    if (empty($id_targets) || $kelas_baru === '') {
+        $pesan = "<div class='alert alert-warning'>⚠️ Pilih minimal 1 siswa dan tentukan kelas tujuan.</div>";
+    } else {
+        $daftar_kelas_valid = $pdo->query("SELECT DISTINCT kelas FROM users WHERE kelas IS NOT NULL AND kelas <> ''")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array($kelas_baru, $daftar_kelas_valid, true)) {
+            $pesan = "<div class='alert alert-danger'>⚠️ Kelas tujuan &quot;$kelas_baru&quot; tidak dikenali. Pastikan kolom kelas di tabel users sudah terisi.</div>";
+        } else {
+            try {
+                $in_placeholders = implode(',', array_fill(0, count($id_targets), '?'));
+                $stmt = $pdo->prepare("UPDATE users SET kelas = ? WHERE id IN ($in_placeholders) AND role = 'siswa'");
+                $stmt->execute(array_merge([$kelas_baru], $id_targets));
+                $terupdate = $stmt->rowCount();
+                $pesan = "<div class='alert alert-success'>✅ $terupdate siswa berhasil dipromosikan ke <strong>" . htmlspecialchars($kelas_baru) . "</strong>.</div>";
+            } catch (PDOException $e) {
+                error_log('DB Error [promosi bulk]: ' . $e->getMessage());
+                $pesan = "<div class='alert alert-danger'>Terjadi kesalahan pada sistem. Silakan hubungi administrator.</div>";
+            }
+        }
+    }
+}
+
 // --- SEARCH, SORT, FILTER KELAS, FILTER STATUS ---
 $search        = trim($_GET['search'] ?? '');
 $sort          = $_GET['sort'] ?? '';
 $kelas_filter  = $_GET['kelas'] ?? '';
 $status_filter = $_GET['status'] ?? '';
-if (!in_array($status_filter, ['aktif', 'nonaktif'], true)) {
+if (!in_array($status_filter, ['aktif', 'nonaktif', 'lulus'], true)) {
     $status_filter = '';
 }
 
@@ -217,7 +245,8 @@ try {
         SELECT
             COUNT(*) AS total,
             SUM(CASE WHEN status = 'aktif'    THEN 1 ELSE 0 END) AS aktif,
-            SUM(CASE WHEN status = 'nonaktif' THEN 1 ELSE 0 END) AS nonaktif
+            SUM(CASE WHEN status = 'nonaktif' THEN 1 ELSE 0 END) AS nonaktif,
+            SUM(CASE WHEN status = 'lulus'    THEN 1 ELSE 0 END) AS lulus
         FROM users
         WHERE role = 'siswa'
     ");
@@ -225,6 +254,7 @@ try {
     $stat_total    = (int)($row_stat['total']    ?? 0);
     $stat_aktif    = (int)($row_stat['aktif']    ?? 0);
     $stat_nonaktif = (int)($row_stat['nonaktif'] ?? 0);
+    $stat_lulus    = (int)($row_stat['lulus']    ?? 0);
 } catch (PDOException $e) {
     error_log('DB Error [statistik user]: ' . $e->getMessage());
 }
@@ -312,6 +342,22 @@ $csrf_token = csrf_token();
                 </a>
             </div>
 
+            <!-- Lulus (statis) -->
+            <div class="col-6 col-md-3">
+                <div class="card border-0 shadow-sm h-100 stat-card static">
+                    <div class="card-body d-flex align-items-center gap-3">
+                        <div class="rounded-circle bg-info bg-opacity-10 d-flex align-items-center justify-content-center flex-shrink-0"
+                             style="width:48px;height:48px;">
+                            <i class="bi bi-mortarboard-fill text-info fs-4"></i>
+                        </div>
+                        <div>
+                            <div class="text-muted small">Lulus</div>
+                            <div class="fw-bold fs-4 lh-1 text-info"><?= $stat_lulus ?></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Total Kelas (statis) -->
             <div class="col-6 col-md-3">
                 <div class="card border-0 shadow-sm h-100 stat-card static">
@@ -331,10 +377,10 @@ $csrf_token = csrf_token();
 
         <!-- Info aktif filter -->
         <?php if ($status_filter !== ''): ?>
-        <div class="alert alert-<?= $status_filter === 'aktif' ? 'success' : 'warning' ?> d-flex align-items-center justify-content-between py-2">
+        <div class="alert alert-<?= $status_filter === 'aktif' ? 'success' : ($status_filter === 'lulus' ? 'info' : 'warning') ?> d-flex align-items-center justify-content-between py-2">
             <div>
                 <i class="bi bi-funnel-fill me-1"></i>
-                Menampilkan siswa <strong><?= $status_filter === 'aktif' ? 'Aktif' : 'Nonaktif' ?></strong> saja.
+                Menampilkan siswa <strong><?= $status_filter === 'aktif' ? 'Aktif' : ($status_filter === 'lulus' ? 'Lulus' : 'Nonaktif') ?></strong> saja.
             </div>
             <a href="?<?= filter_qs(['status' => '']) ?>" class="btn btn-sm btn-outline-dark">
                 <i class="bi bi-x-circle"></i> Hapus filter
@@ -375,10 +421,40 @@ $csrf_token = csrf_token();
             </div>
         </form>
 
+        <!-- PROMOSI BULK -->
+        <form method="POST" class="row g-2 mb-4 bg-white p-3 rounded-3 shadow-sm border align-items-end">
+            <?= csrf_field() ?>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold small">Aksi Massal</label>
+                <select class="form-select form-select-sm" name="action" id="bulkActionSelect" onchange="var ts = document.getElementById('kelasTujuanSelect'); var btn = document.getElementById('btnPromosiBulk'); if (this.value === 'promosi_bulk') { ts.removeAttribute('disabled'); ts.style.pointerEvents=''; ts.style.opacity=''; btn.disabled = true; btn.textContent = 'Tunggu kelas tujuan dipilih...'; } else { ts.setAttribute('disabled','disabled'); ts.style.pointerEvents='none'; ts.style.opacity='0.6'; btn.disabled = true; btn.textContent = 'Eksekusi'; }">
+                    <option value="">-- Pilih Aksi --</option>
+                    <option value="promosi_bulk">🚀 Promosi ke Kelas Lain</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold small">Kelas Tujuan</label>
+                <select class="form-select form-select-sm" name="kelas_tujuan" id="kelasTujuanSelect" disabled onchange="var btn = document.getElementById('btnPromosiBulk'); if (this.value !== '') { btn.disabled = false; btn.textContent = 'Eksekusi Promosi'; } else { btn.disabled = true; btn.textContent = 'Eksekusi'; }">
+                    <option value="">-- Pilih --</option>
+                    <?php foreach ($daftar_kelas as $k): ?>
+                        <option value="<?= htmlspecialchars($k) ?>"><?= htmlspecialchars($k) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-6 d-flex gap-2 align-items-end">
+                <button type="submit" class="btn btn-primary btn-sm" id="btnPromosiBulk" disabled>
+                    <i class="bi bi-arrow-right-circle"></i> Eksekusi
+                </button>
+                <p class="text-muted small mb-0 ps-2">Centang siswa di tabel, pilih aksi & kelas tujuan di atas.</p>
+            </div>
+        </form>
+
         <div class="table-responsive bg-white p-4 rounded-3 shadow-sm border">
             <table id="tableUser" class="table table-hover align-middle m-0 w-100">
                 <thead class="table-light">
                     <tr>
+                        <th style="width: 4%" data-orderable="false">
+                            <input type="checkbox" class="form-check-input" id="checkAllSiswa" title="Pilih semua">
+                        </th>
                         <th data-orderable="false">ID</th>
                         <th data-orderable="false">Username</th>
                         <th data-orderable="false">
@@ -401,8 +477,19 @@ $csrf_token = csrf_token();
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($daftar_siswa as $siswa): $is_nonaktif = ($siswa['status'] ?? 'aktif') === 'nonaktif'; ?>
-                    <tr class="<?= $is_nonaktif ? 'table-secondary' : '' ?>">
+                    <?php foreach ($daftar_siswa as $siswa): 
+                        $status_val = $siswa['status'] ?? 'aktif';
+                        $is_nonaktif = $status_val === 'nonaktif';
+                        $is_lulus    = $status_val === 'lulus';
+                        if ($is_lulus)      $statusBadge = 'bg-info text-dark';
+                        elseif ($is_nonaktif) $statusBadge = 'bg-warning text-dark';
+                        else                $statusBadge = 'bg-success';
+                        $statusLabel = $is_lulus ? 'Lulus' : ($is_nonaktif ? 'Nonaktif' : 'Aktif');
+                    ?>
+                    <tr class="<?= $is_nonaktif || $is_lulus ? 'table-secondary' : '' ?>">
+                        <td>
+                            <input type="checkbox" class="form-check-input siswa-check" name="ids[]" value="<?= (int)$siswa['id'] ?>">
+                        </td>
                         <td><?= $siswa['id'] ?></td>
                         <td>
                             <strong><?= htmlspecialchars($siswa['username']) ?></strong><br>
@@ -429,8 +516,8 @@ $csrf_token = csrf_token();
                         <td><?= htmlspecialchars($siswa['kelas'] ?: '-') ?></td>
                         <td><?= htmlspecialchars($siswa['no_wa_ortu'] ?: '-') ?></td>
                         <td>
-                            <span class="badge <?= $is_nonaktif ? 'bg-warning text-dark' : 'bg-success' ?>">
-                                <?= $is_nonaktif ? 'Nonaktif' : 'Aktif' ?>
+                            <span class="badge <?= $statusBadge ?>">
+                                <?= $statusLabel ?>
                             </span>
                         </td>
                         <td><small><?= htmlspecialchars($siswa['created_at']) ?></small></td>
@@ -441,6 +528,8 @@ $csrf_token = csrf_token();
                                        class="btn btn-sm btn-outline-success"
                                        onclick="return confirm('Aktifkan kembali akun ini?')"
                                        title="Aktifkan">🔄</a>
+                                <?php elseif ($is_lulus): ?>
+                                    <span class="text-muted small me-1"><i class="bi bi-check-circle"></i> Lulus</span>
                                 <?php else: ?>
                                     <a href="?<?= action_qs(['action' => 'nonaktifkan', 'id' => $siswa['id']]) ?>"
                                        class="btn btn-sm btn-outline-warning"
@@ -448,10 +537,12 @@ $csrf_token = csrf_token();
                                        title="Nonaktifkan">🔴</a>
                                 <?php endif; ?>
 
+                                <?php if (!($is_nonaktif || $is_lulus)): ?>
                                 <a href="?<?= action_qs(['action' => 'reset_password', 'id' => $siswa['id']]) ?>"
                                    class="btn btn-sm btn-outline-info"
                                    onclick="return confirm('Yakin reset password untuk siswa ini? Siswa akan diminta mengganti password saat login berikutnya.')"
                                    title="Reset Password">🔑</a>
+                                <?php endif; ?>
 
                                 <?php if ($is_nonaktif): ?>
                                     <a href="?<?= action_qs(['action' => 'hapus_permanen', 'id' => $siswa['id']]) ?>"
@@ -466,7 +557,7 @@ $csrf_token = csrf_token();
 
                     <?php if (empty($daftar_siswa)): ?>
                     <tr>
-                        <td colspan="7" class="text-center text-muted py-4">
+                        <td colspan="8" class="text-center text-muted py-4">
                             <?php
                             $kondisi = [];
                             if ($search)        $kondisi[] = 'username/nama mengandung "' . htmlspecialchars($search) . '"';
@@ -495,7 +586,7 @@ $csrf_token = csrf_token();
             $('#tableUser').DataTable({
                 "order": [], // biarkan urutan dari server (ORDER BY di PHP)
                 "columnDefs": [
-                    { "orderable": false, "targets": [0, 1, 3, 4, 5, 6] }
+                    { "orderable": false, "targets": [0, 1, 4, 5, 6, 7] }
                 ],
                 "language": {
                     "search": "🔍 Cari:",
@@ -512,8 +603,51 @@ $csrf_token = csrf_token();
 
         function toggleEditNama(id) {
             const form = document.getElementById('form-nama-' + id);
-            form.classList.toggle('d-none');
+            if (form) form.classList.toggle('d-none');
         }
+
+        // Check-all untuk kolom checkbox siswa
+        (function () {
+            var checkAll = document.getElementById('checkAllSiswa');
+            if (checkAll) {
+                checkAll.addEventListener('change', function () {
+                    document.querySelectorAll('.siswa-check').forEach(function (cb) {
+                        cb.checked = this.checked;
+                    }.bind(this));
+                });
+            }
+            document.querySelectorAll('.siswa-check').forEach(function (cb) {
+                cb.addEventListener('change', function () {
+                    var all = document.querySelectorAll('.siswa-check');
+                    var checked = document.querySelectorAll('.siswa-check:checked');
+                    if (checkAll) checkAll.checked = all.length === checked.length;
+                });
+            });
+        })();
+
+        // Fallback poller: enable kelas_tujuan jika action = promosi_bulk
+        (function () {
+            var actionSel = document.getElementById('bulkActionSelect');
+            var ts = document.getElementById('kelasTujuanSelect');
+            var btn = document.getElementById('btnPromosiBulk');
+            if (!actionSel || !ts || !btn) return;
+            var poller = setInterval(function () {
+                if (actionSel.value === 'promosi_bulk') {
+                    if (ts.disabled || ts.getAttribute('disabled') !== null) {
+                        ts.removeAttribute('disabled');
+                        ts.style.pointerEvents = '';
+                        ts.style.opacity = '';
+                    }
+                } else {
+                    if (!ts.disabled || ts.getAttribute('disabled') === null) {
+                        ts.setAttribute('disabled', 'disabled');
+                        ts.style.pointerEvents = 'none';
+                        ts.style.opacity = '0.6';
+                    }
+                }
+            }, 200);
+            window.addEventListener('beforeunload', function () { clearInterval(poller); });
+        })();
     </script>
 </body>
 </html>

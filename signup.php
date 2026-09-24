@@ -126,6 +126,9 @@ if (isset($_POST['register'])) {
             
             <!-- Kelas XII -->
             <option value="XII SIJA">XII SIJA</option>
+
+            <!-- Kelas XIII -->
+            <option value="XIII SIJA">XIII SIJA</option>
         </select>
 
         <label>No. WhatsApp Orang Tua/Wali:</label>

@@ -64,6 +64,7 @@ $link_tugas_per_kelas = [
     'X TKJ 4'  => 'https://tinyurl.com/4hk9vwwh',
     'XI SIJA'  => 'https://tinyurl.com/4awhwbfh',
     'XII SIJA' => 'https://tinyurl.com/2ztnwwyd',
+    'XIII SIJA' => 'https://tinyurl.com/2ztnwwyd',
 ];
 
 $link_tugas = $link_tugas_default;
