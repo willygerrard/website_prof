@@ -2,79 +2,89 @@
 include 'koneksi.php';
 include 'csrf_helper.php';
 session_start();
+
 if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
-    header("Location: login.php");
-    exit();
+    header("Location: login.php"); exit();
 }
-
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
-    header("HTTP/1.1 404 Not Found");
-    exit();
+    header("HTTP/1.1 404 Not Found"); exit();
 }
-
 csrf_require_valid_post();
 
-if (strpos($_SERVER['REQUEST_URI'], 'pintu-rahasia-sija') === false && $_SERVER['REQUEST_METHOD'] !== 'POST') {
-    // biarkan lolos kalau diakses via POST dari management_kuis.php,
-    // tapi tetap tolak akses langsung via GET tanpa lewat rute rahasia
-}
-
-$ids = $_POST['ids'] ?? [];
-$ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
-
-if (empty($ids)) {
-    header("Location: /pintu-rahasia-sija");
-    exit();
-}
+$ids = array_values(array_unique(array_filter(array_map('intval', $_POST['ids'] ?? []))));
+if (empty($ids)) { header("Location: /pintu-rahasia-sija"); exit(); }
 
 $placeholders = implode(',', array_fill(0, count($ids), '?'));
 $stmt = $pdo->prepare("SELECT * FROM kuis_soal WHERE id IN ($placeholders) ORDER BY id ASC");
 $stmt->execute($ids);
 $soal_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-$error = '';
-$kategori = '';
-$level = '';
-$rawtext_prefill = '';
-$original_data = [];
-$original_ids = [];
+$error = ''; $kategori = ''; $level = '';
+$rawtext_prefill = ''; $original_data = []; $original_ids = [];
 
 if (empty($soal_list)) {
-    $error = 'Soal yang dipilih tidak ditemukan di database (mungkin sudah terhapus).';
+    $error = 'Soal tidak ditemukan.';
 } else {
     $kategori_set = array_values(array_unique(array_column($soal_list, 'kategori')));
     $level_set    = array_values(array_unique(array_column($soal_list, 'level')));
 
     if (count($kategori_set) > 1 || count($level_set) > 1) {
-        $error = 'Soal yang dipilih berasal dari kategori dan/atau level yang berbeda-beda. '
-               . 'Edit massal hanya bisa dilakukan untuk soal dengan kategori & level yang sama. '
-               . 'Silakan gunakan filter Kategori/Level di halaman Manage Kuis sebelum memilih soal.';
+        $error = 'Soal terpilih harus dari kategori & level yang sama. '
+               . 'Gunakan filter Kategori/Level dulu sebelum memilih.';
     } else {
         $kategori = $kategori_set[0];
-        $level = $level_set[0];
+        $level    = $level_set[0];
 
+        // Prefill rawtext — beda format untuk pilgan vs isian
+        $stmt_alt = $pdo->prepare("SELECT jawaban_alternatif FROM kuis_soal_alternatif_isian WHERE soal_id = ? ORDER BY id ASC");
         $rawtext_blocks = [];
         $no = 1;
-        foreach ($soal_list as $s) {
-            $rawtext_blocks[] = "{$no}. {$s['pertanyaan']}\n"
-                . "A) {$s['pilihan_a']}\n"
-                . "B) {$s['pilihan_b']}\n"
-                . "C) {$s['pilihan_c']}\n"
-                . "D) {$s['pilihan_d']}\n"
-                . "Answer: " . strtoupper($s['jawaban']) . "\n"
-                . "Materi: " . ($s['materi'] ?? '');
 
+        foreach ($soal_list as $s) {
+            $jenis = $s['jenis_soal'] ?? 'pilgan';
+
+            if ($jenis === 'isian') {
+                $stmt_alt->execute([$s['id']]);
+                $alts = $stmt_alt->fetchAll(PDO::FETCH_COLUMN);
+
+                $block = "{$no}. {$s['pertanyaan']}\n";
+                $block .= "Answer: " . ($alts[0] ?? '') . "\n";
+                for ($i = 1; $i < count($alts); $i++) {
+                    $block .= "Alt: " . $alts[$i] . "\n";
+                }
+                $block .= "Materi: " . ($s['materi'] ?? '');
+
+                $original_data[] = [
+                    'id'         => (int)$s['id'],
+                    'jenis'      => 'isian',
+                    'pertanyaan' => $s['pertanyaan'],
+                    'alternatif' => $alts,
+                    'materi'     => $s['materi'] ?? '',
+                ];
+            } else {
+                $block = "{$no}. {$s['pertanyaan']}\n"
+                    . "A) {$s['pilihan_a']}\n"
+                    . "B) {$s['pilihan_b']}\n"
+                    . "C) {$s['pilihan_c']}\n"
+                    . "D) {$s['pilihan_d']}\n"
+                    . "Answer: " . strtoupper($s['jawaban']) . "\n"
+                    . "Materi: " . ($s['materi'] ?? '');
+
+                $original_data[] = [
+                    'id'         => (int)$s['id'],
+                    'jenis'      => 'pilgan',
+                    'pertanyaan' => $s['pertanyaan'],
+                    'pilihan_a'  => $s['pilihan_a'],
+                    'pilihan_b'  => $s['pilihan_b'],
+                    'pilihan_c'  => $s['pilihan_c'],
+                    'pilihan_d'  => $s['pilihan_d'],
+                    'jawaban'    => strtoupper($s['jawaban']),
+                    'materi'     => $s['materi'] ?? '',
+                ];
+            }
+
+            $rawtext_blocks[] = $block;
             $original_ids[] = (int)$s['id'];
-            $original_data[] = [
-                'id'         => (int)$s['id'],
-                'pertanyaan' => $s['pertanyaan'],
-                'pilihan_a'  => $s['pilihan_a'],
-                'pilihan_b'  => $s['pilihan_b'],
-                'pilihan_c'  => $s['pilihan_c'],
-                'pilihan_d'  => $s['pilihan_d'],
-                'jawaban'    => strtoupper($s['jawaban']),
-                'materi'     => $s['materi'] ?? '',
-            ];
             $no++;
         }
         $rawtext_prefill = implode("\n\n", $rawtext_blocks);
@@ -85,41 +95,36 @@ if (empty($soal_list)) {
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit Massal Soal - Pusat Pembelajaran SIJA</title>
+    <title>Edit Massal Soal - SIJA</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-        .card { border-radius: 15px; }
-        .card-header { font-weight: 600; }
-        #quizRawText { min-height: 350px; resize: vertical; white-space: pre-wrap; }
+        .card { border-radius: 15px; } .card-header { font-weight: 600; }
+        #quizRawText { min-height: 350px; resize: vertical; white-space: pre-wrap; font-family: monospace; font-size: 13px; }
         #previewContainer { max-height: 500px; overflow-y: auto; }
         .diff-old { color: #dc3545; text-decoration: line-through; }
         .diff-new { color: #198754; font-weight: 600; }
         .field-unchanged { color: #6c757d; }
+        .badge-isian  { background: #0d6efd; }
+        .badge-pilgan { background: #6c757d; }
     </style>
 </head>
 <body class="bg-light">
-
-    <?php $hero_subtitle = 'Edit soal secara massal'; include __DIR__ . '/includes/admin_header.php'; ?>
+    <?php $hero_subtitle = 'Edit soal massal (pilgan & isian)'; include __DIR__ . '/includes/admin_header.php'; ?>
 
     <div class="container mt-4 mb-5">
         <div class="mb-3">
             <a href="/pintu-rahasia-sija" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left"></i> Kembali ke Manage Kuis
+                <i class="bi bi-arrow-left"></i> Kembali
             </a>
         </div>
 
         <?php if ($error): ?>
-            <div class="alert alert-danger">
-                <i class="bi bi-exclamation-triangle-fill"></i> <?= htmlspecialchars($error) ?>
-            </div>
+            <div class="alert alert-danger"><i class="bi bi-exclamation-triangle-fill"></i> <?= htmlspecialchars($error) ?></div>
         <?php else: ?>
 
-        <div class="alert alert-secondary d-flex align-items-center gap-3">
-            <div>
-                <strong><?= count($soal_list) ?> soal</strong> terpilih untuk diedit massal.
-            </div>
+        <div class="alert alert-secondary d-flex align-items-center gap-3 flex-wrap">
+            <strong><?= count($soal_list) ?> soal</strong> terpilih.
             <span class="badge bg-info text-dark"><?= htmlspecialchars($kategori) ?></span>
             <span class="badge bg-warning text-dark"><?= htmlspecialchars(ucfirst($level)) ?></span>
         </div>
@@ -129,15 +134,16 @@ if (empty($soal_list)) {
                 <i class="bi bi-pencil-square"></i> Edit Massal Soal
             </div>
             <div class="card-body">
-
                 <div id="editSection">
                     <div class="alert alert-info py-2 px-3 small">
-                        <i class="bi bi-info-circle-fill"></i> <strong>Cara Pakai:</strong><br>
-                        Format soal di bawah sudah otomatis terisi dari data yang ada. Edit langsung teksnya
-                        (pertanyaan, pilihan, jawaban, atau baris <strong>Materi:</strong>), lalu klik <strong>Generate Preview</strong>.
-                        Baris "Materi:" boleh dikosongkan (artinya soal belum ditandai materi).
-                        Jangan menghapus atau menambah blok soal — jumlah blok harus tetap
-                        <?= count($soal_list) ?> soal, dipisah 1 baris kosong antar soal.
+                        <i class="bi bi-info-circle-fill"></i> <strong>Format otomatis terisi.</strong>
+                        Edit langsung teksnya, lalu klik <strong>Generate Preview</strong>.
+                        <br>
+                        <span class="badge badge-pilgan">Pilgan</span> Ada baris <code>A)</code> <code>B)</code> <code>C)</code> <code>D)</code> + <code>Answer: A</code>.
+                        <br>
+                        <span class="badge badge-isian">Isian</span> Ada <code>Answer: jawaban utama</code> + baris <code>Alt: alternatif</code>.
+                        <br>
+                        <strong>Jangan hapus/tambah blok soal</strong> — jumlah harus tepat <?= count($soal_list) ?>, dipisah 1 baris kosong.
                     </div>
 
                     <textarea id="quizRawText" class="form-control mb-3"><?= htmlspecialchars($rawtext_prefill) ?></textarea>
@@ -148,9 +154,8 @@ if (empty($soal_list)) {
                 </div>
 
                 <div id="previewSection" style="display:none;">
-                    <h6 class="fw-bold mb-3">Preview Perubahan (sebelum → sesudah)</h6>
+                    <h6 class="fw-bold mb-3">Preview Perubahan</h6>
                     <div id="previewContainer" class="border p-2 mb-3 bg-light rounded"></div>
-
                     <form id="updateForm" action="update_quiz.php" method="POST">
                         <?= csrf_field() ?>
                         <input type="hidden" id="finalJsonData" name="update_json">
@@ -161,115 +166,218 @@ if (empty($soal_list)) {
                                 <i class="bi bi-arrow-left"></i> Edit Kembali
                             </button>
                             <button type="submit" class="btn btn-success flex-grow-1">
-                                <i class="bi bi-check2-circle"></i> Simpan Perubahan ke Database
+                                <i class="bi bi-check2-circle"></i> Simpan Perubahan
                             </button>
                         </div>
                     </form>
                 </div>
-
             </div>
         </div>
         <?php endif; ?>
     </div>
 
-    <!-- FOOTER -->
-    <footer class="py-5 bg-dark">
-        <div class="container"><p class="m-0 text-center text-white">Copyright &copy; SIJA Website 2026</p></div>
-    </footer>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="js/quiz_parser.js"></script>
+
     <?php if (!$error): ?>
     <script>
-        // Data asli dari DB, dipakai untuk validasi jumlah blok & diff preview
         const originalData = <?= json_encode($original_data, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS) ?>;
-        const originalIds  = <?= json_encode($original_ids) ?>;
 
-        // Parser dipindah ke js/quiz_parser.js (dipakai bareng tambah_soal.php), lihat <script src> di bawah.
+        function escapeHtml(s) {
+            const d = document.createElement('div');
+            d.innerText = s ?? '';
+            return d.innerHTML;
+        }
 
         function diffSpan(oldVal, newVal) {
-            if (oldVal === newVal) {
-                return `<span class="field-unchanged">${escapeHtml(newVal)}</span>`;
-            }
+            if (oldVal === newVal) return `<span class="field-unchanged">${escapeHtml(newVal)}</span>`;
             return `<span class="diff-old">${escapeHtml(oldVal)}</span> → <span class="diff-new">${escapeHtml(newVal)}</span>`;
         }
 
-        function escapeHtml(str) {
-            const div = document.createElement('div');
-            div.innerText = str ?? '';
-            return div.innerHTML;
+        // ============================================================
+        // Parser: deteksi jenis soal per blok (pilgan vs isian)
+        // ============================================================
+        function parseBlock(blockText) {
+            const lines = blockText.split('\n').map(l => l.trim()).filter(l => l !== '');
+            if (lines.length === 0) return null;
+
+            const result = {
+                pertanyaan: '',
+                pilihan_a: '', pilihan_b: '', pilihan_c: '', pilihan_d: '',
+                jawaban: '',
+                alternatif: [],
+                materi: ''
+            };
+
+            // Baris pertama: "1. Pertanyaan" atau langsung pertanyaan
+            const firstLine = lines[0].replace(/^\d+\.\s*/, '');
+            result.pertanyaan = firstLine;
+
+            let pilihan = {};
+            let isian = false;
+
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i];
+
+                // Pilihan A) / A. / A:
+                const mPil = line.match(/^([A-D])[\)\.\:]\s*(.+)$/i);
+                if (mPil) {
+                    pilihan[mPil[1].toUpperCase()] = mPil[2].trim();
+                    continue;
+                }
+
+                // Answer:
+                const mAns = line.match(/^Answer\s*:\s*(.+)$/i);
+                if (mAns) {
+                    result.jawaban = mAns[1].trim();
+                    continue;
+                }
+
+                // Alt:
+                const mAlt = line.match(/^Alt\s*:\s*(.+)$/i);
+                if (mAlt) {
+                    result.alternatif.push(mAlt[1].trim());
+                    isian = true;
+                    continue;
+                }
+
+                // Materi:
+                const mMat = line.match(/^Materi\s*:\s*(.*)$/i);
+                if (mMat) {
+                    result.materi = mMat[1].trim();
+                    continue;
+                }
+            }
+
+            // Deteksi jenis dari struktur
+            const hasPilgan = Object.keys(pilihan).length > 0;
+            if (hasPilgan && isian) throw new Error('Blok mengandung pilihan A-D DAN Alt: — ambigu.');
+            if (hasPilgan) {
+                result.jenis = 'pilgan';
+                result.pilihan_a = pilihan['A'] || '';
+                result.pilihan_b = pilihan['B'] || '';
+                result.pilihan_c = pilihan['C'] || '';
+                result.pilihan_d = pilihan['D'] || '';
+                if (!result.jawaban || !['A','B','C','D'].includes(result.jawaban.toUpperCase())) {
+                    throw new Error('Pilgan harus punya "Answer: A/B/C/D".');
+                }
+            } else if (isian) {
+                result.jenis = 'isian';
+                // Jawaban utama (Answer) masuk sebagai alternatif pertama
+                if (result.jawaban) {
+                    result.alternatif.unshift(result.jawaban);
+                }
+                if (result.alternatif.length === 0) {
+                    throw new Error('Isian harus punya minimal 1 "Answer:" atau "Alt:".');
+                }
+            } else {
+                throw new Error('Blok tidak dikenali — tidak ada pilihan A-D maupun Alt:.');
+            }
+
+            return result;
+        }
+
+        function parseAllBlocks(rawText) {
+            // Pisah per blok: 1 baris kosong (atau lebih)
+            const blocks = rawText.split(/\n\s*\n/).filter(b => b.trim() !== '');
+            return blocks.map((b, i) => {
+                try {
+                    return parseBlock(b);
+                } catch (e) {
+                    throw new Error('Blok #' + (i + 1) + ': ' + e.message);
+                }
+            });
         }
 
         function generatePreviewFromText() {
             const rawText = document.getElementById('quizRawText').value.trim();
-            if (!rawText) {
-                alert('Textbox tidak boleh kosong!');
+            if (!rawText) { alert('Textbox kosong!'); return; }
+
+            let parsed;
+            try {
+                parsed = parseAllBlocks(rawText);
+            } catch (e) {
+                alert('❌ ' + e.message);
                 return;
             }
-
-            const parsed = parseQuizText(rawText);
 
             if (parsed.length !== originalData.length) {
-                alert('Jumlah blok soal (' + parsed.length + ') tidak cocok dengan jumlah soal terpilih ('
-                    + originalData.length + '). Pastikan tidak ada blok soal yang terhapus/tertambah, '
-                    + 'dan setiap soal dipisah tepat 1 baris kosong.');
+                alert('Jumlah blok (' + parsed.length + ') ≠ jumlah soal terpilih ('
+                    + originalData.length + '). Jangan hapus/tambah blok.');
                 return;
             }
 
-            const huruf = ['A', 'B', 'C', 'D'];
-            const updatePayload = [];
-            const previewContainer = document.getElementById('previewContainer');
-            previewContainer.innerHTML = '';
+            const container = document.getElementById('previewContainer');
+            container.innerHTML = '';
+            const payload = [];
+            let hasError = false;
 
             parsed.forEach((q, i) => {
                 const orig = originalData[i];
-                const opts = q.options.slice(0, 4);
-                while (opts.length < 4) opts.push(''); // jaga-jaga kalau pilihan kurang dari 4
 
-                const idxJawaban = opts.indexOf(q.correct_answer);
-                const jawabanBaru = idxJawaban !== -1 ? huruf[idxJawaban] : '';
-
-                if (!jawabanBaru) {
-                    previewContainer.innerHTML += `<div class="mb-3 p-2 border border-danger rounded">
-                        <strong>Soal #${i + 1} (id: ${orig.id})</strong><br>
-                        <span class="text-danger"><i class="bi bi-exclamation-triangle-fill"></i> 
-                        Jawaban benar tidak ditemukan di antara pilihan A-D. Periksa kembali baris "Answer:".</span>
+                if (q.jenis !== orig.jenis) {
+                    container.innerHTML += `<div class="mb-3 p-2 border border-danger rounded">
+                        <strong>Soal #${i+1} (id: ${orig.id})</strong><br>
+                        <span class="text-danger">Jenis berubah dari <strong>${orig.jenis}</strong> ke <strong>${q.jenis}</strong>. Tidak boleh — hapus & buat soal baru kalau ingin ganti jenis.</span>
                     </div>`;
+                    hasError = true;
                     return;
                 }
 
-                updatePayload.push({
-                    id: orig.id,
-                    pertanyaan: q.question_text,
-                    pilihan_a: opts[0],
-                    pilihan_b: opts[1],
-                    pilihan_c: opts[2],
-                    pilihan_d: opts[3],
-                    jawaban: jawabanBaru,
-                    materi: q.materi || ''
-                });
+                let html = `<div class="mb-3 p-2 border rounded">
+                    <strong>Soal #${i+1} (id: ${orig.id})</strong>
+                    <span class="badge ${q.jenis === 'isian' ? 'badge-isian' : 'badge-pilgan'}">${q.jenis.toUpperCase()}</span><br>
+                    <div class="small mt-1"><strong>Pertanyaan:</strong> ${diffSpan(orig.pertanyaan, q.pertanyaan)}</div>`;
 
-                previewContainer.innerHTML += `
-                    <div class="mb-3 p-2 border rounded">
-                        <strong>Soal #${i + 1} (id: ${orig.id})</strong><br>
-                        <div class="small mt-1"><strong>Pertanyaan:</strong> ${diffSpan(orig.pertanyaan, q.question_text)}</div>
-                        <ul class="small mb-1">
-                            <li>A) ${diffSpan(orig.pilihan_a, opts[0])}</li>
-                            <li>B) ${diffSpan(orig.pilihan_b, opts[1])}</li>
-                            <li>C) ${diffSpan(orig.pilihan_c, opts[2])}</li>
-                            <li>D) ${diffSpan(orig.pilihan_d, opts[3])}</li>
-                        </ul>
-                        <div class="small"><strong>Jawaban:</strong> ${diffSpan(orig.jawaban, jawabanBaru)}</div>
-                        <div class="small"><strong>Materi:</strong> ${diffSpan(orig.materi || '(kosong)', q.materi || '(kosong)')}</div>
-                    </div>`;
+                if (q.jenis === 'pilgan') {
+                    html += `<ul class="small mb-1">
+                        <li>A) ${diffSpan(orig.pilihan_a, q.pilihan_a)}</li>
+                        <li>B) ${diffSpan(orig.pilihan_b, q.pilihan_b)}</li>
+                        <li>C) ${diffSpan(orig.pilihan_c, q.pilihan_c)}</li>
+                        <li>D) ${diffSpan(orig.pilihan_d, q.pilihan_d)}</li>
+                    </ul>
+                    <div class="small"><strong>Jawaban:</strong> ${diffSpan(orig.jawaban, q.jawaban.toUpperCase())}</div>`;
+
+                    payload.push({
+                        id: orig.id,
+                        jenis: 'pilgan',
+                        pertanyaan: q.pertanyaan,
+                        pilihan_a: q.pilihan_a, pilihan_b: q.pilihan_b,
+                        pilihan_c: q.pilihan_c, pilihan_d: q.pilihan_d,
+                        jawaban: q.jawaban.toUpperCase(),
+                        materi: q.materi
+                    });
+                } else {
+                    html += `<div class="small"><strong>Alternatif Jawaban:</strong><br>`;
+                    q.alternatif.forEach((alt, idx) => {
+                        const oldAlt = orig.alternatif[idx] || '(baru)';
+                        html += `&nbsp;&nbsp;• ${diffSpan(oldAlt, alt)}<br>`;
+                    });
+                    if (q.alternatif.length < orig.alternatif.length) {
+                        for (let j = q.alternatif.length; j < orig.alternatif.length; j++) {
+                            html += `&nbsp;&nbsp;• <span class="diff-old">${escapeHtml(orig.alternatif[j])}</span> (dihapus)<br>`;
+                        }
+                    }
+                    html += `</div>`;
+
+                    payload.push({
+                        id: orig.id,
+                        jenis: 'isian',
+                        pertanyaan: q.pertanyaan,
+                        alternatif: q.alternatif,
+                        materi: q.materi
+                    });
+                }
+
+                html += `<div class="small mt-1"><strong>Materi:</strong> ${diffSpan(orig.materi || '(kosong)', q.materi || '(kosong)')}</div></div>`;
+                container.innerHTML += html;
             });
 
-            if (updatePayload.length !== originalData.length) {
-                // Ada soal dengan jawaban tidak valid, jangan lanjut ke tahap simpan
+            if (hasError) {
+                alert('Ada masalah pada preview. Perbaiki dulu sebelum simpan.');
                 return;
             }
 
-            document.getElementById('finalJsonData').value = JSON.stringify(updatePayload);
+            document.getElementById('finalJsonData').value = JSON.stringify(payload);
             document.getElementById('editSection').style.display = 'none';
             document.getElementById('previewSection').style.display = 'block';
         }
@@ -280,7 +388,7 @@ if (empty($soal_list)) {
         }
 
         document.getElementById('updateForm').addEventListener('submit', function (e) {
-            if (!confirm('Simpan perubahan ke database untuk ' + originalData.length + ' soal ini?')) {
+            if (!confirm('Simpan perubahan untuk ' + originalData.length + ' soal?')) {
                 e.preventDefault();
             }
         });
