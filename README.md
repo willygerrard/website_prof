@@ -85,9 +85,9 @@ right class, right time in the term) and adding a second question type beyond mu
   Teachers list accepted answer variants per question (e.g. "IP address", "alamat IP", "Internet
   Protocol"); grading normalizes both the student's answer and each accepted variant (lowercase,
   strip punctuation, collapse whitespace) before comparing, so formatting differences don't
-  count as wrong. Every short-answer response is logged with a match/no-match flag so I can spot
-  questions where students keep giving reasonable answers that weren't anticipated, and add them
-  as accepted variants.
+  count as wrong. Every short-answer response is logged with a match/no-match flag, and admins can
+  review submissions, accepted answers, student, and quiz details in `review_jawaban_isian.php`.
+  This helps identify reasonable answers that were not anticipated so they can be added as variants.
 * **Anti-Tampering & Session Safety:** The set of question IDs served to a student is now pinned
   server-side in their session and re-validated on submit, so answers can no longer be forged via
   DevTools by injecting arbitrary question IDs. Quiz sessions also auto-expire after 2x their

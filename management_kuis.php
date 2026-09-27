@@ -100,6 +100,9 @@ $delete_token = csrf_token();
                 <a href="rekap_nilai.php" class="btn btn-success rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Lihat Rekap Nilai">
                     <i class="bi bi-bar-chart"></i>
                 </a>
+                <a href="review_jawaban_isian.php" class="btn btn-info rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Review Jawaban Isian">
+                    <i class="bi bi-chat-square-text"></i>
+                </a>
                 <button type="submit" form="bulkDeleteForm" formaction="bulk_edit.php" class="btn btn-warning rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Edit Massal Soal Terpilih">
                     <i class="bi bi-pencil-square"></i>
                 </button>
