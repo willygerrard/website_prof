@@ -58,6 +58,7 @@ Implemented an intelligent AI-powered learning navigator that transforms student
 * **Cross-Level Guidance:** Provides motivational notes when students explore topics typically taught in higher grade levels
 * **Animated CLIpper AI Mode:** Modern, animated search interface with ripple effects and gradient bars for engaging user experience
 * **Multi-Language Support:** Handles both Indonesian and English keywords for broader accessibility
+* **Difficulty-Based Ordering:** Search results are sorted from basic to advanced (dasar → menengah → lanjut) based on the topic's difficulty level, so students get a sensible reading path instead of arbitrary ordering.
 
 The AI Learning Navigator transforms student questions like "Aku pengen jadi network engineer" into targeted searches for networking modules, automatically extracting relevant keywords like ['jaringan', 'network', 'kabel', 'ip', 'router', 'switch', 'wifi', 'lan', 'osi', 'tcp/ip', 'vlan', 'subnetting'].
 
@@ -111,31 +112,80 @@ right class, right time in the term) and adding a second question type beyond mu
   INSERT/UPDATE queries. Consolidated the parser into one shared file and the database write
   logic into one shared helper, after a bug (a metadata field silently not saving) showed up in
   one entry point but not the others — same root cause, just duplicated three ways.
+## 👥 User Management — Class Filters & Modern UI
 
-### Known Gaps (being upfront about this)
+* **Class-Based Filtering:** Quick filter buttons (`📦 Class X`) similar to `rekap_nilai`, working seamlessly alongside `search` and `sort` parameters.
+* **Analytics Dashboard:** Interactive statistical cards displaying Total Students, Active, Inactive, and Total Classes.
+* **Modernized UI (`management_user_new.php`):** Completely overhauled using Bootstrap 5 (`bg-light`, modern cards, subtle shadows, status badges), DataTables integration, sleek `btn-outline-*` action buttons, and inline name editing forms.
 
-This is a solo school project (SIJA/TKJ subject), not a production system, so a few things are
-intentionally left as-is for now:
+## 🎓 User Management — Grade Promotion & Graduation System
 
-* Single-item delete (`?hapus=<id>`) still uses a GET request and isn't CSRF-protected yet —
-  only the bulk actions are covered so far.
-* Short-answer questions aren't supported yet in AI-assisted import or bulk edit — for now they
-  can only be added and edited one at a time through the manual form.
-* No dedicated review screen yet for short-answer responses flagged as "no automatic match" —
-  the data is logged, but I'm currently just eyeballing it via a database query rather than a
-  proper UI.
-* Topic tags (`materi`) are free text with autocomplete-style suggestions, not a controlled
-  vocabulary — nothing stops slightly inconsistent naming over time (e.g. "Subnetting" vs
-  "subnetting dasar") beyond my own discipline when tagging.
-* If this ever needs to support multiple teachers across different subjects, the schema will
-  need a proper `guru`/`mapel` relation — not something I've built out since there's no real
-  need for it yet at this scale.
+Bulk action system to promote students to the next grade or graduate them, equipped with strict server-side validation to enforce accurate promotion logic (1-level increment, main partition retention, Grade XIII → Graduation instead of promotion). Automatically parses class names based on the `<GRADE> <MAJOR> [NUMBER]` pattern, eliminating the need for manual annual mapping.
 
-I'd rather list these honestly than pretend the project is more airtight than it is — happy to
-revisit any of them if the scope actually calls for it.
+The destination class drop-down dynamically filters based on the selected students; the server re-validates all submissions to prevent DevTools bypass.
 
-## 👥 Management User — Filter Kelas & UI Modern
+## ↩️ User Management — Grade Promotion Undo (Rollback)
 
-* **Filter Per Kelas:** Tombol filter kelas (`📦 Kelas X`) seperti `rekap_nilai`, bekerja bersama `search` dan `sort`.
-* **Dashboard Statistik:** Card statistik (Total Siswa, Aktif, Nonaktif, Total Kelas) dengan filter interaktif.
-* **UI Rompak Total (`management_user_new.php`):** Bootstrap 5 (`bg-light`, card, shadow, badge), tabel DataTables, tombol aksi `btn-outline-*`, form edit nama inline.
+Promotions can now be rolled back safely. Before this change `promosi_bulk` overwrote `users.kelas`
+with no record of the previous value, so an accidental click was unrecoverable. Every promotion is
+now auditable and reversible:
+
+* **Audit Log Table (`riwayat_kelas`):** Each promotion writes one row per student (`user_id`,
+  `kelas_lama`, `kelas_baru`, `aksi='naik'`, `dibuat_oleh`, `created_at`) inside the **same
+  transaction** as the class update, so the move and its log are atomic — if anything fails
+  partway, nothing is half-saved.
+* **"Turunkan Kelas (Undo)" Bulk Action:** Reverts selected students to the class they had before
+  the promotion by reading their log entry, then records an `aksi='turun'` row for the audit trail.
+* **Anti-Double-Undo Rule:** A student can only be undone if their **most recent** `riwayat_kelas`
+  row has `aksi='naik'`. If the newest row is already `'turun'` (already undone) or they have no
+  history, the undo is rejected — so running undo twice on the same student does not silently flip
+  them down again on the second attempt.
+* **Cross-Class Selection:** Unlike promotion (restricted to one class), undo accepts students from
+  multiple classes at once, since each revert is driven by that student's own log rather than a
+  shared class-level rule.
+* **Auditable Class-Change Trail:** The `'naik'` / `'turun'` rows give per-student class-change
+  history, closing the earlier promotion-history gap (see Known Gaps below — full academic-year
+  tracking is still future work).
+
+## 🔐 Registration & Login Flow Hardening
+
+Hardening around the signup and login paths (`signup.php`, `proses_login.php`, `index.php`):
+
+* **Registration Open/Close Toggle:** Signup is gated by a `registrasi_status` (`'buka'`/`'tutup'`)
+  value in the `pengaturan` table plus a rotating access token (`registrasi_token_sekarang`)
+  checked server-side — registration can be closed entirely without touching code.
+* **Duplicate-Name Check (Active Students Only):** New signups are matched against existing names
+  after normalization (trim, collapse whitespace, lowercase, strip punctuation). Only **active**
+  students count toward a duplicate, so a new student can legitimately reuse the name of a
+  non-active / alumni account.
+* **WhatsApp Number Validation:** The parent WA number is stripped to digits and validated against
+  `^(08|62)[0-9]{8,12}$` before it is saved.
+* **Login CSRF + Session Regeneration:** The login POST requires a valid CSRF token and calls
+  `session_regenerate_id(true)` on success to guard against session fixation.
+* **Blocked Non-Active Accounts:** A `nonaktif` student is refused at login with a distinct error
+  instead of being let through.
+* **Forced Password Change After Admin Reset:** If a student logs in with the admin-reset default
+  password, the session sets `butuh_ganti_password` and `index.php` redirects them straight to
+  `akun_saya.php` to set a new password before they can use the portal.
+* **Class & Grade in Session:** On login the student's full class (e.g. "X TKJ 1") and its derived
+  grade (first word, e.g. "X") are stored in session. `index.php` uses them to filter modules to the
+  right grade level and to pick the correct per-class assignment submission link.
+
+---
+
+### ⚠️ Known Gaps & Current Limitations
+
+This is a solo learning/school project (SIJA/TKJ subject) rather than a production enterprise system, so certain features and edge cases are intentionally kept simple for now:
+
+#### Quiz & Security Limitations
+* **Single-Item Deletion Security:** Single-item delete (`?hapus=<id>`) still utilizes a GET request and lacks CSRF protection — CSRF tokens are currently implemented only on bulk actions.
+* **Short-Answer Feature Support:** Short-answer questions are not yet supported in AI-assisted import or bulk edit; they must be managed individually via the manual form.
+* **Manual Response Review:** There is no dedicated UI review screen for short-answer responses flagged as "no automatic match" — data is currently audited directly via database queries.
+* **Topic Tagging Consistency:** Topic tags (`materi`) rely on free-text inputs with autocomplete suggestions rather than a controlled vocabulary.
+* **Multi-Teacher Architecture:** Lacks a dedicated `guru`/`mapel` relational schema required for multi-teacher/subject support.
+
+#### User & Promotion System Limitations
+* **Single-Class Scope per Bulk Action:** Bulk promotion operations are restricted to one class per execution by design to prevent accidental cross-major mixing.
+* **Academic-Year History Not Tracked:** Class changes from promotion/undo are logged in `riwayat_kelas`, but there is still no full academic-year archive or per-year "class roster at time T" history.
+
+I'd rather list these transparently than pretend the project is fully airtight — happy to address any of these if future scope requires it.
