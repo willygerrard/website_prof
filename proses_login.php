@@ -21,15 +21,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // 5. Baru lakukan verifikasi Password Hash BCRYPT
     if ($user && password_verify($pass_input, $user['password'])) {
-        if (($user['status'] ?? 'aktif') === 'nonaktif' || ($user['status'] ?? 'aktif') === 'lulus') {
-        header("Location: login.php?error=nonaktif");
-        exit();
-    }
+        if (($user['status'] ?? 'aktif') === 'nonaktif') {
+            header("Location: login.php?error=nonaktif");
+            exit();
+        }
         // LOGIN SUKSES! Buat tanda bukti session
         session_regenerate_id(true);
 
         $_SESSION['is_login'] = true;
         $_SESSION['username'] = $user['username'];
+        $_SESSION['status']   = $user['status'] ?? 'aktif'; // dipakai index.php buat bedain dashboard
 
         // Jika siswa login dengan password default hasil reset, tandai agar
         // diarahkan mengganti password dulu (lihat index.php & akun_saya.php).
@@ -41,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Setelah password_verify sukses
         $_SESSION['role']     = $user['role']; // <-- Catat status admin/siswa di sini
         $_SESSION['user_id'] = $user['id'];  // tambah ini
-        
+
         // Simpan kelas asli siswa (misal "X TKJ 1") ke session
         $_SESSION['kelas']   = $user['kelas'] ?? '';
         // Ambil tingkatnya aja ("X TKJ 1" -> "X") dan simpan juga, biar index.php tinggal pakai langsung

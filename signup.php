@@ -3,6 +3,37 @@ require 'koneksi.php';
 
 $pesan = "";
 
+// ============================================================
+// Helper: normalisasi nama untuk cek duplikat
+// "Budi   SANTOSO." → "budi santoso"
+// ============================================================
+function normalize_nama(string $nama): string {
+    $nama = trim($nama);
+    $nama = preg_replace('/\s+/u', ' ', $nama);   // rapatkan spasi ganda
+    $nama = mb_strtolower($nama, 'UTF-8');        // abaikan besar-kecil huruf
+    $nama = trim($nama, ".,;:!?\"'");             // buang tanda baca di ujung
+    return $nama;
+}
+
+// ============================================================
+// Cari user aktif dengan nama persis sama (setelah normalisasi)
+// Hanya cek siswa aktif — siswa nonaktif/lulus tidak dihitung
+// (biar siswa baru bisa pakai nama yang sama dengan alumni)
+// ============================================================
+function cari_nama_kembar(PDO $pdo, string $nama_normalized): ?array {
+    $stmt = $pdo->query("
+        SELECT username, nama_asli, kelas, created_at 
+        FROM users 
+        WHERE role = 'siswa' AND status = 'aktif'
+    ");
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        if (normalize_nama($row['nama_asli']) === $nama_normalized) {
+            return $row;
+        }
+    }
+    return null;
+}
+
 // Baca status & token dari database (tabel pengaturan)
 $stmt_status = $pdo->query("SELECT `value` FROM pengaturan WHERE `key` = 'registrasi_status'");
 $registrasi_status = $stmt_status->fetchColumn();
@@ -29,7 +60,9 @@ if (isset($_POST['register'])) {
     // Normalisasi nomor WA (hapus spasi, strip, dst)
     $no_wa_bersih = preg_replace('/[^0-9]/', '', $no_wa_ortu);
 
-    // Cek apakah registrasi sedang dibuka
+    // ============================================================
+    // Validasi bertingkat
+    // ============================================================
     if ($registrasi_status !== 'buka') {
         $pesan = "<div style='color: #ff9933; margin-bottom: 15px;'>⚠️ Pendaftaran sedang ditutup. Silakan hubungi guru pembimbing jika ingin mendaftar.</div>";
     } elseif ($nama_asli === '') {
@@ -40,10 +73,24 @@ if (isset($_POST['register'])) {
         $pesan = "<div style='color: #ff3333; margin-bottom: 15px;'>Format nomor WA tidak valid. Contoh: 081234567890</div>";
     } else {
         try {
+            // 1. Cek nama kembar (hanya siswa AKTIF)
+            $nama_normalized = normalize_nama($nama_asli);
+            $duplikat = cari_nama_kembar($pdo, $nama_normalized);
+
+            // 2. Cek username duplikat
             $stmt_cek = $pdo->prepare("SELECT username FROM users WHERE username = :username");
             $stmt_cek->execute(['username' => $username]);
-            
-            if ($stmt_cek->rowCount() > 0) {
+            $username_sudah_ada = $stmt_cek->rowCount() > 0;
+
+            if ($duplikat) {
+                $pesan = "<div style='color: #ff3333; margin-bottom: 15px;'>
+                    ⚠️ Nama <strong>" . htmlspecialchars($nama_asli) . "</strong> 
+                    sudah terdaftar di kelas <strong>" . htmlspecialchars($duplikat['kelas']) . "</strong>.<br>
+                    <small style='color:#ffcc00;'>Kalau kamu siswa baru dengan nama persis sama 
+                    (mis. saudara kembar) atau merasa belum pernah daftar, 
+                    lapor ke guru untuk pendaftaran manual.</small>
+                </div>";
+            } elseif ($username_sudah_ada) {
                 $pesan = "<div style='color: #ff3333; margin-bottom: 15px;'>Username sudah terdaftar!</div>";
             } else {
                 $password_aman = password_hash($password, PASSWORD_DEFAULT);
@@ -65,7 +112,7 @@ if (isset($_POST['register'])) {
                     $pesan = "<div style='color: #00ff66; margin-bottom: 15px;'>Akun siswa sukses dibuat. Silahkan kembali ke halaman Login!</div>";
                 }
             }
-} catch (PDOException $e) {
+        } catch (PDOException $e) {
             error_log('DB Error [signup]: ' . $e->getMessage());
             $pesan = "<div style='color: #ff3333; margin-bottom: 15px;'>Terjadi kesalahan pada sistem. Silakan hubungi administrator.</div>";
         }
@@ -104,6 +151,7 @@ if (isset($_POST['register'])) {
     <form action="" method="POST">
         <label>Nama Lengkap:</label>
         <input type="text" name="nama_asli" placeholder="Sesuai nama di rapor/absensi..." required autocomplete="off">
+        <span class="hint">Tulis nama lengkap. Kalau nama sama persis dengan siswa lain, hubungi guru.</span>
 
         <label>Username Baru:</label>
         <input type="text" name="username" placeholder="Masukkan username..." required autocomplete="off">
