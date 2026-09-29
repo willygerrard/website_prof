@@ -1,11 +1,9 @@
 <?php
-session_start();
-include __DIR__ . '/koneksi.php';
+require_once 'session.php';
+require 'koneksi.php';
 
-if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
-    header('Location: login.php');
-    exit();
-}
+checkLogin();
+checkRole(['admin']);
 
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
     http_response_code(404);

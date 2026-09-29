@@ -1,13 +1,10 @@
 <?php
-include 'koneksi.php';
-include 'csrf_helper.php'; // Helper CSRF yang sudah Anda buat
+require_once 'session.php';      // session dulu
+require_once 'csrf_helper.php';  // baru helper
+require 'koneksi.php'; // Helper CSRF yang sudah Anda buat
 include __DIR__ . '/includes/normalisasi_helper.php';
-session_start();
 
-if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
-    header("Location: login.php");
-    exit();
-}
+checkLogin();
 
 $user_id = $_SESSION['user_id'] ?? null;
 if (!$user_id) {

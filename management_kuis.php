@@ -1,15 +1,10 @@
 <?php
-session_start();
-include 'koneksi.php';
-include 'csrf_helper.php';
-if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
-    header("Location: login.php");
-    exit();
-}
-if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
-    header("HTTP/1.1 404 Not Found");
-    exit();
-}
+require_once 'session.php';      // session dulu
+require_once 'csrf_helper.php';  // baru helper
+require 'koneksi.php';
+
+checkLogin();
+checkRole(['admin']);
 
 if (strpos($_SERVER['REQUEST_URI'], 'pintu-rahasia-sija') === false) {
     header("HTTP/1.1 404 Not Found");

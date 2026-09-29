@@ -1,6 +1,6 @@
 <?php
-session_start();
-include 'csrf_helper.php';
+require_once 'session.php';      // session dulu
+require_once 'csrf_helper.php';  // baru helper
 ?>
 <!DOCTYPE html>
 <html lang="id">

@@ -1,14 +1,13 @@
 <?php
 // rekap_nilai_tugas.php - Input & Rekap Nilai Tugas (khusus admin/guru)
-include 'koneksi.php';
-session_start();
+require_once 'session.php';
+require 'koneksi.php';
 
 // ============================================================
 // AUTH: hanya admin
 // ============================================================
-if (!isset($_SESSION['is_login']) || $_SESSION['role'] !== 'admin') {
-    die("Akses ditolak.");
-}
+checkLogin();
+checkRole(['admin']);
 
 // ============================================================
 // AJAX HANDLER: simpan nilai

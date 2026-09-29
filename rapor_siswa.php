@@ -1,11 +1,8 @@
 <?php
-include 'koneksi.php';
-session_start();
-if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
-    header("Location: login.php");
-    exit();
-}
-
+require_once 'session.php';
+require 'koneksi.php';
+checkLogin();
+checkRole(['admin', 'siswa']);
 const KKM = 75;
 
 // Tentukan siswa_id yang mau ditampilkan

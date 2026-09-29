@@ -1,8 +1,11 @@
 <?php
 // 1. Koneksi ke database MariaDB via PDO (Sesuaikan dengan file koneksi Bapak)
-session_start();
-include 'koneksi.php';
-include 'csrf_helper.php';
+require_once 'session.php';      // session dulu
+require_once 'csrf_helper.php';  // baru helper
+require 'koneksi.php';
+
+checkLogin();
+checkRole(['admin']);
 
 $id = $_GET['id'] ?? '';
 

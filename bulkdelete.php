@@ -1,16 +1,10 @@
 <?php
-include 'koneksi.php';
-include 'csrf_helper.php';
-session_start();
-if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
-    header("Location: login.php");
-    exit();
-}
+require_once 'session.php';      // session dulu
+require_once 'csrf_helper.php';  // baru helper
+require 'koneksi.php';
 
-if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
-    header("HTTP/1.1 404 Not Found");
-    exit();
-}
+checkLogin();
+checkRole(['admin']);
 
 // Hanya terima request POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

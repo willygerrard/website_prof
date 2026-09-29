@@ -1,18 +1,10 @@
 <?php
-session_start();
-// Pastikan koneksi database dan session start sudah aman di paling atas
-include 'koneksi.php';
-include 'csrf_helper.php';
+require_once 'session.php';      // session dulu
+require_once 'csrf_helper.php';  // baru helper
+require 'koneksi.php';
 
-if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
-    header("Location: login.php");
-    exit();
-}
-
-if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
-    header("HTTP/1.1 404 Not Found");
-    exit();
-}
+checkLogin();
+checkRole(['admin']);
 
 // Cek apakah user mlebu lewat URL samaran /gerbang-rahasia-sija
 if (strpos($_SERVER['REQUEST_URI'], 'gerbang-rahasia-sija') === false) {

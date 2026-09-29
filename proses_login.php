@@ -1,8 +1,8 @@
 <?php
 // 1. Hidupkan Session di baris paling atas
-session_start();
-include 'koneksi.php'; // $pdo sudah tersedia dari sini
-include 'csrf_helper.php';
+require_once 'session.php';      // session dulu
+require_once 'csrf_helper.php';  // baru helper
+require 'koneksi.php';
 
 // 2. Pastikan data dikirim lewat Method POST dari form login
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

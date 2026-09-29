@@ -1,13 +1,10 @@
 <?php
-session_start();
-include 'koneksi.php';
-include 'csrf_helper.php';
+require_once 'session.php';      // session dulu
+require_once 'csrf_helper.php';  // baru helper
+require 'koneksi.php';
 
-// 1. Validasi Keamanan: Hanya Admin yang boleh masuk
-if (!isset($_SESSION['is_login']) || $_SESSION['role'] !== 'admin') {
-    header("Location: login.php");
-    exit();
-}
+checkLogin();
+checkRole(['admin']);
 
 if (strpos($_SERVER['REQUEST_URI'], 'pintu-game-sija') === false) {
     header("HTTP/1.1 404 Not Found");

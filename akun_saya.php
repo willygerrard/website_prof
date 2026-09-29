@@ -1,11 +1,8 @@
 <?php
-include 'koneksi.php';
-session_start();
-include 'csrf_helper.php';
-if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
-    header("Location: login.php");
-    exit();
-}
+require_once 'session.php';      // session dulu
+require_once 'csrf_helper.php';  // baru helper
+require 'koneksi.php';
+checkLogin();
 
 $user_id = $_SESSION['user_id'] ?? null;
 if (!$user_id) {

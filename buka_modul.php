@@ -1,8 +1,9 @@
 <?php
-include 'koneksi.php';
+require_once 'session.php'; 
+require 'koneksi.php';
 require_once 'fonnte.php';
-session_start();
 
+checkLogin();
 if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
     header("Location: login.php");
     exit();

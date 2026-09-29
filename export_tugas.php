@@ -1,11 +1,10 @@
 <?php
-// export_tugas.php - Rekap Nilai Tugas
-session_start();
-if (!isset($_SESSION['is_login']) || $_SESSION['role'] !== 'admin') {
-    http_response_code(403);
-    die("Akses ditolak.");
-}
-include 'koneksi.php';
+require_once 'session.php';      // session dulu
+require_once 'csrf_helper.php';  // baru helper
+require 'koneksi.php';
+
+checkLogin();
+checkRole(['admin']);
 
 $tugasId = (int)($_GET['tugas_id'] ?? 0);
 if ($tugasId <= 0) die("ID Tugas tidak valid!");

@@ -1,11 +1,9 @@
 <?php
-include 'koneksi.php';
-session_start();
+require_once 'session.php';      // session dulu
+require 'koneksi.php';
 
-if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true || $_SESSION['role'] !== 'admin') {
-    header("HTTP/1.1 404 Not Found");
-    exit();
-}
+checkLogin();
+checkRole(['admin']);
 
 const KKM = 75;
 

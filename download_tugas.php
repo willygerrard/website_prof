@@ -1,11 +1,8 @@
 <?php
-include 'koneksi.php';
-session_start();
+require_once 'session.php';      // session dulu
+require 'koneksi.php';
 
-if (!isset($_SESSION['is_login'])) {
-    http_response_code(403);
-    exit('Akses ditolak. Silakan login dulu.');
-}
+checkLogin();
 
 $id = (int)($_GET['id'] ?? 0);
 if ($id <= 0) {

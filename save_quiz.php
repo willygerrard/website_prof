@@ -1,20 +1,12 @@
 <?php
-
-// 2. KONEKSI KE MARIADB (Sesuaikan konfigurasi database Anda)
-include 'koneksi.php'; 
+require_once 'session.php';      // session dulu
+require_once 'csrf_helper.php';  // baru helper
+require 'koneksi.php';
 include __DIR__ . '/includes/soal_writer.php';
-include 'csrf_helper.php';
-session_start();
 
 // Wajib login sebagai admin sebelum bisa menyimpan soal
-if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
-    header("Location: login.php");
-    exit();
-}
-if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
-    header("HTTP/1.1 404 Not Found");
-    exit();
-}
+checkLogin();
+checkRole(['admin']);
 
 csrf_require_valid_post();
 

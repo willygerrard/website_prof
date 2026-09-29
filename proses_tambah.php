@@ -1,14 +1,12 @@
 <?php
 // 1. Amankan session dan include koneksi database
-session_start();
-include 'csrf_helper.php';
-include 'koneksi.php'; // $pdo otomatis aktif
+require_once 'session.php';      // session dulu
+require_once 'csrf_helper.php';  // baru helper
+require 'koneksi.php';
 
 // Cek autentikasi login admin
-if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
-    header("Location: login.php");
-    exit();
-}
+checkLogin();
+checkRole(['admin']);
 
 // 2. Cek kiriman form via POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

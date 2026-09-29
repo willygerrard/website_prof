@@ -1,12 +1,9 @@
 <?php
-include 'koneksi.php';
-include 'csrf_helper.php';
-session_start();
+require_once 'session.php';      // session dulu
+require_once 'csrf_helper.php';  // baru helper
+require 'koneksi.php';
 
-if (!isset($_SESSION['is_login'])) {
-    header("Location: login.php");
-    exit();
-}
+checkLogin();
 
 $user_id  = $_SESSION['user_id'];
 $tugas_id = (int)($_GET['id'] ?? 0);

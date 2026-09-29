@@ -1,18 +1,11 @@
 <?php
-session_start();
-include 'koneksi.php';
-include 'csrf_helper.php';
+require_once 'session.php';      // session dulu
+require_once 'csrf_helper.php';  // baru helper
+require 'koneksi.php';
 include __DIR__ . '/includes/soal_writer.php';
 
-if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
-    header("Location: login.php");
-    exit();
-}
-
-if (!isset($_SESSION['is_login']) || !isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
-    header("HTTP/1.1 404 Not Found");
-    exit();
-}
+checkLogin();
+checkRole(['admin']);
 
 $id = $_GET['id'] ?? '';
 if (empty($id)) {

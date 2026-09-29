@@ -1,13 +1,10 @@
 <?php
-include 'koneksi.php';
-include 'csrf_helper.php';
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once 'session.php';
+require_once 'csrf_helper.php';
+require 'koneksi.php';
 
-if (!isset($_SESSION['is_login']) || $_SESSION['role'] !== 'admin') {
-    die("Akses ditolak.");
-}
+checkLogin();
+checkRole(['admin']);
 
 $pesan = '';
 $pesan_type = '';

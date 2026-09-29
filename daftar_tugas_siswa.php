@@ -1,16 +1,9 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    ini_set('session.cookie_httponly', 1);
-    ini_set('session.use_only_cookies', 1);
-    session_start();
-}
+require_once 'session.php';
+require 'koneksi.php';
 
-include 'koneksi.php';
+checkLogin();
 
-if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
-    header("Location: login.php");
-    exit();
-}
 
 if ($_SESSION['role'] !== 'siswa') {
     die("Halaman ini khusus untuk siswa.");

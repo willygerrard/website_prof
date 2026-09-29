@@ -1,9 +1,6 @@
 <?php
-session_start();
-if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
-    header("Location: login.php");
-    exit();
-}
+require_once 'session.php';      // session dulu
+checkLogin();
 
 $skor  = isset($_GET['skor']) ? (int)$_GET['skor'] : null;
 $benar = isset($_GET['benar']) ? (int)$_GET['benar'] : null;

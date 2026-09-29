@@ -1,7 +1,7 @@
 <?php
 // 1. HIDUPKAN SESSION START JUGA DI SINI
-session_start();
-include 'csrf_helper.php';
+require_once 'session.php';      // session dulu    
+require_once 'csrf_helper.php';  // baru helper
 
 // 2. KALAU SUDAH LOGIN KOK ISENG BUKA HALAMAN INI, LANGSUNG LEMPAR KE INDEX
 if (isset($_SESSION['is_login']) && $_SESSION['is_login'] === true) {

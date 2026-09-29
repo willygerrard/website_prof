@@ -1,14 +1,8 @@
 <?php
-include 'koneksi.php';
-session_start();
-if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
-    header("Location: login.php");
-    exit();
-}
-if ($_SESSION['role'] !== 'admin') {
-    header("HTTP/1.1 404 Not Found");
-    exit();
-}
+require_once 'session.php';
+require 'koneksi.php';
+checkLogin();
+checkRole(['admin']);
 
 const KKM = 75;
 

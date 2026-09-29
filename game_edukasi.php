@@ -1,13 +1,8 @@
 <?php
-include 'koneksi.php';
-ini_set('session.cookie_httponly', 1);
-ini_set('session.use_only_cookies', 1);
-session_start();
+require_once 'session.php';      // session dulu
+require 'koneksi.php';
 
-if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
-    header("Location: login.php");
-    exit();
-}
+checkLogin();
 
 $search = trim($_GET['keyword'] ?? '');
 $query_str = "SELECT * FROM games WHERE 1=1";

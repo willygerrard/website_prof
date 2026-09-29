@@ -1,18 +1,13 @@
 <?php
 // Endpoint ringan: dipanggil via fetch() dari index.php saat tombol "Buka Modul" diklik.
 // Tugasnya cuma catat + kirim notifikasi WA ke ortu, tidak render HTML apa pun.
-
-include 'koneksi.php';
+require_once 'session.php';      // session dulu
+require 'koneksi.php';
 require_once 'fonnte.php';
-session_start();
 
 header('Content-Type: application/json');
 
-if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
-    http_response_code(401);
-    echo json_encode(['status' => 'error', 'message' => 'Belum login']);
-    exit();
-}
+checkLogin();
 
 $user_id  = $_SESSION['user_id'] ?? null;
 $username = $_SESSION['username'] ?? '';

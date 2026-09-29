@@ -1,13 +1,11 @@
 <?php
-include 'koneksi.php';
+require_once 'session.php';      // session dulu
+require_once 'csrf_helper.php';  // baru helper
+require 'koneksi.php';
 include __DIR__ . '/includes/soal_writer.php';
-session_start();
-include 'csrf_helper.php';
 
-if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true || $_SESSION['role'] !== 'admin') {
-    header("Location: login.php");
-    exit();
-}
+checkLogin();
+checkRole(['admin']);
 
 $pesan = '';
 $pesan_type = '';

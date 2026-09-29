@@ -1,13 +1,10 @@
 <?php
-session_start();
+require_once 'session.php';      // session dulu
+require_once 'csrf_helper.php';  // baru helper
 require 'koneksi.php';
-require 'csrf_helper.php';
 
-// GUARD 1: Cek sudah login & role-nya ADMIN
-if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'admin') {
-    header("Location: login.php");
-    exit();
-}
+checkLogin();
+checkRole(['admin']);
 
 if (strpos($_SERVER['REQUEST_URI'], 'pintu-belakang-sija') === false) {
     header("HTTP/1.1 404 Not Found");
