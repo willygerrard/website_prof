@@ -138,8 +138,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori']) && !isset
                         <label class="form-label">Kategori</label>
                         <select class="form-select" id="sharedKategori" onchange="syncSharedMetadata()">
                             <option value="Network">Network</option>
-                            <option value="IoT">IoT</option>
-                            <option value="Cloud Computing">Cloud</option>
+                            <option value="System Administration">System Administration</option>
+                            <option value="Cloud Computing">Cloud Computing</option>
                             <option value="DevOps">DevOps</option>
                         </select>
                     </div>
@@ -180,8 +180,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori']) && !isset
                                 <label class="form-label">Kategori</label>
                                 <select class="form-select" name="kategori" id="manualKategori" required>
                                     <option value="Network">Network</option>
-                                    <option value="IoT">IoT</option>
-                                    <option value="Cloud Computing">Cloud</option>
+                                    <option value="System Administration">System Administration</option>
+                                    <option value="Cloud Computing">Cloud Computing</option>
                                     <option value="DevOps">DevOps</option>
                                 </select>
                             </div>

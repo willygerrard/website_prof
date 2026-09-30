@@ -3,6 +3,7 @@
  * koneksi_baru.php
  * Versi aman untuk koneksi database tanpa menulis kredensial sensitif secara langsung.
  * Nilai koneksi dibaca dari environment variable atau file .env.
+ * Mendukung multi-environment: production dan staging
  */
 
 date_default_timezone_set('Asia/Jakarta');
@@ -37,17 +38,37 @@ function load_env_file($path) {
     return $vars;
 }
 
-$env_path = __DIR__ . '/.env';
-if (!is_file($env_path)) {
-    $env_path = dirname(__DIR__) . '/.env';
+// Detect environment (production or staging)
+$app_env = getenv('APP_ENV') ?: 'production';
+
+// Load appropriate .env file based on environment
+if ($app_env === 'staging') {
+    $env_path = __DIR__ . '/.env.staging';
+    if (!is_file($env_path)) {
+        $env_path = dirname(__DIR__) . '/.env.staging';
+    }
+} else {
+    $env_path = __DIR__ . '/.env';
+    if (!is_file($env_path)) {
+        $env_path = dirname(__DIR__) . '/.env';
+    }
 }
 $env = load_env_file($env_path);
 
-$host = getenv('MYSQL_HOST') ?: ($env['MYSQL_HOST'] ?? '');
-$db   = getenv('MYSQL_DATABASE') ?: ($env['MYSQL_DATABASE'] ?? '');
-$user = getenv('MYSQL_USER') ?: ($env['MYSQL_USER'] ?? '');
-$pass = getenv('MYSQL_PASSWORD') ?: ($env['MYSQL_PASSWORD'] ?? '');
-$port = getenv('MYSQL_PORT') ?: ($env['MYSQL_PORT'] ?? '3306');
+// Database configuration based on environment
+if ($app_env === 'staging') {
+    $host = getenv('MYSQL_HOST') ?: ($env['MYSQL_HOST'] ?? 'db_staging');
+    $db   = getenv('MYSQL_DATABASE') ?: ($env['MYSQL_DATABASE_STAGING'] ?? '');
+    $user = getenv('MYSQL_USER') ?: ($env['MYSQL_USER_STAGING'] ?? '');
+    $pass = getenv('MYSQL_PASSWORD') ?: ($env['MYSQL_PASSWORD_STAGING'] ?? '');
+    $port = getenv('MYSQL_PORT') ?: ($env['MYSQL_PORT'] ?? '3306');
+} else {
+    $host = getenv('MYSQL_HOST') ?: ($env['MYSQL_HOST'] ?? '');
+    $db   = getenv('MYSQL_DATABASE') ?: ($env['MYSQL_DATABASE'] ?? '');
+    $user = getenv('MYSQL_USER') ?: ($env['MYSQL_USER'] ?? '');
+    $pass = getenv('MYSQL_PASSWORD') ?: ($env['MYSQL_PASSWORD'] ?? '');
+    $port = getenv('MYSQL_PORT') ?: ($env['MYSQL_PORT'] ?? '3306');
+}
 
 if ($host === '' || $db === '' || $user === '' || $pass === '') {
     error_log('Konfigurasi database belum lengkap. Pastikan variabel MYSQL_HOST, MYSQL_DATABASE, MYSQL_USER, dan MYSQL_PASSWORD tersedia.');

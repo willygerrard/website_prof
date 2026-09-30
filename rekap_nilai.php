@@ -220,7 +220,7 @@ $daftar_materi = $pdo->query($list_materi_sql)->fetchAll(PDO::FETCH_COLUMN);
                         <select name="kategori" class="form-select form-select-sm mt-1" onchange="this.form.submit()">
                             <option value="">Semua Kategori</option>
                             <option value="Network" <?= $kategori_filter === 'Network' ? 'selected' : '' ?>>Network</option>
-                            <option value="IoT" <?= $kategori_filter === 'IoT' ? 'selected' : '' ?>>IoT</option>
+                            <option value="System Administration" <?= $kategori_filter === 'System Administration' ? 'selected' : '' ?>>System Administration</option>
                             <option value="Cloud Computing" <?= $kategori_filter === 'Cloud Computing' ? 'selected' : '' ?>>Cloud Computing</option>
                             <option value="DevOps" <?= $kategori_filter === 'DevOps' ? 'selected' : '' ?>>DevOps</option>
                         </select>

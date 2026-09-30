@@ -173,7 +173,7 @@ $level_badge = [
                         <select class="form-select" name="kategori" required>
                             <option value="" selected disabled>-- Pilih --</option>
                             <option value="Network">Network</option>
-                            <option value="IoT">Internet of Things (IoT)</option>
+                            <option value="System Administration">System Administration</option>
                             <option value="Cloud Computing">Cloud Computing</option>
                             <option value="DevOps">DevOps</option>
                         </select>
