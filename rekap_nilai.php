@@ -204,11 +204,11 @@ $daftar_materi = $pdo->query($list_materi_sql)->fetchAll(PDO::FETCH_COLUMN);
             <!-- TAB 2: DETAIL RIWAYAT ATTEMPT -->
             <div class="tab-pane fade" id="tab-attempt" role="tabpanel">
                 
-                <!-- Filter Server Side PHP -->
-                <form method="GET" class="row g-2 mb-3 bg-white p-3 rounded-3 shadow-sm border align-items-center">
+                <!-- Filter Client Side JS -->
+                <div class="row g-2 mb-3 bg-white p-3 rounded-3 shadow-sm border align-items-center">
                     <div class="col-md-3">
                         <label class="form-label small fw-bold text-muted m-0">Kelas</label>
-                        <select name="kelas" class="form-select form-select-sm mt-1" onchange="this.form.submit()">
+                        <select id="filterKelas" class="form-select form-select-sm mt-1">
                             <option value="">Semua Kelas</option>
                             <?php foreach ($daftar_kelas as $k): ?>
                                 <option value="<?= htmlspecialchars($k) ?>" <?= $kelas_filter === $k ? 'selected' : '' ?>><?= htmlspecialchars($k) ?></option>
@@ -217,7 +217,7 @@ $daftar_materi = $pdo->query($list_materi_sql)->fetchAll(PDO::FETCH_COLUMN);
                     </div>
                     <div class="col-md-2">
                         <label class="form-label small fw-bold text-muted m-0">Kategori</label>
-                        <select name="kategori" class="form-select form-select-sm mt-1" onchange="this.form.submit()">
+                        <select id="filterKategori" class="form-select form-select-sm mt-1">
                             <option value="">Semua Kategori</option>
                             <option value="Network" <?= $kategori_filter === 'Network' ? 'selected' : '' ?>>Network</option>
                             <option value="System Administration" <?= $kategori_filter === 'System Administration' ? 'selected' : '' ?>>System Administration</option>
@@ -227,7 +227,7 @@ $daftar_materi = $pdo->query($list_materi_sql)->fetchAll(PDO::FETCH_COLUMN);
                     </div>
                     <div class="col-md-2">
                         <label class="form-label small fw-bold text-muted m-0">Level</label>
-                        <select name="level" class="form-select form-select-sm mt-1" onchange="this.form.submit()">
+                        <select id="filterLevel" class="form-select form-select-sm mt-1">
                             <option value="">Semua Level</option>
                             <option value="pemula" <?= $level_filter === 'pemula' ? 'selected' : '' ?>>Pemula</option>
                             <option value="menengah" <?= $level_filter === 'menengah' ? 'selected' : '' ?>>Menengah</option>
@@ -236,7 +236,7 @@ $daftar_materi = $pdo->query($list_materi_sql)->fetchAll(PDO::FETCH_COLUMN);
                     </div>
                     <div class="col-md-3">
                         <label class="form-label small fw-bold text-muted m-0">Materi</label>
-                        <select name="materi" class="form-select form-select-sm mt-1" onchange="this.form.submit()">
+                        <select id="filterMateri" class="form-select form-select-sm mt-1">
                             <option value="">Semua Materi</option>
                             <?php foreach ($daftar_materi as $m): ?>
                                 <option value="<?= htmlspecialchars($m) ?>" <?= $materi_filter === $m ? 'selected' : '' ?>><?= htmlspecialchars($m) ?></option>
@@ -245,13 +245,13 @@ $daftar_materi = $pdo->query($list_materi_sql)->fetchAll(PDO::FETCH_COLUMN);
                     </div>
                     <div class="col-md-2">
                         <label class="form-label small fw-bold text-muted m-0">Status</label>
-                        <select name="status" class="form-select form-select-sm mt-1" onchange="this.form.submit()">
+                        <select id="filterStatus" class="form-select form-select-sm mt-1">
                             <option value="">Status</option>
                             <option value="lulus" <?= $status_filter === 'lulus' ? 'selected' : '' ?>>Lulus</option>
                             <option value="belum" <?= $status_filter === 'belum' ? 'selected' : '' ?>>Belum Lulus</option>
                         </select>
                     </div>
-                </form>
+                </div>
 
                 <div class="table-responsive bg-white p-4 rounded-3 shadow-sm border">
                     <table id="tableAttempt" class="table table-sm table-hover align-middle m-0 w-100">
@@ -320,9 +320,9 @@ $daftar_materi = $pdo->query($list_materi_sql)->fetchAll(PDO::FETCH_COLUMN);
             });
 
             // Inisialisasi DataTables untuk Attempt Log
-            $('#tableAttempt').DataTable({
+            var tableAttempt = $('#tableAttempt').DataTable({
                 "pageLength": 25,
-                "order": [[ 8, "desc" ]], // Default urutkan dari waktu pengerjaan terbaru
+                "order": [[ 8, "desc" ]],
                 "language": {
                     "search": "🔍 Cari di Log Attempt:",
                     "lengthMenu": "Tampilkan _MENU_ data",
@@ -336,6 +336,52 @@ $daftar_materi = $pdo->query($list_materi_sql)->fetchAll(PDO::FETCH_COLUMN);
                     "emptyTable": "Tidak ada data attempt"
                 }
             });
+
+            // Client-side filtering for Attempt Log
+            function applyAttemptFilters() {
+                var kelas = $('#filterKelas').val();
+                var kategori = $('#filterKategori').val();
+                var level = $('#filterLevel').val();
+                var materi = $('#filterMateri').val();
+                var status = $('#filterStatus').val();
+
+                // Column indices: 0=Kelas, 2=Kategori, 3=Level, 4=Materi, 6=Skor
+                tableAttempt.column(0).search(kelas ? '^' + $.fn.dataTable.util.escapeRegex(kelas) + '$' : '', true, false);
+                tableAttempt.column(2).search(kategori ? '^' + $.fn.dataTable.util.escapeRegex(kategori) + '$' : '', true, false);
+                tableAttempt.column(3).search(level ? '^' + $.fn.dataTable.util.escapeRegex(level) + '$' : '', true, false);
+                tableAttempt.column(4).search(materi ? '^' + $.fn.dataTable.util.escapeRegex(materi) + '$' : '', true, false);
+
+                // Custom filter for Status (Lulus/Belum Lulus) based on Skor column (index 6)
+                $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+                    if (settings.nTable !== tableAttempt.table().node()) return true;
+                    if (!status) return true;
+                    
+                    var skor = parseInt(data[6]) || 0;
+                    var kkm = <?= KKM ?>;
+                    
+                    if (status === 'lulus') return skor >= kkm;
+                    if (status === 'belum') return skor < kkm;
+                    return true;
+                });
+                
+                tableAttempt.draw();
+                $.fn.dataTable.ext.search.pop();
+            }
+
+            // Event listeners for filter changes
+            $('#filterKelas, #filterKategori, #filterLevel, #filterMateri, #filterStatus').on('change', function() {
+                applyAttemptFilters();
+            });
+
+            // Initialize filters from URL params on load
+            var urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('kelas')) $('#filterKelas').val(urlParams.get('kelas'));
+            if (urlParams.get('kategori')) $('#filterKategori').val(urlParams.get('kategori'));
+            if (urlParams.get('level')) $('#filterLevel').val(urlParams.get('level'));
+            if (urlParams.get('materi')) $('#filterMateri').val(urlParams.get('materi'));
+            if (urlParams.get('status')) $('#filterStatus').val(urlParams.get('status'));
+            
+            applyAttemptFilters();
         });
     </script>
 </body>

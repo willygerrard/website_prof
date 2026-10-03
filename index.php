@@ -60,6 +60,39 @@ if ($_SESSION['role'] === 'siswa') {
     }
 }
 
+// === V2: Progres belajar per kategori (untuk siswa) ===
+$progress_per_kategori = [];
+$progress_total = ['done' => 0, 'total' => 0, 'pct' => 0];
+
+if ($_SESSION['role'] === 'siswa') {
+    $user_id_progress = $_SESSION['user_id'] ?? $_SESSION['id'] ?? null;
+    if ($user_id_progress) {
+        $tingkat_progress = $_SESSION['tingkat'] ?? '';
+        $sql_progress = "SELECT m.category,
+                       COUNT(*) AS total,
+                       COALESCE(SUM(mt.id IS NOT NULL), 0) AS done
+                FROM modules m
+                LEFT JOIN modul_tuntas mt
+                       ON mt.modul_id = m.id AND mt.user_id = :uid
+                WHERE (m.kelas_target = 'semua' OR FIND_IN_SET(:tingkat, m.kelas_target))
+                GROUP BY m.category";
+        $st_progress = $pdo->prepare($sql_progress);
+        $st_progress->execute(['uid' => $user_id_progress, 'tingkat' => $tingkat_progress]);
+        foreach ($st_progress->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $pct = (int)$row['total'] > 0 ? (int)round($row['done'] / $row['total'] * 100) : 0;
+            $progress_per_kategori[$row['category']] = [
+                'done'  => (int)$row['done'],
+                'total' => (int)$row['total'],
+                'pct'   => $pct,
+            ];
+            $progress_total['done']  += (int)$row['done'];
+            $progress_total['total'] += (int)$row['total'];
+        }
+        $progress_total['pct'] = $progress_total['total'] > 0
+            ? (int)round($progress_total['done'] / $progress_total['total'] * 100) : 0;
+    }
+}
+
 // Link pengumpulan tugas per kelas
 $link_tugas_default = 'https://acesse.one/3xcdcbh';
 $link_tugas_per_kelas = [
@@ -146,6 +179,51 @@ include __DIR__ . '/includes/head.php';
                 </a>
             </div>
         </div>
+
+        <?php if ($_SESSION['role'] === 'siswa' && $progress_total['total'] > 0): ?>
+        <div class="row justify-content-center my-4">
+            <div class="col-lg-8">
+                <div class="card shadow-sm border-0 rounded-3">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <a class="text-decoration-none text-dark fw-bold d-flex align-items-center gap-2" data-bs-toggle="collapse" href="#collapseProgress" role="button" aria-expanded="true" aria-controls="collapseProgress">
+                                📊 Progres Belajar Kamu
+                                <span class="badge bg-secondary small">Klik untuk tutup/buka</span>
+                            </a>
+                            <span class="fw-bold"><?= $progress_total['pct'] ?>%</span>
+                        </div>
+                        <div class="collapse show" id="collapseProgress">
+                        <div class="progress mb-3" style="height: 10px;">
+                            <div class="progress-bar <?= $progress_total['pct'] == 100 ? 'bg-success' : 'bg-primary' ?>"
+                                 style="width: <?= $progress_total['pct'] ?>%;"></div>
+                        </div>
+
+                        <?php foreach ($progress_per_kategori as $kategori => $p): ?>
+                            <div class="mb-2">
+                                <div class="small d-flex justify-content-between">
+                                    <span><?= htmlspecialchars($kategori ?? 'Lainnya') ?></span>
+                                    <span class="text-muted"><?= $p['done'] ?>/<?= $p['total'] ?> modul · <?= $p['pct'] ?>%</span>
+                                </div>
+                                <div class="progress" style="height: 8px;">
+                                    <div class="progress-bar <?= $p['pct'] == 100 ? 'bg-success' : 'bg-primary' ?>"
+                                         style="width: <?= $p['pct'] ?>%;"></div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+
+                        <?php if ($progress_total['pct'] > 0 && $progress_total['pct'] < 100): ?>
+                            <div class="text-muted small mt-3">
+                                Kamu sudah mempelajari <?= $progress_total['pct'] ?>% dari seluruh modul. Lanjutkan! 💪
+                            </div>
+                        <?php elseif ($progress_total['pct'] == 100): ?>
+                            <div class="text-success small mt-3 fw-bold">🏆 Semua modul sudah dipelajari. Hebat!</div>
+                        <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
 
         <div class="row gx-4 gx-lg-5 row-cols-2 row-cols-md-3 row-cols-xl-4 justify-content-center" id="modulGrid">
             <?php if (empty($all_modules)): ?>
