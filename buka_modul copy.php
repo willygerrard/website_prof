@@ -61,6 +61,7 @@ if ($cek_sesi === 'aktif') {
     }
 }
 
+// Solusi tanpa iframe: buka modul di tab baru, tetap tampilkan tombol cek point.
 $fileUrl = trim($modul['file_path']);
 ?>
 <!DOCTYPE html>
@@ -102,11 +103,22 @@ $fileUrl = trim($modul['file_path']);
     </div>
 
     <div class="d-grid gap-2">
-        <a id="bukaModulBtn" class="btn btn-primary btn-lg fw-bold" href="<?= htmlspecialchars($fileUrl) ?>" target="_blank" rel="noopener noreferrer">
+        <a
+            id="bukaModulBtn"
+            class="btn btn-primary btn-lg fw-bold"
+            href="<?= htmlspecialchars($fileUrl) ?>"
+            target="_blank"
+            rel="noopener noreferrer"
+        >
             📂 Buka Modul di Tab Baru
         </a>
 
-        <a id="checkpointBtn" class="btn btn-success btn-lg fw-bold disabled" style="pointer-events:none;" href="#">
+        <a
+            id="checkpointBtn"
+            class="btn btn-success btn-lg fw-bold disabled"
+            style="pointer-events:none;"
+            href="#"
+        >
             ⏳ Buka dan Baca Modul Terlebih Dahulu  
         </a>
 
@@ -133,9 +145,10 @@ const checkpointBtn = document.getElementById("checkpointBtn");
 const achievementArea = document.getElementById("achievementArea");
 
 let timerBerjalan = false;
+
 checkpointBtn.style.pointerEvents = "none";
 
-// PERBAIKAN: Menggunakan ternary operator agar tidak menyebabkan Syntax Error di JavaScript
+// Jika sudah tuntas, tampilkan achievement langsung
 if (<?= $sudah_tuntas ? 'true' : 'false' ?>) {
     achievementArea.style.display = 'block';
     checkpointBtn.innerHTML = '✅ Modul Tuntas';
@@ -145,13 +158,17 @@ if (<?= $sudah_tuntas ? 'true' : 'false' ?>) {
 }
 
 bukaBtn.addEventListener("click", function () {
+
+    // Supaya timer tidak dimulai dua kali
     if (timerBerjalan) return;
+
     timerBerjalan = true;
 
     let waktu = 100;
     checkpointBtn.innerHTML = "⏳ Tunggu " + waktu + " detik...";
 
     const hitung = setInterval(() => {
+
         waktu--;
 
         if (waktu > 0) {
@@ -161,23 +178,22 @@ bukaBtn.addEventListener("click", function () {
 
             // Simpan ke modul_tuntas
             fetch('simpan_tuntas.php?modul_id=<?= (int)$modul_id ?>')
-                .then(res => res.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        checkpointBtn.classList.remove("disabled");
-                        checkpointBtn.style.pointerEvents = "auto";
-                        checkpointBtn.href = "checkpoint_quiz.php?modul_id=<?= (int)$modul_id ?>";
-                        checkpointBtn.innerHTML = "✅ Cek Point (1 Pertanyaan)";
-                        achievementArea.style.display = 'block';
-                    }
-                })
-                .catch(err => {
-                    console.error('Gagal simpan tuntas:', err);
-                    checkpointBtn.innerHTML = "❌ Gagal menyimpan, coba muat ulang";
-                });
+                .catch(err => console.error('Gagal simpan tuntas:', err));
+
+            checkpointBtn.classList.remove("disabled");
+            checkpointBtn.style.pointerEvents = "auto";
+            checkpointBtn.href = "checkpoint_quiz.php?modul_id=<?= (int)$modul_id ?>";
+            checkpointBtn.innerHTML = "✅ Cek Point (1 Pertanyaan)";
+
+            // Tampilkan achievement medali
+            achievementArea.style.display = 'block';
         }
+
     }, 1000);
+
 });
 </script>
 </body>
 </html>
+<?php
+exit();

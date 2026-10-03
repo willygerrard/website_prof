@@ -49,17 +49,6 @@ $stmt = $pdo->prepare($query_str);
 $stmt->execute($params);
 $all_modules = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// TAMBAHAN BARU: Ambil daftar modul yang sudah tuntas untuk user ini
-$modul_tuntas_arr = [];
-if ($_SESSION['role'] === 'siswa') {
-    $user_id_query = $_SESSION['user_id'] ?? $_SESSION['id'] ?? null;
-    if ($user_id_query) {
-        $stmt_tuntas = $pdo->prepare("SELECT modul_id FROM modul_tuntas WHERE user_id = ?");
-        $stmt_tuntas->execute([$user_id_query]);
-        $modul_tuntas_arr = $stmt_tuntas->fetchAll(PDO::FETCH_COLUMN);
-    }
-}
-
 // Link pengumpulan tugas per kelas
 $link_tugas_default = 'https://acesse.one/3xcdcbh';
 $link_tugas_per_kelas = [
@@ -147,6 +136,7 @@ include __DIR__ . '/includes/head.php';
             </div>
         </div>
 
+        <!-- GRID MODUL — id="modulGrid" supaya AI result bisa replace isinya -->
         <div class="row gx-4 gx-lg-5 row-cols-2 row-cols-md-3 row-cols-xl-4 justify-content-center" id="modulGrid">
             <?php if (empty($all_modules)): ?>
                 <div class="col-12 text-center">
@@ -155,19 +145,10 @@ include __DIR__ . '/includes/head.php';
             <?php else: ?>
                 <?php foreach ($all_modules as $modul): ?>
                 <div class="col mb-5">
-                    <!-- PERBAIKAN: Tambahkan position-relative pada card -->
-                    <div class="card h-100 shadow-sm position-relative">
-                        <div class="badge bg-dark text-white position-absolute" style="top: 0.5rem; right: 0.5rem; z-index: 10;">
+                    <div class="card h-100 shadow-sm">
+                        <div class="badge bg-dark text-white position-absolute" style="top: 0.5rem; right: 0.5rem">
                             <?= htmlspecialchars($modul['category']) ?>
                         </div>
-                        
-                        <!-- TAMBAHAN BARU: Badge Medal Sudah Dipelajari -->
-                        <?php if (in_array($modul['id'], $modul_tuntas_arr)): ?>
-                            <div class="badge bg-success text-white position-absolute shadow-sm" style="top: 0.5rem; left: 0.5rem; z-index: 10;">
-                                🏅 Sudah Dipelajari
-                            </div>
-                        <?php endif; ?>
-
                         <img class="card-img-top"
                              src="<?= !empty($modul['image_path']) ? htmlspecialchars($modul['image_path']) : 'https://dummyimage.com/450x300/dee2e6/6c757d.jpg' ?>"
                              alt="Ikon Modul" />
@@ -185,13 +166,10 @@ include __DIR__ . '/includes/head.php';
                                    data-id="<?= (int) $modul['id'] ?>">
                                     📂 Buka Modul
                                 </a>
-                                
-                                <!-- PERBAIKAN: Jika sudah tuntas, langsung aktifkan tombol checkpoint -->
-                                <a class="btn btn-success fw-bold cekpoint-btn <?= in_array($modul['id'], $modul_tuntas_arr) ? '' : 'disabled' ?>"
+                                <a class="btn btn-success fw-bold cekpoint-btn disabled"
                                    id="cekpoint-<?= (int) $modul['id'] ?>"
-                                   style="pointer-events: <?= in_array($modul['id'], $modul_tuntas_arr) ? 'auto' : 'none' ?>;"
-                                   href="<?= in_array($modul['id'], $modul_tuntas_arr) ? 'checkpoint_quiz.php?modul_id=' . (int)$modul['id'] : '#' ?>">
-                                    <?= in_array($modul['id'], $modul_tuntas_arr) ? '✅ Cek Point (1 Pertanyaan)' : '⏳ Buka dan Baca Modul Terlebih Dahulu' ?>
+                                   style="pointer-events:none;" href="#">
+                                    ⏳ Buka dan Baca Modul Terlebih Dahulu
                                 </a>
                             </div>
                         </div>
@@ -219,7 +197,6 @@ document.addEventListener('click', function (e) {
     const modulId = btn.dataset.id;
     if (!modulId) return;
 
-    // Jika tombol sudah pernah diklik, jangan restart timer
     if (btn.dataset.started === '1') return;
     btn.dataset.started = '1';
 
@@ -229,9 +206,6 @@ document.addEventListener('click', function (e) {
 
     const cekpointBtn = document.getElementById('cekpoint-' + modulId);
     if (!cekpointBtn) return;
-
-    // Jika tombol checkpoint sudah aktif (misal karena sudah tuntas), jangan jalankan timer
-    if (!cekpointBtn.classList.contains('disabled')) return;
 
     let waktu = 100;
     cekpointBtn.innerHTML = '⏳ Tunggu ' + waktu + ' detik...';
