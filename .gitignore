@@ -31,3 +31,7 @@ mariadb_data/
 # Runtime artifacts (jangan di-push)
 games_data/
 img/icon_*
+.env
+.env.staging
+.env
+.env.staging
