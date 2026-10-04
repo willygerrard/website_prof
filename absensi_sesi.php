@@ -235,7 +235,7 @@ if ($sesi_aktif) {
     <title>Absensi QR - Pusat Pembelajaran SIJA</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link href="assets/vendor/datatables/css/dataTables.bootstrap5.min.css" rel="stylesheet">
     <style>
         #qrBox { min-height: 260px; display: flex; align-items: center; justify-content: center; }
         #qrBox img { image-rendering: pixelated; }
@@ -470,10 +470,10 @@ if ($sesi_aktif) {
 
     <?php include 'includes/footer.php'; ?>
 
-    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="assets/vendor/jquery-3.7.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <script src="assets/vendor/datatables/js/jquery.dataTables.min.js"></script>
+    <script src="assets/vendor/datatables/js/dataTables.bootstrap5.min.js"></script>
     <script src="assets/vendor/qrcode.min.js"></script>
     <script>
     (function () {
