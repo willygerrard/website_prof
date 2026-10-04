@@ -171,7 +171,32 @@ Hardening around the signup and login paths (`signup.php`, `proses_login.php`, `
   grade (first word, e.g. "X") are stored in session. `index.php` uses them to filter modules to the
   right grade level and to pick the correct per-class assignment submission link.
 
+## 📷 Log Aktivitas Belajar + Absensi QR Hybrid
+
+Fitur absensi hibrida (QR LMS + kertas) dan pencatatan aktivitas belajar siswa, beserta laporan silang di antaranya:
+
+* **Log Aktivitas Belajar:** Setiap kali siswa membuka satu modul (`buka_modul.php`), satu baris dicatat ke tabel `log_aktivitas` — dengan debounce 30 menit per (siswa, modul) lewat satu statement `INSERT ... SELECT ... WHERE NOT EXISTS` atomik, sehingga refresh berkali-kali tetap 1 baris. Hanya role siswa yang dicatat; kegagalan logging tidak pernah merusak halaman (try/catch + `error_log()`). Fitur dikendalikan toggle `log_aktivitas_status` di tabel `pengaturan` (format nilai `'buka'`/`'tutup'`, sama seperti `registrasi_status`), diatur dari halaman `pintu-pendaftaran-sija` (`toggle_registrasi.php`). Nilai enum `submit_tugas` dan `kerjakan_quiz` hanya disiapkan di skema untuk penggunaan berikutnya.
+* **Sesi Absensi QR (`absensi_sesi.php`, admin):** Guru membuat sesi (mapel/kategori, kelas, tanggal, jam), lalu halaman menampilkan QR besar berisi URL `absensi_scan.php?token=...` dengan countdown. Token 64 karakter hex dirotasi otomatis tiap 55 detik via fetch POST + CSRF ke endpoint JSON (expired 60 detik), token lama langsung tidak berlaku. Sesi bisa ditutup kapan saja. Ada juga tabel kehadiran (DataTables) + form input absensi kertas per siswa: guru hanya mengubah `status` dan `keterangan`; `waktu_scan` tidak pernah disentuh, siswa yang belum scan diinsert dengan `waktu_scan` NULL.
+* **Scan Siswa (`absensi_scan.php`):** Siswa memindai QR, melihat kartu konfirmasi (mapel, kelas, tanggal), lalu POST "Konfirmasi Hadir" (CSRF + token hidden). Validasi berurutan: CSRF → token → sesi buka → expired (waktu PHP) → kelas siswa harus sama dengan kelas sesi → INSERT `absensi` (`status='hadir'`, `waktu_scan`, IP). UNIQUE `(sesi_id, user_id)` jadi pengaman terakhir — scan ganda ditolak dengan pesan jelas ("Kamu sudah absen di sesi ini"). GET tidak pernah menulis ke DB. Pesan penolakan: token kadaluarsa/tidak valid, sesi ditutup, sudah absen, bukan kelas ini.
+* **Laporan Silang (`laporan_silang.php`, admin):** Menyatukan absensi kertas, absensi LMS (scan), dan aktivitas belajar per (sesi × siswa) dalam satu query agregat. Kategori per baris dievaluasi berurutan: "Hadir tapi tidak belajar" (hadir/scan tapi aktivitas 0), "Konflik absensi" (kertas hadir tapi tidak scan, atau sebaliknya), "Sesuai", "Belum ada data". Ringkasan jumlah per kategori + DataTables + filter tanggal/kelas/mapel + export CSV (BOM UTF-8, `fputcsv`, netralisasi formula injection `=+-@` dengan prefix `'`).
+* **Tabel baru** (`migrations/`): `absensi_sesi`, `absensi`, `log_aktivitas` — semua `utf8mb4_unicode_ci`, tipe id mengikuti `int(11)` tabel existing; hanya `absensi.sesi_id` yang ber-FK. Kolom `absensi_sesi.mapel_id` mengikuti keputusan "tidak ada tabel mapel" (lihat gap di bawah).
+* **Library QR lokal:** `assets/vendor/qrcode.min.js` (qrcodejs, lisensi MIT — sertanya di `assets/vendor/qrcodejs.LICENSE`), tanpa CDN baru dan tanpa dependency Composer.
+
+**Cara pakai:** guru membuka `absensi_sesi.php` → buat sesi → tampilkan QR ke kelas → siswa scan dengan HP → guru menutup sesi dan (opsional) melengkapi absensi kertas. Laporan digabung ada di `laporan_silang.php` beserta export CSV-nya.
+
+**Menjalankan migration di staging:**
+```bash
+docker exec -i website_prof_db_staging sh -c \
+  'mariadb -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"' \
+  < migrations/2026-10-04_step1_log_absensi.sql
+docker exec -i website_prof_db_staging sh -c \
+  'mariadb -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"' \
+  < migrations/2026-10-04_step2_toggle.sql
+```
+(Kedua file idempoten — aman dijalankan ulang. Step 1 hanya `CREATE TABLE IF NOT EXISTS`; step 2 hanya `INSERT ... ON DUPLICATE KEY UPDATE` baris `log_aktivitas_status`.)
+
 ---
+
 
 ### ⚠️ Known Gaps & Current Limitations
 
@@ -182,7 +207,8 @@ This is a solo learning/school project (SIJA/TKJ subject) rather than a producti
 * **Short-Answer Feature Support:** Short-answer questions are not yet supported in AI-assisted import or bulk edit; they must be managed individually via the manual form.
 * **Manual Response Review:** There is no dedicated UI review screen for short-answer responses flagged as "no automatic match" — data is currently audited directly via database queries.
 * **Topic Tagging Consistency:** Topic tags (`materi`) rely on free-text inputs with autocomplete suggestions rather than a controlled vocabulary.
-* **Multi-Teacher Architecture:** Lacks a dedicated `guru`/`mapel` relational schema required for multi-teacher/subject support.
+* **Multi-Teacher Architecture:** Lacks a dedicated `guru`/`mapel` relational schema required for multi-teacher/subject support. (Partially addressed by the Absensi QR feature: `absensi_sesi.guru_id` scopes sessions to their creator and `mapel_id` records the subject per session — but these are plain integers without a `guru`/`mapel` reference table, so full multi-teacher/subject management still does not exist.)
+* **Absensi Mapel Mapping (`mapel_id`):** Because there is no `mapel` table, `absensi_sesi.mapel_id` stores the ordinal number of `modules.category` (Network, System Administration, DevOps, Cloud Computing). Renaming or reordering categories would silently change what existing `mapel_id` values mean.
 
 #### User & Promotion System Limitations
 * **Single-Class Scope per Bulk Action:** Bulk promotion operations are restricted to one class per execution by design to prevent accidental cross-major mixing.
