@@ -184,6 +184,8 @@ Fitur absensi hibrida (QR LMS + kertas) dan pencatatan aktivitas belajar siswa, 
 
 **Cara pakai:** guru membuka `absensi_sesi.php` → buat sesi → tampilkan QR ke kelas → siswa scan dengan HP → guru menutup sesi dan (opsional) melengkapi absensi kertas. Laporan digabung ada di `laporan_silang.php` beserta export CSV-nya.
 
+**Jalur menu admin:** Beranda (`index.php`) → dropdown **Admin Panel** → **📋 Manage Absensi** (`absensi_sesi.php`) → tombol **📊 Laporan Silang** (`laporan_silang.php`). Siswa cukup scan QR dari HP tanpa menu tambahan.
+
 **Menjalankan migration di staging:**
 ```bash
 docker exec -i website_prof_db_staging sh -c \
