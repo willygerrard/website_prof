@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle'])) {
 
     // Gunakan INSERT ON DUPLICATE KEY agar kalau key belum ada di DB, otomatis dibuatkan!
     $sql = "INSERT INTO pengaturan (`key`, `value`) VALUES (?, ?) 
-            ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)";
+            ON DUPLICATE KEY UPDATE `value` = VALUES(`value')";
             
     $stmt = $pdo->prepare($sql);
     $stmt->execute(['registrasi_status', $status_baru]);
@@ -38,6 +38,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle'])) {
         $pesan_type = 'success';
     } else {
         $pesan = "🔴 Pendaftaran siswa DITUTUP! Hanya token yang cocok dengan 'Token Aktif' yang bisa daftar — tapi karena ditutup, semua ditolak.";
+        $pesan_type = 'secondary';
+    }
+}
+
+// Toggle log aktivitas belajar (AKTIF / NONAKTIF) — format nilai sama: buka/tutup
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle_log'])) {
+    csrf_require_valid_post();
+
+    $status_log_baru = $_POST['toggle_log'] === 'buka' ? 'buka' : 'tutup';
+
+    $sql_log = "INSERT INTO pengaturan (`key`, `value`) VALUES (?, ?)
+                ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)";
+
+    $stmt_log = $pdo->prepare($sql_log);
+    $stmt_log->execute(['log_aktivitas_status', $status_log_baru]);
+
+    if ($status_log_baru === 'buka') {
+        $pesan = "🟢 Log aktivitas belajar DIAKTIFKAN! Pembukaan modul oleh siswa dicatat (maks. 1 baris per modul per 30 menit).";
+        $pesan_type = 'success';
+    } else {
+        $pesan = "🔴 Log aktivitas belajar DINONAKTIFKAN! Pembukaan modul tidak dicatat.";
         $pesan_type = 'secondary';
     }
 }
@@ -73,12 +94,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_token'])) {
 // Ambil status & token terkini langsung dari database
 $status = $pdo->query("SELECT `value` FROM pengaturan WHERE `key` = 'registrasi_status'")->fetchColumn();
 $token_sekarang = $pdo->query("SELECT `value` FROM pengaturan WHERE `key` = 'registrasi_token_sekarang'")->fetchColumn();
+$status_log = $pdo->query("SELECT `value` FROM pengaturan WHERE `key` = 'log_aktivitas_status'")->fetchColumn();
 
 // Fallback jika belum ada di database
 if ($token_sekarang === false) {
     $token_sekarang = '';
 }
+if ($status_log === false) {
+    $status_log = 'tutup';
+}
 $is_buka = ($status === 'buka');
+$is_log_aktif = ($status_log === 'buka');
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -135,7 +161,40 @@ $is_buka = ($status === 'buka');
             </div>
         </div>
 
-        <!-- KARTU 2: Ganti Token -->
+        <!-- KARTU 2: Toggle Log Aktivitas Belajar -->
+        <div class="card shadow-sm border-0 rounded-3 mb-4">
+            <div class="card-header bg-dark text-white py-3">
+                <h5 class="card-title mb-0 fw-bold">📝 Log Aktivitas Belajar</h5>
+            </div>
+            <div class="card-body p-4 text-center">
+                <p class="text-muted small mb-4">
+                    Jika aktif, setiap kali siswa membuka modul akan dicatat di
+                    <code>log_aktivitas</code> (maksimal 1 baris per modul per 30 menit
+                    per siswa, guru/admin tidak dicatat).
+                </p>
+
+                <div class="mb-4">
+                    <span class="badge fs-5 px-4 py-2 <?= $is_log_aktif ? 'bg-success' : 'bg-secondary' ?>">
+                        <?= $is_log_aktif ? '🟢 LOG AKTIVITAS AKTIF' : '🔴 LOG AKTIVITAS NONAKTIF' ?>
+                    </span>
+                </div>
+
+                <form method="POST">
+                    <?= csrf_field(); ?>
+                    <?php if ($is_log_aktif): ?>
+                        <button type="submit" name="toggle_log" value="tutup" class="btn btn-danger w-100 fw-bold py-3">
+                            <i class="bi bi-pause-fill"></i> Nonaktifkan Log Aktivitas
+                        </button>
+                    <?php else: ?>
+                        <button type="submit" name="toggle_log" value="buka" class="btn btn-success w-100 fw-bold py-3">
+                            <i class="bi bi-play-fill"></i> Aktifkan Log Aktivitas
+                        </button>
+                    <?php endif; ?>
+                </form>
+            </div>
+        </div>
+
+        <!-- KARTU 3: Ganti Token -->
         <div class="card shadow-sm border-0 rounded-3">
             <div class="card-header bg-warning text-dark py-3">
                 <h5 class="card-title mb-0 fw-bold">🔑 Atur Token Akses Pendaftaran</h5>

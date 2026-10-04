@@ -2,6 +2,7 @@
 require_once 'session.php'; 
 require 'koneksi.php';
 require_once 'fonnte.php';
+require_once 'log_aktivitas.php';
 
 checkLogin();
 if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
@@ -27,6 +28,10 @@ if (!$modul || empty($modul['file_path'])) {
     header("Location: index.php");
     exit();
 }
+
+// Log aktivitas belajar siswa (debounce 30 menit, toggle log_aktivitas_status).
+// Kegagalan logging tidak boleh merusak halaman — ditangani di dalam fungsi.
+catat_log_aktivitas($pdo, $modul_id, 'buka_modul');
 
 $cek_sesi = $pdo->query("SELECT status FROM notifikasi_sesi ORDER BY id DESC LIMIT 1")->fetchColumn();
 
