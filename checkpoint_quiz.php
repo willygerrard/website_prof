@@ -53,10 +53,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_checkpoint']) 
         $modul_checkpoint_id = $q['id'] ?? null;
         $is_correct = ((string)$jawaban === (string)$correctKey) ? 1 : 0;
 
-        // PERBAIKAN: Tambahkan processed_at = NOW()
+        // PERBAIKAN: UNIQUE (user_id, modul_id) -> jawaban salah lalu coba lagi tidak boleh error duplicate
         $stmt = $pdo->prepare(
-            "INSERT INTO checkpoint_hasil (user_id, modul_id, modul_checkpoint_id, is_correct, processed_at) 
-             VALUES (?, ?, ?, ?, NOW())"
+            "INSERT INTO checkpoint_hasil (user_id, modul_id, modul_checkpoint_id, is_correct, processed_at)
+             VALUES (?, ?, ?, ?, NOW())
+             ON DUPLICATE KEY UPDATE
+                is_correct = VALUES(is_correct),
+                processed_at = NOW()"
         );
         $stmt->execute([$user_id, $modul_id, $modul_checkpoint_id, $is_correct]);
         $done = true;
