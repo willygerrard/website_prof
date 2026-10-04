@@ -254,8 +254,12 @@ if ($export_csv) {
     <div class="container mt-4 mb-5">
 
         <div class="card shadow-sm border-0 rounded-3 mb-4">
-            <div class="card-header bg-primary text-white py-3">
+            <div class="card-header bg-primary text-white py-3 d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0 fw-bold">📊 Laporan Silang — Absensi vs Aktivitas Belajar</h5>
+                <div class="d-flex align-items-center gap-2">
+                    <a href="index.php" class="btn btn-outline-light btn-sm">Beranda</a>
+                    <a href="absensi_sesi.php" class="btn btn-outline-secondary btn-sm">← Kembali ke Absensi</a>
+                </div>
             </div>
             <div class="card-body p-4">
                 <form method="GET" class="row g-3 align-items-end">

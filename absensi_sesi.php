@@ -312,9 +312,13 @@ if ($sesi_aktif) {
                     / <?= htmlspecialchars($sesi_aktif['kelas'], ENT_QUOTES, 'UTF-8') ?>
                     / <?= htmlspecialchars($sesi_aktif['tanggal'], ENT_QUOTES, 'UTF-8') ?>
                 </h5>
-                <span class="badge fs-6 px-3 py-2 <?= $sesi_aktif['status'] === 'buka' ? 'bg-light text-success' : 'bg-dark' ?>" id="badgeStatus">
-                    <?= $sesi_aktif['status'] === 'buka' ? '🟢 BUKA' : '🔴 TUTUP' ?>
-                </span>
+                <div class="d-flex align-items-center gap-2">
+                    <a href="index.php" class="btn btn-outline-light btn-sm">Beranda</a>
+                    <a href="laporan_silang.php" class="btn btn-outline-primary btn-sm">📊 Laporan Silang</a>
+                    <span class="badge fs-6 px-3 py-2 <?= $sesi_aktif['status'] === 'buka' ? 'bg-light text-success' : 'bg-dark' ?>" id="badgeStatus">
+                        <?= $sesi_aktif['status'] === 'buka' ? '🟢 BUKA' : '🔴 TUTUP' ?>
+                    </span>
+                </div>
             </div>
             <div class="card-body p-4">
                 <div class="row g-4 align-items-center">
