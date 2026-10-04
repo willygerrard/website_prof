@@ -82,6 +82,8 @@ if (!isset($link_tugas)) {
                         <li><a class="dropdown-item" href="toggle_notif.php">Toggle Notifikasi WA</a></li>
                         <li><hr class="dropdown-divider" /></li>
                         <li><a class="dropdown-item" href="pintu-pendaftaran-sija">🔓 Buka/Tutup Registrasi</a></li>
+                        <li><hr class="dropdown-divider" /></li>
+                        <li><a class="dropdown-item" href="absensi_sesi.php">📋 Manage Absensi</a></li>
                     </ul>
                 </li>
                 <?php endif; ?>
