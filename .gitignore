@@ -35,3 +35,6 @@ img/icon_*
 .env.staging
 .env
 .env.staging
+*.swp
+*.bak
+
