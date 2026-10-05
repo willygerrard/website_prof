@@ -39,3 +39,6 @@ img/icon_*
 *.swp
 *.bak
 
+
+# Seed scripts (jangan di-track, hanya untuk dev)
+seed/
