@@ -68,7 +68,6 @@ function kelas_sama(string $a, string $b): bool {
  */
 function parse_kelas(string $kelas): ?array {
     $kelas = normalisasi_kelas($kelas);
-    // Tingkat: XIII|XII|XI|X (longest-first biar aman)
     if (!preg_match('/^(XIII|XII|XI|X)\s+(.+?)(?:\s+(\d+))?$/iu', $kelas, $m)) {
         return null;
     }
@@ -82,7 +81,7 @@ function parse_kelas(string $kelas): ?array {
 /**
  * Hitung kelas berikutnya.
  *   "X TKJ 1"   → "XI TKJ 1"
- *   "XI Sija"   → "XII Sija"   (huruf jurusan tidak diubah)
+ *   "XI Sija"   → "XII Sija"
  *   "XIII SIJA" → null  (kelas akhir)
  *   "ngawur"    → null  (format salah)
  */
@@ -137,6 +136,31 @@ if (isset($_GET['action']) && $_GET['action'] === 'aktifkan' && isset($_GET['id'
         $pesan = "<div class='alert alert-success'>✅ Akun siswa diaktifkan kembali.</div>";
     } catch (PDOException $e) {
         error_log('DB Error [aktifkan user]: ' . $e->getMessage());
+        $pesan = "<div class='alert alert-danger'>Terjadi kesalahan pada sistem. Silakan hubungi administrator.</div>";
+    }
+}
+
+// ============================================================
+// AKSI: BATALKAN KELULUSAN (balikin status 'lulus' → 'aktif')
+// ============================================================
+if (isset($_GET['action']) && $_GET['action'] === 'batalkan_lulus' && isset($_GET['id'])) {
+    validate_csrf_get();
+    $id_target = (int)$_GET['id'];
+    try {
+        $stmt = $pdo->prepare("
+            UPDATE users 
+            SET status = 'aktif' 
+            WHERE id = :id AND status = 'lulus' AND role != 'admin'
+        ");
+        $stmt->execute(['id' => $id_target]);
+
+        if ($stmt->rowCount() > 0) {
+            $pesan = "<div class='alert alert-warning'>↩️ Kelulusan dibatalkan. Siswa kembali <strong>aktif</strong> dan bisa login.</div>";
+        } else {
+            $pesan = "<div class='alert alert-danger'>❌ Gagal! Siswa tidak ditemukan atau status bukan 'lulus'.</div>";
+        }
+    } catch (PDOException $e) {
+        error_log('DB Error [batalkan lulus]: ' . $e->getMessage());
         $pesan = "<div class='alert alert-danger'>Terjadi kesalahan pada sistem. Silakan hubungi administrator.</div>";
     }
 }
@@ -224,7 +248,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'reset_password' && isset($_GE
 }
 
 // ============================================================
-// AKSI: PROMOSI BULK (Naik Kelas) — DENGAN VALIDASI BERJENJANG
+// AKSI: PROMOSI BULK (Naik Kelas)
 // ============================================================
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'promosi_bulk') {
     csrf_require_valid_post();
@@ -235,7 +259,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $pesan = "<div class='alert alert-warning'>⚠️ Pilih minimal 1 siswa dan tentukan kelas tujuan.</div>";
     } else {
         try {
-            // 1. Ambil semua kelas asal siswa yang dipilih ('' = belum punya kelas)
             $in_placeholders = implode(',', array_fill(0, count($id_targets), '?'));
             $stmt = $pdo->prepare("
                 SELECT DISTINCT COALESCE(kelas, '') FROM users
@@ -244,7 +267,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $stmt->execute($id_targets);
             $kelas_asal_list = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
-            // 2. Validasi: harus dari 1 kelas yang sama & sudah punya kelas
             if (count($kelas_asal_list) === 0) {
                 $pesan = "<div class='alert alert-danger'>⚠️ Siswa yang dipilih tidak ditemukan.</div>";
             } elseif (in_array('', $kelas_asal_list, true)) {
@@ -256,28 +278,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             } else {
                 $kelas_asal = $kelas_asal_list[0];
 
-                // 3. Cek kelas akhir (XIII)
                 if (is_kelas_akhir($kelas_asal)) {
                     $pesan = "<div class='alert alert-warning'>⚠️ Kelas <strong>" . htmlspecialchars($kelas_asal)
                            . "</strong> adalah kelas akhir. Siswa harus <strong>DILULUSKAN</strong> (ubah status), bukan dinaikkan kelasnya.</div>";
                 } else {
-                    // 4. Hitung kelas yang seharusnya
                     $kelas_seharusnya = kelas_berikutnya($kelas_asal);
 
                     if ($kelas_seharusnya === null) {
                         $pesan = "<div class='alert alert-danger'>⚠️ Format kelas <strong>"
                                . htmlspecialchars($kelas_asal) . "</strong> tidak dikenali. Tidak bisa tentukan kelas berikutnya.</div>";
                     } elseif (!kelas_sama($kelas_baru, $kelas_seharusnya)) {
-                        // 5. Kelas tujuan kiriman user harus sama dengan hasil hitungan
                         $pesan = "<div class='alert alert-danger'>⚠️ Siswa dari <strong>" . htmlspecialchars($kelas_asal)
                                . "</strong> hanya bisa naik ke <strong>" . htmlspecialchars($kelas_seharusnya)
                                . "</strong>, bukan ke <strong>" . htmlspecialchars($kelas_baru) . "</strong>.</div>";
                     } else {
-                        // 6. Lolos semua validasi — simpan kelas HASIL HITUNGAN server,
-                        //    bukan string kiriman browser. "AND kelas = ?" menjaga data tidak
-                        //    berubah di antara validasi dan update.
-                        //    Sekaligus catat riwayat kenaikan (kelas_lama, kelas_baru) per siswa
-                        //    ATOMIK dalam 1 transaksi — update + log jalan atau gagal bersama.
                         $pdo->beginTransaction();
                         $stmt = $pdo->prepare("UPDATE users SET kelas = ? WHERE id IN ($in_placeholders) AND role = 'siswa' AND kelas = ?");
                         $stmt->execute(array_merge([$kelas_seharusnya], $id_targets, [$kelas_asal]));
@@ -348,14 +362,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 // ============================================================
 // AKSI: TURUNKAN BULK (UNDO NAIK KELAS)
 // ============================================================
-// Aturan undo (interpretasi disepakati):
+// Aturan undo:
 //   Seorang siswa hanya boleh di-undo JIKA baris riwayat TERBARU-nya
-//   (baris log terakhir untuk siswa tsb) ber-aksi 'naik'.
-//   - Baris terbaru 'naik'      → undo diizinkan: kelas dikembalikan ke
-//                                 kelas_lama baris itu, lalu catat log 'turun'.
-//   - Baris terbaru 'turun'     → SUDAH pernah di-undo (atau di-turunkan
-//                                 manual) → DITOLAK (anti double-undo).
-//   - Tidak ada riwayat         → DITOLAK (belum pernah naik kelas).
+//   ber-aksi 'naik'.
+//   - Baris terbaru 'naik'   → undo diizinkan: kelas dikembalikan ke
+//                              kelas_lama baris itu, lalu catat log 'turun'.
+//   - Baris terbaru 'turun'  → SUDAH pernah di-undo → DITOLAK.
+//   - Tidak ada riwayat      → DITOLAK.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'turunkan_bulk') {
     csrf_require_valid_post();
     $id_targets = array_map('intval', array_filter($_POST['ids'] ?? []));
@@ -370,8 +383,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $terturunkan = 0;
             $ditolak = [];
 
+            // FIX: SELECT kelas_baru juga, karena dipakai untuk log 'turun'.
             $stmt_cek = $pdo->prepare(
-                "SELECT kelas_lama, aksi FROM riwayat_kelas
+                "SELECT kelas_lama, kelas_baru, aksi FROM riwayat_kelas
                  WHERE user_id = ? ORDER BY id DESC LIMIT 1"
             );
             $stmt_undo = $pdo->prepare(
@@ -386,13 +400,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $stmt_cek->execute([$id_siswa]);
                 $log_terbaru = $stmt_cek->fetch();
 
-                // Baris riwayat terbaru harus 'naik' — kalau kosong / sudah 'turun' → tolak.
                 if ($log_terbaru === false || $log_terbaru['aksi'] !== 'naik') {
                     $ditolak[] = $id_siswa;
                     continue;
                 }
 
-                $kelas_kembali = $log_terbaru['kelas_lama'];
+                $kelas_kembali  = $log_terbaru['kelas_lama'];
                 $kelas_sekarang = $log_terbaru['kelas_baru'];
 
                 $stmt_undo->execute([$kelas_kembali, $id_siswa]);
@@ -468,12 +481,10 @@ try {
 $list_kelas_sql = "SELECT DISTINCT kelas FROM users WHERE kelas IS NOT NULL AND kelas != '' ORDER BY kelas ASC";
 $daftar_kelas = $pdo->query($list_kelas_sql)->fetchAll(PDO::FETCH_COLUMN);
 
-// Peta kelas → kelas berikutnya (null kalau kelas akhir / tidak valid)
 $peta_kenaikan = [];
 foreach ($daftar_kelas as $k) {
     $peta_kenaikan[$k] = kelas_berikutnya($k);
 }
-// Daftar kelas yang termasuk kelas akhir (XIII) — untuk aksi "Luluskan"
 $daftar_kelas_akhir = array_values(array_filter($daftar_kelas, 'is_kelas_akhir'));
 
 // ============================================================
@@ -668,7 +679,6 @@ $csrf_token = csrf_token();
             <div class="col-md-3">
                 <label class="form-label fw-semibold small">Kelas Tujuan</label>
                 <select class="form-select form-select-sm" name="kelas_tujuan" id="kelasTujuanSelect" disabled>
-                    <?php /* Opsi diisi otomatis oleh JS sesuai kelas siswa yang dicentang */ ?>
                     <option value="">-- Pilih --</option>
                 </select>
             </div>
@@ -766,6 +776,10 @@ $csrf_token = csrf_token();
                                        title="Aktifkan">🔄</a>
                                 <?php elseif ($is_lulus): ?>
                                     <span class="text-muted small me-1"><i class="bi bi-check-circle"></i> Lulus</span>
+                                    <a href="?<?= action_qs(['action' => 'batalkan_lulus', 'id' => $siswa['id']]) ?>"
+                                       class="btn btn-sm btn-outline-info"
+                                       onclick="return confirm('Batalkan kelulusan? Siswa akan kembali aktif dan bisa login lagi.')"
+                                       title="Batalkan Kelulusan">↩️</a>
                                 <?php else: ?>
                                     <a href="?<?= action_qs(['action' => 'nonaktifkan', 'id' => $siswa['id']]) ?>"
                                        class="btn btn-sm btn-outline-warning"
@@ -818,7 +832,6 @@ $csrf_token = csrf_token();
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
     <script>
-        // Peta kelas → kelas berikutnya (dihitung PHP). null = kelas akhir / format tidak dikenali.
         const PETA_KENAIKAN = <?= json_encode($peta_kenaikan, JSON_UNESCAPED_UNICODE) ?>;
         const KELAS_AKHIR   = <?= json_encode($daftar_kelas_akhir, JSON_UNESCAPED_UNICODE) ?>;
 
@@ -827,10 +840,6 @@ $csrf_token = csrf_token();
             if (form) form.classList.toggle('d-none');
         }
 
-        // ------------------------------------------------------------
-        // 1) DataTables — DIPISAH dari aksi massal. Kalau init gagal (mis. jQuery dobel
-        //    dimuat), aksi massal di bawah tetap jalan.
-        // ------------------------------------------------------------
         try {
             jQuery(function ($) {
                 $('#tableUser').DataTable({
@@ -854,11 +863,6 @@ $csrf_token = csrf_token();
             console.error('[DataTables] gagal init:', err);
         }
 
-        // ------------------------------------------------------------
-        // 2) AKSI MASSAL — vanilla JS, tanpa ketergantungan jQuery/DataTables.
-        //    Dipicu dari 3 jalur sekaligus (idempoten, aman dipanggil berulang):
-        //    inline onchange, addEventListener, dan poller ringan sebagai jaring pengaman.
-        // ------------------------------------------------------------
         (function () {
             const actionSel = document.getElementById('bulkActionSelect');
             const tujuanSel = document.getElementById('kelasTujuanSelect');
@@ -873,13 +877,12 @@ $csrf_token = csrf_token();
                 return;
             }
 
-            // Kalau DataTables aktif, ambil SEMUA baris (termasuk halaman lain yang tidak ada di DOM).
             function dtApi() {
                 try {
                     if (window.jQuery && jQuery.fn.dataTable && jQuery.fn.dataTable.isDataTable('#tableUser')) {
                         return jQuery('#tableUser').DataTable();
                     }
-                } catch (e) { /* abaikan, pakai DOM biasa */ }
+                } catch (e) { }
                 return null;
             }
             function semuaCek(opsi) {
@@ -897,7 +900,6 @@ $csrf_token = csrf_token();
             function setHint(t) { if (hintEl) hintEl.textContent = t; }
             function setBtn(aktif, teks) { btn.disabled = !aktif; btn.textContent = teks; }
 
-            // Dropdown kelas tujuan dibangun dari aturan kenaikan, BUKAN dari kelas yang kebetulan ada di DB.
             function isiTujuan(daftar, placeholder) {
                 tujuanSel.innerHTML = '';
                 tujuanSel.add(new Option(placeholder || '-- Pilih --', ''));
@@ -922,7 +924,6 @@ $csrf_token = csrf_token();
                     return;
                 }
                 if (mode === 'turunkan_bulk') {
-                    // Undo boleh lintas kelas — revert berdasarkan log riwayat terbaru per siswa.
                     tujuanSel.disabled = true;
                     isiTujuan([], '-- Tidak perlu --');
                     setBtn(true, '↩️ Undo Naik Kelas');
@@ -967,7 +968,7 @@ $csrf_token = csrf_token();
                     setHint('💡 ' + terpilih().length + ' siswa kelas ' + asal + ' akan ditandai LULUS.');
                 }
             }
-            window.refreshBulkUI = refreshBulkUI;   // dipakai oleh inline onchange
+            window.refreshBulkUI = refreshBulkUI;
 
             function syncCheckAll() {
                 if (!checkAll) return;
@@ -976,7 +977,6 @@ $csrf_token = csrf_token();
             }
             function onUbah() { syncCheckAll(); refreshBulkUI(); }
 
-            // Jalur 1: addEventListener (delegasi di document, tahan terhadap redraw DataTables)
             document.addEventListener('change', function (e) {
                 const t = e.target;
                 if (!t) return;
@@ -985,21 +985,17 @@ $csrf_token = csrf_token();
 
             if (checkAll) {
                 checkAll.addEventListener('change', function () {
-                    // hanya baris yang lolos pencarian DataTables, di semua halaman
                     semuaCek({ search: 'applied' }).forEach(function (cb) { cb.checked = checkAll.checked; });
                     refreshBulkUI();
                 });
             }
 
-            // Jalur 2: poller ringan — hanya memicu refresh kalau kondisi benar-benar berubah
             let ttd = '';
             setInterval(function () {
                 const now = actionSel.value + '|' + terpilih().map(function (cb) { return cb.value; }).join(',');
                 if (now !== ttd) { ttd = now; refreshBulkUI(); }
             }, 300);
 
-            // Submit: checkbox di halaman aktif ikut terkirim lewat atribut form="formBulk".
-            // Checkbox di halaman lain (tidak ada di DOM) ditambahkan sebagai hidden input.
             formBulk.addEventListener('submit', function (e) {
                 Array.from(formBulk.querySelectorAll('input[type="hidden"][data-bulk-id]')).forEach(function (n) { n.remove(); });
                 const dipilih = terpilih();
@@ -1009,7 +1005,7 @@ $csrf_token = csrf_token();
                     return;
                 }
                 dipilih.forEach(function (cb) {
-                    if (document.body.contains(cb)) return;   // sudah ikut terkirim secara native
+                    if (document.body.contains(cb)) return;
                     const h = document.createElement('input');
                     h.type = 'hidden'; h.name = 'ids[]'; h.value = cb.value;
                     h.setAttribute('data-bulk-id', '1');
