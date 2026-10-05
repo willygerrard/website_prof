@@ -166,7 +166,7 @@ $boleh_tampil_konfirmasi = ($sesi && $sesi['status'] === 'buka' && $expired_ts !
 
         <?php if ($hasil_post): ?>
             <div class="alert alert-<?= htmlspecialchars($hasil_post['type'], ENT_QUOTES, 'UTF-8') ?> fs-5 text-center">
-                <?= $hasil_post['pesan'] ?>
+                <?= htmlspecialchars($hasil_post['pesan'], ENT_QUOTES, 'UTF-8') ?>
             </div>
         <?php endif; ?>
 
