@@ -14,6 +14,7 @@ if (strpos($_SERVER['REQUEST_URI'], 'pintu-rahasia-modul') === false) {
 
 $pesan = '';
 $pesan_type = 'success';
+$management_url = '/pintu-rahasia-modul';
 
 // CRUD
 $mode = $_GET['mode'] ?? 'create';
@@ -37,7 +38,7 @@ if (isset($_GET['delete']) && $_GET['delete']) {
     $id = (int)$_GET['delete'];
     $stmt = $pdo->prepare('DELETE FROM checkpoint_modul WHERE id = ?');
     $stmt->execute([$id]);
-    header('Location: management_checkpoint.php?deleted=1');
+    header('Location: ' . $management_url . '?deleted=1');
     exit();
 }
 
@@ -48,7 +49,7 @@ if ($mode === 'edit' && $edit_id) {
     $stmt->execute([$edit_id]);
     $editRow = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$editRow) {
-        header('Location: management_checkpoint.php');
+        header('Location: ' . $management_url);
         exit();
     }
 }
@@ -93,6 +94,16 @@ $form = [
     'opsi_b' => $editRow['opsi_b'] ?? '',
     'jawaban_benar' => $editRow['jawaban_benar'] ?? 'a',
 ];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $form = [
+        'modul_id' => $_POST['modul_id'] ?? '',
+        'pertanyaan' => $_POST['pertanyaan'] ?? '',
+        'opsi_a' => $_POST['opsi_a'] ?? '',
+        'opsi_b' => $_POST['opsi_b'] ?? '',
+        'jawaban_benar' => $_POST['jawaban_benar'] ?? 'a',
+    ];
+}
 
 $deleteToken = csrf_token();
 ?>
@@ -189,7 +200,7 @@ $deleteToken = csrf_token();
                                 <i class="bi bi-save"></i> Simpan
                             </button>
                             <?php if ($mode === 'edit' && $edit_id): ?>
-                                <a href="management_checkpoint.php" class="btn btn-outline-secondary">Batal Edit</a>
+                                <a href="<?= htmlspecialchars($management_url) ?>" class="btn btn-outline-secondary">Batal Edit</a>
                             <?php endif; ?>
                         </div>
                     </form>
@@ -231,8 +242,8 @@ $deleteToken = csrf_token();
                                             </td>
                                             <td class="text-center">
                                                 <div class="btn-group btn-group-sm">
-                                                    <a class="btn btn-warning" href="management_checkpoint.php?mode=edit&id=<?= (int)$c['id'] ?>">E</a>
-                                                    <a class="btn btn-danger" href="management_checkpoint.php?delete=<?= (int)$c['id'] ?>&token=<?= htmlspecialchars($deleteToken) ?>" onclick="return confirm('Hapus checkpoint modul ini?')">-</a>
+                                                    <a class="btn btn-warning" href="<?= htmlspecialchars($management_url) ?>?mode=edit&id=<?= (int)$c['id'] ?>">E</a>
+                                                    <a class="btn btn-danger" href="<?= htmlspecialchars($management_url) ?>?delete=<?= (int)$c['id'] ?>&token=<?= htmlspecialchars($deleteToken) ?>" onclick="return confirm('Hapus checkpoint modul ini?')">-</a>
                                                 </div>
                                             </td>
                                         </tr>
@@ -254,4 +265,3 @@ $deleteToken = csrf_token();
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-
