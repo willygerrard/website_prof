@@ -112,6 +112,12 @@ right class, right time in the term) and adding a second question type beyond mu
   INSERT/UPDATE queries. Consolidated the parser into one shared file and the database write
   logic into one shared helper, after a bug (a metadata field silently not saving) showed up in
   one entry point but not the others — same root cause, just duplicated three ways.
+## 🏅 Achievement & Progress Belajar
+
+* **Achievement Per Modul (`modul_tuntas`):** Setiap modul yang dibaca (timer 100 detik) dan berhasil mengerjakan checkpoint akan mendapat achievement medali "Modul Sudah Tuntas!" (`🏅`). Status tuntas disimpan di tabel `modul_tuntas` (user_id, modul_id) dan ditampilkan langsung di halaman modul (`buka_modul.php`).
+* **Progress Belajar Kelas:** Progress dihitung berdasarkan jumlah modul yang mendapat achievement dibandingkan total modul yang tersedia untuk jenjang kelas siswa (`kelas_target` / `tingkat` dari session). Ini memberikan gambaran persentase kemajuan belajar per kelas (misalnya "X TKJ 1: 3/12 modul tuntas = 25%").
+* **Integrasi Checkpoint:** Achievement hanya muncul setelah siswa menyelesaikan checkpoint modul dengan benar, memastikan pemahaman materi sebelum modul dianggap tuntas.
+
 ## 👥 User Management — Class Filters & Modern UI
 
 * **Class-Based Filtering:** Quick filter buttons (`📦 Class X`) similar to `rekap_nilai`, working seamlessly alongside `search` and `sort` parameters.
@@ -178,7 +184,7 @@ Hardening around the signup and login paths (`signup.php`, `proses_login.php`, `
 This is a solo learning/school project (SIJA/TKJ subject) rather than a production enterprise system, so certain features and edge cases are intentionally kept simple for now:
 
 #### Quiz & Security Limitations
-* **Single-Item Deletion Security:** Single-item delete (`?hapus=<id>`) still utilizes a GET request and lacks CSRF protection — CSRF tokens are currently implemented only on bulk actions.
+* **Single-Item Deletion Security:** ✅ Sudah diperbaiki — `hapus.php` kini menggunakan `csrf_require_valid_get('csrf_token')` pada parameter `?id=` dan `?csrf_token=`, sehingga single-item delete sudah terlindungi CSRF.
 * **Short-Answer Feature Support:** Short-answer questions are not yet supported in AI-assisted import or bulk edit; they must be managed individually via the manual form.
 * **Manual Response Review:** There is no dedicated UI review screen for short-answer responses flagged as "no automatic match" — data is currently audited directly via database queries.
 * **Topic Tagging Consistency:** Topic tags (`materi`) rely on free-text inputs with autocomplete suggestions rather than a controlled vocabulary.
