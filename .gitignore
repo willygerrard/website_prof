@@ -46,3 +46,6 @@ Dockerfile
 nginx-staging.conf.template
 script_staging.sh
 docker-data/
+
+# Seed scripts (jangan di-track)
+seed/
