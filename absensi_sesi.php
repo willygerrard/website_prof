@@ -37,7 +37,7 @@ $pesan_type = '';
  */
 function absensi_daftar_kelas(PDO $pdo): array
 {
-    $rows = $pdo->query("SELECT DISTINCT kelas FROM users WHERE role = 'siswa' AND kelas IS NOT NULL AND kelas <> '' ORDER BY kelas")->fetchAll(PDO::FETCH_COLUMN);
+    $rows = $pdo->query("SELECT DISTINCT kelas FROM users WHERE role = 'siswa' AND kelas IS NOT NULL AND status = 'aktif' AND kelas <> '' ORDER BY kelas")->fetchAll(PDO::FETCH_COLUMN);
     return $rows;
 }
 
@@ -146,7 +146,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $status_boleh = ['hadir', 'sakit', 'izin', 'alpa', 'terlambat'];
             $now = date('Y-m-d H:i:s');
-            $st_siswa = $pdo->prepare("SELECT id, COALESCE(nama_asli, username) AS nama FROM users WHERE role = 'siswa' AND kelas = ?");
+            $st_siswa = $pdo->prepare("SELECT id, COALESCE(nama_asli, username) AS nama FROM users WHERE role = 'siswa' AND status = 'aktif' AND kelas = ?");
             $st_siswa->execute([$sesi['kelas']]);
             $daftar = $st_siswa->fetchAll(PDO::FETCH_ASSOC);
 
@@ -222,7 +222,7 @@ if ($sesi_aktif) {
     $st_h->execute([$sesi_aktif['id']]);
     $daftar_hadir = $st_h->fetchAll(PDO::FETCH_ASSOC);
 
-    $st_sw = $pdo->prepare("SELECT id, COALESCE(nama_asli, username) AS nama FROM users WHERE role = 'siswa' AND kelas = ? ORDER BY nama");
+    $st_sw = $pdo->prepare("SELECT id, COALESCE(nama_asli, username) AS nama FROM users WHERE role = 'siswa' AND status = 'aktif' AND kelas = ? ORDER BY nama");
     $st_sw->execute([$sesi_aktif['kelas']]);
     $daftar_siswa_kelas = $st_sw->fetchAll(PDO::FETCH_ASSOC);
 }
