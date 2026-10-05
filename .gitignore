@@ -38,3 +38,11 @@ img/icon_*
 *.swp
 *.bak
 
+
+# === Environment-specific (jangan di-track) ===
+docker-compose.yml
+docker-compose.staging.yml
+Dockerfile
+nginx-staging.conf.template
+script_staging.sh
+docker-data/
