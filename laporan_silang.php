@@ -378,7 +378,16 @@ if ($export_csv) {
                             </tr>
                             <?php endforeach; ?>
                             <?php if (empty($laporan)): ?>
-                            <tr><td colspan="8" class="text-center text-muted py-4">Tidak ada sesi pada rentang filter ini.</td></tr>
+                            <tr>
+                                <td colspan="1" class="text-center text-muted py-4" style="display:none;"></td>
+                                <td class="text-center text-muted py-4" colspan="8">Tidak ada sesi pada rentang filter ini.</td>
+                                <td class="text-center text-muted py-4" style="display:none;"></td>
+                                <td class="text-center text-muted py-4" style="display:none;"></td>
+                                <td class="text-center text-muted py-4" style="display:none;"></td>
+                                <td class="text-center text-muted py-4" style="display:none;"></td>
+                                <td class="text-center text-muted py-4" style="display:none;"></td>
+                                <td class="text-center text-muted py-4" style="display:none;"></td>
+                            </tr>
                             <?php endif; ?>
                         </tbody>
                     </table>
