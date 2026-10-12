@@ -88,10 +88,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // 3) Sesi harus buka
                 $hasil_post = ['ok' => false, 'pesan' => 'Sesi absensi sudah ditutup.', 'type' => 'secondary'];
             } else {
-                // 4) Expiry dihitung di PHP
                 $now_ts = time();
-                $expired_ts = strtotime($sesi['expired_at']);
-                if ($expired_ts === false || $now_ts > $expired_ts) {
+
+                // 3b) Batas jam selesai sesi (toleransi 5 menit), dihitung di PHP.
+                // Mencegah sesi yang lupa ditutup menerima scan berhari-hari.
+                $selesai_ts = strtotime($sesi['tanggal'] . ' ' . $sesi['jam_selesai']);
+                if ($selesai_ts !== false && $now_ts > $selesai_ts + 300) {
+                    $hasil_post = ['ok' => false, 'pesan' => 'Sesi absensi sudah lewat jam selesai. Hubungi gurumu.', 'type' => 'secondary'];
+                } elseif (($expired_ts = strtotime($sesi['expired_at'])) === false || $now_ts > $expired_ts) {
+                    // 4) Expiry dihitung di PHP
                     $hasil_post = ['ok' => false, 'pesan' => 'QR kadaluarsa. Minta guru menampilkan QR terbaru.', 'type' => 'warning'];
                 } else {
                     // 5) Kelas siswa harus sama dengan kelas sesi

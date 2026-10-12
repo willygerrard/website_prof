@@ -119,9 +119,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['aksi_rotasi'])) {
         header('Content-Type: application/json; charset=utf-8');
         $sesi_id = (int)($_POST['sesi_id'] ?? 0);
-        $stmt = $pdo->prepare("SELECT id FROM absensi_sesi WHERE id = ? AND guru_id = ? AND status = 'buka'");
+        $stmt = $pdo->prepare("SELECT id, tanggal, jam_selesai, status FROM absensi_sesi WHERE id = ? AND guru_id = ?");
         $stmt->execute([$sesi_id, $user_id]);
-        if (!$stmt->fetchColumn()) {
+        $sesi_rot = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$sesi_rot) {
+            http_response_code(403);
+            echo json_encode(['ok' => false, 'error' => 'forbidden']);
+            exit();
+        }
+
+        // Auto-close: sesi yang lewat tanggal+jam_selesai (+5 menit toleransi) ditutup
+        // otomatis saat rotasi — halaman guru yang ditinggal terbuka berhenti memperpanjang QR.
+        $selesai_ts = strtotime($sesi_rot['tanggal'] . ' ' . $sesi_rot['jam_selesai']);
+        if ($sesi_rot['status'] === 'buka' && $selesai_ts !== false && time() > $selesai_ts + 300) {
+            $upd_close = $pdo->prepare("UPDATE absensi_sesi SET status = 'tutup' WHERE id = ? AND status = 'buka'");
+            $upd_close->execute([$sesi_id]);
+            echo json_encode(['ok' => false, 'error' => 'sesi_ditutup_otomatis', 'pesan' => 'Sesi sudah lewat jam selesai dan ditutup otomatis.']);
+            exit();
+        }
+
+        if ($sesi_rot['status'] !== 'buka') {
             http_response_code(403);
             echo json_encode(['ok' => false, 'error' => 'forbidden']);
             exit();
@@ -505,8 +522,19 @@ if ($sesi_aktif) {
         var countdownEl = document.getElementById('countdown');
         var jumlahScanEl = document.getElementById('jumlahScan');
         var tokenLabel = document.getElementById('tokenLabel');
+        var badgeStatus = document.getElementById('badgeStatus');
+        var rotasiTimer = null;
         var expiredAtMs = 0;
         var qr = null;
+
+        function hentikanRotasi(pesanTutup) {
+            status = 'tutup';
+            if (rotasiTimer) { clearInterval(rotasiTimer); rotasiTimer = null; }
+            if (qrBox) qrBox.innerHTML = '<div class="text-muted small">Sesi sudah ditutup — QR tidak aktif.</div>';
+            if (countdownEl) { countdownEl.textContent = '⏱ —'; countdownEl.className = 'mt-3 fw-bold fs-4 text-muted'; }
+            if (badgeStatus) { badgeStatus.className = 'badge fs-6 px-3 py-2 bg-dark'; badgeStatus.textContent = '🔴 TUTUP'; }
+            if (pesanTutup) console.warn(pesanTutup);
+        }
 
         function renderQR(t) {
             qrBox.innerHTML = '';
@@ -556,6 +584,10 @@ if ($sesi_aktif) {
                         expiredAtMs = new Date(parts[0], parts[1] - 1, parts[2], parts[3], parts[4], parts[5]).getTime();
                         renderQR(location.origin + location.pathname.replace(/absensi_sesi\.php.*$/, '') + 'absensi_scan.php?token=' + encodeURIComponent(token));
                         tickCountdown();
+                    } else if (d && d.error === 'sesi_ditutup_otomatis') {
+                        hentikanRotasi(d.pesan || 'Sesi ditutup otomatis (lewat jam selesai).');
+                    } else {
+                        hentikanRotasi('Rotasi ditolak server.');
                     }
                 })
                 .catch(function (e) { console.error('Rotasi token gagal:', e); });
@@ -566,7 +598,7 @@ if ($sesi_aktif) {
             expiredAtMs = Date.now() + 60000;
             renderQR(location.origin + location.pathname.replace(/absensi_sesi\.php.*$/, '') + 'absensi_scan.php?token=' + encodeURIComponent(token));
             tickCountdown();
-            setInterval(rotasiToken, 55000);
+            rotasiTimer = setInterval(rotasiToken, 55000);
         }
     })();
     </script>

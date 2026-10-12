@@ -22,7 +22,7 @@ require __DIR__ . '/seed_common.php';
 // =====================================================================
 // Konfigurasi dummy (ubah sesuai kebutuhan)
 // =====================================================================
-const SEED_STUDENT_COUNT = 6;
+const SEED_STUDENT_COUNT = 20;           // jumlah siswa dummy
 const SEED_PASSWORD      = 'dummy12345';   // password login siswa dummy
 const SEED_RANDOM_SEED   = 20261002;       // agar nilai acak stabil tiap run
 
