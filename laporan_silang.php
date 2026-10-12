@@ -377,18 +377,6 @@ if ($export_csv) {
                                 <td><span class="badge bg-<?= htmlspecialchars($r['badge'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($r['kategori'], ENT_QUOTES, 'UTF-8') ?></span></td>
                             </tr>
                             <?php endforeach; ?>
-                            <?php if (empty($laporan)): ?>
-                            <tr>
-                                <td colspan="1" class="text-center text-muted py-4" style="display:none;"></td>
-                                <td class="text-center text-muted py-4" colspan="8">Tidak ada sesi pada rentang filter ini.</td>
-                                <td class="text-center text-muted py-4" style="display:none;"></td>
-                                <td class="text-center text-muted py-4" style="display:none;"></td>
-                                <td class="text-center text-muted py-4" style="display:none;"></td>
-                                <td class="text-center text-muted py-4" style="display:none;"></td>
-                                <td class="text-center text-muted py-4" style="display:none;"></td>
-                                <td class="text-center text-muted py-4" style="display:none;"></td>
-                            </tr>
-                            <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
@@ -404,7 +392,14 @@ if ($export_csv) {
     <script src="assets/vendor/datatables/js/jquery.dataTables.min.js"></script>
     <script src="assets/vendor/datatables/js/dataTables.bootstrap5.min.js"></script>
     <script>
-        $(function () { $('#tabelLaporan').DataTable({ pageLength: 25 }); });
+        $(function () {
+            $('#tabelLaporan').DataTable({
+                pageLength: 25,
+                language: {
+                    emptyTable: 'Tidak ada sesi pada rentang filter ini.'
+                }
+            });
+        });
     </script>
 </body>
 </html>
