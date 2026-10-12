@@ -1,16 +1,42 @@
 <?php
 require_once 'session.php';      // session dulu
+require 'koneksi.php';
 checkLogin();
 
-$skor  = isset($_GET['skor']) ? (int)$_GET['skor'] : null;
+// Nilai dari URL tidak dipercaya untuk skor/skor_mentah/batas_remedial:
+// ketiganya diambil dari database berdasarkan user yang login.
+$sesi_id_get  = isset($_GET['sesi']) ? (int)$_GET['sesi'] : 0;
+$attempt_get  = isset($_GET['attempt']) ? (int)$_GET['attempt'] : 0;
+$user_id_page = $_SESSION['user_id'] ?? $_SESSION['id'] ?? null;
+
+$skor = null;
+$skor_mentah = null;
+$batas_remedial = null;
+$lulus = false;
+
+if ($user_id_page && $sesi_id_get > 0 && $attempt_get > 0) {
+    $stmt = $pdo->prepare("SELECT h.skor, h.skor_mentah, h.attempt, s.batas_remedial FROM kuis_hasil h JOIN kuis_sesi s ON s.id = h.sesi_id WHERE h.user_id = ? AND h.sesi_id = ? AND h.attempt = ?");
+    $stmt->execute([$user_id_page, $sesi_id_get, $attempt_get]);
+    $hasil_db = $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
+if (empty($hasil_db)) {
+    die("Hasil tidak ditemukan. <a href='kuis.php'>Kembali ke Daftar Kuis</a>");
+}
+
+$skor           = (int)$hasil_db['skor'];
+$skor_mentah    = $hasil_db['skor_mentah'] !== null ? (int)$hasil_db['skor_mentah'] : null;
+$batas_remedial = (int)$hasil_db['batas_remedial'];
+$lulus          = $skor >= 75;
+
+// Angka benar/total tetap dari URL (statistik tampilan, bukan nilai rapor)
 $benar = isset($_GET['benar']) ? (int)$_GET['benar'] : null;
 $total = isset($_GET['total']) ? (int)$_GET['total'] : null;
-$lulus = isset($_GET['lulus']) && $_GET['lulus'] === '1';
 
-if ($skor === null) {
-    header("Location: kuis.php");
-    exit();
-}
+// Pesan cap remedial hanya jika ada skor mentah yang tertahan batas
+$pesan_cap = ($skor_mentah !== null && $skor < $skor_mentah)
+    ? "Nilai mentah {$skor_mentah}, nilai tercatat {$skor} (batas remedial {$batas_remedial})"
+    : null;
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -60,6 +86,10 @@ if ($skor === null) {
                 <p class="text-secondary mb-4">
                     Kamu menjawab benar <strong><?= $benar ?></strong> dari <strong><?= $total ?></strong> soal
                 </p>
+
+                <?php if ($pesan_cap): ?>
+                <div class="alert alert-info small mb-4"><?= htmlspecialchars($pesan_cap) ?></div>
+                <?php endif; ?>
 
                 <?php if (!$lulus): ?>
                 <div class="alert alert-light border small text-start">
