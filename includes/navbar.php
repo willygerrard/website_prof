@@ -53,9 +53,10 @@ if (!isset($link_tugas)) {
                 <?php if ($_SESSION['role'] === 'siswa'): ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" id="navbarTugasDropdown" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        📋 Pengumpulan Tugas
+                        📋 Evaluasi
                     </a>
                     <ul class="dropdown-menu" aria-labelledby="navbarTugasDropdown">
+                        <li><a class="dropdown-item" href="kuis.php">Kuis</a></li>
                         <li><a class="dropdown-item" href="daftar_tugas_siswa.php">Tugas Aktif</a></li>
                         <li><a class="dropdown-item" href="<?= htmlspecialchars($link_tugas) ?>" target="_blank" rel="noopener noreferrer">Arsip Tugas (Google Drive)</a></li>
                     </ul>
@@ -88,7 +89,6 @@ if (!isset($link_tugas)) {
                 </li>
                 <?php endif; ?>
                 <?php if ($_SESSION['role'] === 'siswa'): ?>
-                <li class="nav-item"><a class="nav-link" href="kuis.php">Kuis</a></li>
                 <li class="nav-item"><a class="nav-link fw-bold text-primary" href="game_edukasi.php">🎮 Game Edukasi</a></li>
                 <?php endif; ?>
             </ul>
