@@ -1,5 +1,5 @@
 <?php
-require_once 'session.php';      // session dulu
+require_once 'session.php';
 require 'koneksi.php';
 
 checkLogin();
@@ -12,14 +12,14 @@ $kategori_filter = $_GET['kategori'] ?? '';
 $level_filter    = $_GET['level'] ?? '';
 
 // Header Download File Excel (.xls)
-$nama_file = "rekap_nilai_terstruk_" . ($kelas_filter ? "kelas_" . str_replace(' ', '_', $kelas_filter) . "_" : "") . date('Y-m-d') . ".xls";
+$nama_file = "rekap_nilai_terstruktur_" . ($kelas_filter ? "kelas_" . str_replace(' ', '_', $kelas_filter) . "_" : "") . date('Y-m-d') . ".xls";
 
 header("Content-Type: application/vnd.ms-excel; charset=utf-8");
 header("Content-Disposition: attachment; filename=$nama_file");
 header("Pragma: no-cache");
 header("Expires: 0");
 
-// Query Ringkasan Nilai Kuis per Siswa
+// Query Data
 $sql = "SELECT users.id as user_id, users.username, users.nama_asli, users.kelas,
                kuis_hasil.kategori, kuis_hasil.level, kuis_hasil.sesi_id,
                ks.dibuka_at AS sesi_dibuka,
@@ -44,21 +44,41 @@ $stmt->execute($params);
 $raw_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // =========================================================
-// GROUPING DATA BERDASARKAN USER_ID (Biar Nama Cukup Tampil 1x)
+// GROUPING DATA & MEMBUAT MASTER SESI (KUNCI KOLOM)
 // =========================================================
 $grouped_data = [];
+$all_sessions = []; // Array untuk menyimpan semua sesi unik
+
 foreach ($raw_data as $row) {
     $uid = $row['user_id'];
+    $tgl_sesi = $row['sesi_dibuka'] ? date('d M Y', strtotime($row['sesi_dibuka'])) : 'Riwayat lama';
+    $raw_tgl = $row['sesi_dibuka'] ?: '1970-01-01'; // Untuk sorting
+    
+    // Buat kunci unik untuk sesi ini (prioritaskan sesi_id, jika null pakai hash materi+tanggal)
+    $session_key = $row['sesi_id'] ?: md5($row['materi'] . $raw_tgl);
+
+    // 1. Simpan info sesi ke Master Sesi (Jika belum ada)
+    if (!isset($all_sessions[$session_key])) {
+        $all_sessions[$session_key] = [
+            'materi' => $row['materi'] ?? '-',
+            'tanggal' => $tgl_sesi,
+            'kategori' => $row['kategori'],
+            'level' => ucfirst($row['level']),
+            'raw_tgl' => $raw_tgl
+        ];
+    }
+
+    // 2. Inisialisasi data siswa
     if (!isset($grouped_data[$uid])) {
         $grouped_data[$uid] = [
             'kelas'      => $row['kelas'] ?? '-',
             'nama_siswa' => !empty($row['nama_asli']) ? $row['nama_asli'] : $row['username'],
             'username'   => $row['username'],
-            'kuis_list'  => []
+            'kuis_map'   => [] // Ubah dari list ke map berdasarkan session_key
         ];
     }
     
-    // Tentukan Status Lulus/Belum Tuntas
+    // Tentukan Status
     if ($row['nilai_terbaik'] >= KKM) {
         $status = 'Lulus';
     } elseif ($row['total_attempt'] >= 4) {
@@ -67,17 +87,19 @@ foreach ($raw_data as $row) {
         $status = 'Belum Tuntas';
     }
 
-    $tgl_sesi = $row['sesi_dibuka'] ? date('d M Y', strtotime($row['sesi_dibuka'])) : 'Riwayat lama';
-
-    $grouped_data[$uid]['kuis_list'][] = [
-        'kategori'      => $row['kategori'],
-        'level'         => ucfirst($row['level']),
-        'materi'        => $row['materi'] ?? '-',
-        'tanggal'       => $tgl_sesi,
-        'nilai_terbaik' => $row['nilai_terbaik'],
-        'status'        => $status
+    // 3. Simpan nilai siswa berdasarkan kunci sesi
+    $grouped_data[$uid]['kuis_map'][$session_key] = [
+        'nilai'  => $row['nilai_terbaik'],
+        'status' => $status
     ];
 }
+
+// 4. URUTKAN MASTER SESI BERDASARKAN TANGGAL
+// Agar kolom "Materi 1, Materi 2, dst" berurutan secara kronologis
+uasort($all_sessions, function($a, $b) {
+    return strtotime($a['raw_tgl']) <=> strtotime($b['raw_tgl']);
+});
+
 ?>
 <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
 <head>
@@ -86,7 +108,7 @@ foreach ($raw_data as $row) {
         th { background-color: #0f172a; color: #ffffff; border: 1px solid #000000; font-weight: bold; padding: 8px; text-align: center; }
         td { border: 1px solid #cccccc; padding: 6px; vertical-align: middle; }
         .text-center { text-align: center; }
-        .mso-number { mso-number-format:"\@"; } /* Teks murni */
+        .mso-number { mso-number-format:"\@"; }
     </style>
 </head>
 <body>
@@ -98,35 +120,47 @@ foreach ($raw_data as $row) {
                 <th>Username</th>
                 <th>Kategori</th>
                 <th>Level</th>
-                <th>Materi</th>
-                <th>Tanggal Sesi</th>
-                <th>Nilai Terbaik</th>
-                <th>Status</th>
+                
+                <!-- Generate Header Kolom Berdasarkan Master Sesi -->
+                <?php $col = 1; foreach ($all_sessions as $session): ?>
+                    <th>Materi <?= $col ?></th>
+                    <th>Tgl <?= $col ?></th>
+                    <th>Nilai <?= $col ?></th>
+                    <th>Status <?= $col ?></th>
+                <?php $col++; endforeach; ?>
             </tr>
         </thead>
         <tbody>
             <?php foreach ($grouped_data as $siswa): 
-                $kuis_items = $siswa['kuis_list'];
-                $total_kuis = count($kuis_items);
+                // Ambil Kategori & Level dari ujian pertama siswa (asumsi 1 kelas sama)
+                $first_session = reset($all_sessions);
+                $kategori_utama = $first_session['kategori'] ?? '-';
+                $level_utama    = $first_session['level'] ?? '-';
             ?>
-                <?php foreach ($kuis_items as $index => $k): ?>
                 <tr>
-                    <!-- CETAK KELAS, NAMA, & USERNAME HANYA PADA BARIS PERTAMA (PAKAI ROWSPAN) -->
-                    <?php if ($index === 0): ?>
-                        <td class="text-center" rowspan="<?= $total_kuis ?>"><?= htmlspecialchars($siswa['kelas']) ?></td>
-                        <td rowspan="<?= $total_kuis ?>"><strong><?= htmlspecialchars($siswa['nama_siswa']) ?></strong></td>
-                        <td class="mso-number text-center" rowspan="<?= $total_kuis ?>"><?= htmlspecialchars($siswa['username']) ?></td>
-                    <?php endif; ?>
+                    <td class="text-center"><?= htmlspecialchars($siswa['kelas']) ?></td>
+                    <td><strong><?= htmlspecialchars($siswa['nama_siswa']) ?></strong></td>
+                    <td class="mso-number text-center"><?= htmlspecialchars($siswa['username']) ?></td>
+                    <td class="text-center"><?= htmlspecialchars($kategori_utama) ?></td>
+                    <td class="text-center"><?= htmlspecialchars($level_utama) ?></td>
 
-                    <!-- KOLOM KUIS (AKAN MENYESUAIKAN BANYAKNYA KUIS YANG DIIKUTI SISWA) -->
-                    <td><?= htmlspecialchars($k['kategori']) ?></td>
-                    <td class="text-center"><?= htmlspecialchars($k['level']) ?></td>
-                    <td><?= htmlspecialchars($k['materi']) ?></td>
-                    <td class="text-center"><?= $k['tanggal'] ?></td>
-                    <td class="text-center" style="font-weight:bold;"><?= $k['nilai_terbaik'] ?></td>
-                    <td class="text-center"><?= $k['status'] ?></td>
+                    <!-- CETAK NILAI BERDASARKAN MASTER SESI -->
+                    <?php foreach ($all_sessions as $session_key => $session): ?>
+                        <?php if (isset($siswa['kuis_map'][$session_key])): ?>
+                            <!-- Jika siswa mengerjakan sesi ini -->
+                            <td><?= htmlspecialchars($session['materi']) ?></td>
+                            <td class="text-center"><?= $session['tanggal'] ?></td>
+                            <td class="text-center" style="font-weight:bold;"><?= $siswa['kuis_map'][$session_key]['nilai'] ?></td>
+                            <td class="text-center"><?= $siswa['kuis_map'][$session_key]['status'] ?></td>
+                        <?php else: ?>
+                            <!-- Jika siswa SKIP / tidak mengerjakan sesi ini, isi dengan strip -->
+                            <td class="text-center">-</td>
+                            <td class="text-center">-</td>
+                            <td class="text-center">-</td>
+                            <td class="text-center">-</td>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
                 </tr>
-                <?php endforeach; ?>
             <?php endforeach; ?>
         </tbody>
     </table>
