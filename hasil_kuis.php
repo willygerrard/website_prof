@@ -92,7 +92,17 @@ $pesan_cap = ($skor_mentah !== null && $skor < $skor_mentah)
                 <?php endif; ?>
 
                 <?php if (!$lulus): ?>
-                <div class="alert alert-light border small text-start">
+                <!-- FITUR BARU: AI REVIEW -->
+                <div class="mt-4 border-top pt-4">
+                    <h6 class="fw-bold"><i class="bi bi-stars text-primary"></i> AI Tutor: Review Kesalahanmu</h6>
+                    <p class="small text-muted mb-2">Kamu sudah lulus, tapi mau tahu di mana letak kesalahanmu tadi? Tanya AI Tutor kami.</p>
+                    <button id="btnReview" class="btn btn-outline-primary w-100 fw-bold" onclick="loadReview()">
+                        Analisis Jawaban Salah
+                    </button>
+                    <div id="aiReviewResult" class="mt-3 text-start" style="display:none;"></div>
+                </div>
+                <?php else: ?>
+                <div class="alert alert-light border small text-start mt-3">
                     💡 Nilai minimal kelulusan (KKM) adalah <strong>75</strong>.
                     Kamu masih punya kesempatan remidi — jangan menyerah!
                 </div>
@@ -106,5 +116,47 @@ $pesan_cap = ($skor_mentah !== null && $skor < $skor_mentah)
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+async function loadReview() {
+    const btn = document.getElementById('btnReview');
+    const resDiv = document.getElementById('aiReviewResult');
+    
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Menganalisis...';
+    
+    try {
+        const res = await fetch(`ai_quiz_review.php?sesi=<?= $sesi_id_get ?>&attempt=<?= $attempt_get ?>`);
+        const data = await res.json();
+        
+        if (data.status === 'success') {
+            if (data.data.length === 0) {
+                resDiv.innerHTML = `<div class="alert alert-success">Luar biasa! Tidak ada kesalahan yang perlu dianalisis.</div>`;
+            } else {
+                let html = '';
+                data.data.forEach(item => {
+                    html += `<div class="card mb-2 border-warning bg-warning bg-opacity-10">
+                        <div class="card-body p-3">
+                            <div class="small fw-bold mb-1">${item.soal}</div>
+                            <div class="small text-danger mb-1"><i class="bi bi-x-circle"></i> ${item.kesalahan}</div>
+                            <div class="small text-success"><i class="bi bi-lightbulb"></i> Fokus belajar: <strong>${item.konsep_harus_dipelajari}</strong></div>
+                        </div>
+                    </div>`;
+                });
+                resDiv.innerHTML = html;
+            }
+            resDiv.style.display = 'block';
+            btn.style.display = 'none';
+        } else {
+            alert(data.message || 'Gagal memuat review.');
+            btn.disabled = false;
+            btn.innerHTML = 'Coba Lagi';
+        }
+    } catch (e) {
+        alert('Koneksi error.');
+        btn.disabled = false;
+        btn.innerHTML = 'Coba Lagi';
+    }
+}
+</script>
 </body>
 </html>

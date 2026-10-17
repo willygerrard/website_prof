@@ -84,7 +84,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_kuis'])) {
     } else {
         $benar = 0;
         $total_soal = count($soal_ids_resmi);
-        $jawaban_isian_untuk_disimpan = []; // dikumpulkan dulu, disimpan setelah kuis_hasil punya id
+        $jawaban_isian_untuk_disimpan = [];
+        $rekap_jawaban_siswa = []; // dikumpulkan dulu, disimpan setelah kuis_hasil punya id
 
         // Prepare query sekali di luar loop untuk efisiensi
         $stmt_kunci = $pdo->prepare("SELECT jenis_soal, jawaban FROM kuis_soal WHERE id = ?");
@@ -129,6 +130,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_kuis'])) {
                     if (strtolower($jawab_user) === strtolower($kunci)) {
                         $benar++;
                     }
+                    // Simpan rekamannya
+                    $rekap_jawaban_siswa[$soal_id] = strtolower($jawab_user);
                 }
             }
         }
@@ -169,9 +172,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_kuis'])) {
             // (5) Rumus skor mentah tidak diubah; attempt 1 bebas, attempt 2-4 dibatasi batas remedial
             $skor = ($attempt == 1) ? $skor_mentah : min($skor_mentah, $batas_remedial);
 
-            // (6) INSERT skor tercatat + skor mentah
-            $stmt = $pdo->prepare("INSERT INTO kuis_hasil (user_id, kategori, level, sesi_id, skor, skor_mentah, total_soal, attempt, dikerjakan_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())");
-            $stmt->execute([$user_id, $sesi['kategori'], $sesi['level'], $sesi_id, $skor, $skor_mentah, $total_soal, $attempt]);
+            // (6) INSERT skor tercatat + skor mentah + detail_jawaban
+            $json_jawaban = json_encode($rekap_jawaban_siswa ?? []); // Bungkus jadi JSON
+            $stmt = $pdo->prepare("INSERT INTO kuis_hasil (user_id, kategori, level, sesi_id, skor, skor_mentah, detail_jawaban, total_soal, attempt, dikerjakan_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+            $stmt->execute([$user_id, $sesi['kategori'], $sesi['level'], $sesi_id, $skor, $skor_mentah, $json_jawaban, $total_soal, $attempt]);
             $hasil_id = $pdo->lastInsertId();
 
             $pdo->commit();
