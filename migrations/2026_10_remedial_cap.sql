@@ -19,3 +19,17 @@ SELECT COUNT(*) AS duplikat FROM `kuis_hasil` GROUP BY `user_id`, `sesi_id`, `at
 ALTER TABLE `kuis_hasil` ADD UNIQUE KEY `uniq_user_sesi_attempt` (`user_id`, `sesi_id`, `attempt`);
 
 ALTER TABLE `kuis_hasil` ADD COLUMN `detail_jawaban` JSON NULL AFTER `skor_mentah`;
+
+SELECT h.id, h.user_id, h.sesi_id, h.attempt, h.skor, h.dikerjakan_at
+FROM kuis_hasil h
+JOIN (
+  SELECT user_id, sesi_id, attempt
+  FROM kuis_hasil
+  WHERE sesi_id IS NOT NULL
+  GROUP BY user_id, sesi_id, attempt
+  HAVING COUNT(*) > 1
+) d ON d.user_id = h.user_id AND d.sesi_id = h.sesi_id AND d.attempt = h.attempt
+ORDER BY h.user_id, h.sesi_id, h.attempt, h.id;
+
+SHOW COLUMNS FROM kuis_hasil WHERE Field IN ('skor_mentah','detail_jawaban');
+SHOW COLUMNS FROM kuis_sesi LIKE 'batas_remedial';
