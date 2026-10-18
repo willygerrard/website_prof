@@ -1,41 +1,63 @@
 <?php
-require_once 'session.php';      // session dulu
-require_once 'csrf_helper.php';  // baru helper
+require_once 'session.php';
+require_once 'csrf_helper.php';
 require 'koneksi.php';
 include __DIR__ . '/includes/soal_writer.php';
 
-// Wajib login sebagai admin sebelum bisa menyimpan soal
 checkLogin();
 checkRole(['admin']);
-
 csrf_require_valid_post();
 
-// =========================
-// AMBIL JSON
-// =========================
 $json = $_POST['quiz_json'] ?? file_get_contents("php://input");
-
 $data = json_decode($json, true);
 
 if (!$data || !isset($data['questions'])) {
-    die(json_encode([
-        "success" => false,
-        "error" => "JSON tidak valid."
-    ]));
+    die(json_encode(["success" => false, "error" => "JSON tidak valid."]));
 }
-// kategori, level & materi
-$kategori  = $_POST['kategori'] ?? 'Network'; // Default fallback
-$level     = $_POST['level'] ?? 'pemula';    // Default fallback
-$materi    = trim($_POST['materi'] ?? '') !== '' ? trim($_POST['materi']) : null;
+
+$kategori    = $_POST['kategori'] ?? 'Network';
+$level       = $_POST['level'] ?? 'pemula';
+$materi      = trim($_POST['materi'] ?? '') !== '' ? trim($_POST['materi']) : null;
+$jenis_soal  = $_POST['jenis_soal'] ?? 'pilgan'; // Tangkap jenis soal dari form
 
 $total = 0;
 
 try {
-
     $pdo->beginTransaction();
 
     foreach ($data['questions'] as $q) {
 
+        // ==========================================
+        // LOGIKA SIMPAN SOAL ISIAN
+        // ==========================================
+        if ($jenis_soal === 'isian') {
+            if (empty($q['question_text']) || empty($q['correct_answer'])) {
+                continue;
+            }
+
+            // Gabungkan jawaban utama dan alternatif
+            $alternatif = [$q['correct_answer']];
+            if (!empty($q['alternatif']) && is_array($q['alternatif'])) {
+                $alternatif = array_merge($alternatif, $q['alternatif']);
+            }
+            $alternatif = array_values(array_unique(array_filter(array_map('trim', $alternatif))));
+
+            // Panggil fungsi simpan isian (pastikan fungsi ini ada di soal_writer.php)
+            simpanSoalIsian($pdo, [
+                'kategori'   => $kategori,
+                'level'      => $level,
+                'materi'     => $materi,
+                'pertanyaan' => trim($q['question_text']),
+                'alternatif' => $alternatif,
+            ]);
+
+            $total++;
+            continue; // Lanjut ke soal berikutnya
+        }
+
+        // ==========================================
+        // LOGIKA SIMPAN SOAL PILIHAN GANDA
+        // ==========================================
         if (
             empty($q['question_text']) ||
             empty($q['options']) ||
@@ -51,17 +73,11 @@ try {
 
         $correct = trim($q['correct_answer']);
 
-        // ubah jawaban menjadi enum a,b,c,d
-        if ($correct == $a)
-            $jawaban = "a";
-        elseif ($correct == $b)
-            $jawaban = "b";
-        elseif ($correct == $c)
-            $jawaban = "c";
-        elseif ($correct == $d)
-            $jawaban = "d";
-        else
-            continue;
+        if ($correct == $a) $jawaban = "a";
+        elseif ($correct == $b) $jawaban = "b";
+        elseif ($correct == $c) $jawaban = "c";
+        elseif ($correct == $d) $jawaban = "d";
+        else continue;
 
         simpanSoalPilgan($pdo, [
             'kategori'   => $kategori,
@@ -78,16 +94,13 @@ try {
         $total++;
     }
 
-     $pdo->commit();
-
+    $pdo->commit();
     header("Location: pintu-rahasia-sija?pesan=sukses");
     exit;
 
 } catch (Exception $e) {
-
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
-
     die("Error: " . $e->getMessage());
 }

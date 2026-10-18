@@ -84,7 +84,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_kuis'])) {
     } else {
         $benar = 0;
         $total_soal = count($soal_ids_resmi);
-        $jawaban_isian_untuk_disimpan = []; // dikumpulkan dulu, disimpan setelah kuis_hasil punya id
+        $jawaban_isian_untuk_disimpan = [];
+        $rekap_jawaban_siswa = []; // dikumpulkan dulu, disimpan setelah kuis_hasil punya id
 
         // Prepare query sekali di luar loop untuk efisiensi
         $stmt_kunci = $pdo->prepare("SELECT jenis_soal, jawaban FROM kuis_soal WHERE id = ?");
@@ -129,16 +130,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_kuis'])) {
                     if (strtolower($jawab_user) === strtolower($kunci)) {
                         $benar++;
                     }
+                    // Simpan rekamannya
+                    $rekap_jawaban_siswa[$soal_id] = strtolower($jawab_user);
                 }
             }
         }
 
-        $skor = $total_soal > 0 ? round(($benar / $total_soal) * 100) : 0;
+        $skor_mentah = $total_soal > 0 ? round(($benar / $total_soal) * 100) : 0;
 
-        // Simpan hasil
-        $stmt = $pdo->prepare("INSERT INTO kuis_hasil (user_id, kategori, level, sesi_id, skor, total_soal, attempt, dikerjakan_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
-        $stmt->execute([$user_id, $sesi['kategori'], $sesi['level'], $sesi_id, $skor, $total_soal, $total_attempt + 1]);
-        $hasil_id = $pdo->lastInsertId();
+        // Simpan hasil dalam transaksi + pengecekan ulang (kebal dua tab submit bersamaan)
+        try {
+            $pdo->beginTransaction();
+
+            // (1) Kunci baris hasil user+sesi ini agar submit paralel tidak lolos
+            $stmt_cek = $pdo->prepare("SELECT COUNT(*) AS n, MAX(skor) AS terbaik FROM kuis_hasil WHERE user_id = ? AND sesi_id = ? FOR UPDATE");
+            $stmt_cek->execute([$user_id, $sesi_id]);
+            $status_baru = $stmt_cek->fetch(PDO::FETCH_ASSOC);
+            $n = (int)$status_baru['n'];
+            $terbaik = $status_baru['terbaik'] !== null ? (int)$status_baru['terbaik'] : null;
+
+            // (2) Tolak tanpa INSERT jika sudah lulus atau attempt habis
+            if (($terbaik !== null && $terbaik >= KKM) || $n >= MAX_ATTEMPT) {
+                $pdo->rollBack();
+                $alasan = ($terbaik !== null && $terbaik >= KKM)
+                    ? "Kamu sudah lulus kuis ini dengan nilai $terbaik. Hasil percobaan ini tidak disimpan."
+                    : "Kesempatan mengerjakan kuis ini sudah habis (maksimal " . MAX_ATTEMPT . " percobaan). Nilai terbaik: $terbaik. Hasil percobaan ini tidak disimpan.";
+                die("$alasan <a href='kuis.php'>Kembali</a>");
+            }
+
+            // (3) Attempt dihitung ulang di dalam transaksi, bukan dari cek saat halaman dibuka
+            $attempt = $n + 1;
+
+            // (4) Ambil batas remedial per sesi
+            $stmt_batas = $pdo->prepare("SELECT batas_remedial FROM kuis_sesi WHERE id = ?");
+            $stmt_batas->execute([$sesi_id]);
+            $batas_remedial = (int)$stmt_batas->fetchColumn();
+            if ($batas_remedial <= 0) {
+                $batas_remedial = 75;
+            }
+
+            // (5) Rumus skor mentah tidak diubah; attempt 1 bebas, attempt 2-4 dibatasi batas remedial
+            $skor = ($attempt == 1) ? $skor_mentah : min($skor_mentah, $batas_remedial);
+
+            // (6) INSERT skor tercatat + skor mentah + detail_jawaban
+            $json_jawaban = json_encode($rekap_jawaban_siswa ?? []); // Bungkus jadi JSON
+            $stmt = $pdo->prepare("INSERT INTO kuis_hasil (user_id, kategori, level, sesi_id, skor, skor_mentah, detail_jawaban, total_soal, attempt, dikerjakan_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+            $stmt->execute([$user_id, $sesi['kategori'], $sesi['level'], $sesi_id, $skor, $skor_mentah, $json_jawaban, $total_soal, $attempt]);
+            $hasil_id = $pdo->lastInsertId();
+
+            $pdo->commit();
+        } catch (PDOException $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            if ($e->getCode() === '23000') {
+                die("Hasil kuis untuk percobaan ini sudah tercatat (kemungkinan submit ganda dari tab lain). Tidak ada data duplikat disimpan. <a href='kuis.php'>Kembali</a>");
+            }
+            die("Terjadi kesalahan saat menyimpan hasil kuis. Hasil tidak disimpan, silakan coba lagi. <a href='kuis.php'>Kembali</a>");
+        }
 
         // Simpan jawaban isian mentah, terikat ke hasil_id yang baru saja dibuat
         if (!empty($jawaban_isian_untuk_disimpan)) {
@@ -163,15 +212,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_kuis'])) {
             $pesan_wa = "📝 *Pusat Pembelajaran SIJA*\n\n"
                     . htmlspecialchars($_SESSION['username']) . " mengerjakan kuis:\n"
                     . "*" . htmlspecialchars($sesi['kategori']) . " - " . ucfirst($sesi['level']) . "*\n\n"
-                    . "Percobaan ke-" . ($total_attempt + 1) . " dari 4\n"
+                    . "Percobaan ke-" . $attempt . " dari 4\n"
                     . "Nilai: *$skor* ($benar dari $total_soal soal benar)\n"
                     . "Status: $status_lulus\n\n"
                     . "Pada: $tanggal";
             kirimWA($no_wa, $pesan_wa);
         }
 
-        // Redirect ke halaman hasil
-        header("Location: hasil_kuis.php?skor=$skor&benar=$benar&total=$total_soal&lulus=" . ($skor >= KKM ? '1' : '0'));
+        // Redirect ke halaman hasil (skor & skor_mentah dibaca hasil_kuis.php dari DB, bukan dari URL)
+        header("Location: hasil_kuis.php?sesi=$sesi_id&attempt=$attempt&benar=$benar&total=$total_soal");
         exit();
     }
 }

@@ -40,7 +40,7 @@ $level_badge = [
 
 // Hitung status attempt siswa untuk setiap sesi (PER SESI, bukan gabungan semua deploy dengan kategori+level sama)
 foreach ($sesi_list as &$sesi) {
-    $stmt = $pdo->prepare("SELECT COUNT(*) as total, MAX(skor) as nilai_terbaik FROM kuis_hasil WHERE user_id = ? AND sesi_id = ?");
+    $stmt = $pdo->prepare("SELECT COUNT(*) as total, MAX(skor) as nilai_terbaik, s.batas_remedial FROM kuis_hasil kh JOIN kuis_sesi s ON kh.sesi_id = s.id WHERE kh.user_id = ? AND kh.sesi_id = ?");
     $stmt->execute([$user_id, $sesi['id']]);
     $hasil = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -48,6 +48,10 @@ foreach ($sesi_list as &$sesi) {
     $sesi['nilai_terbaik'] = $hasil['nilai_terbaik'] !== null ? (int)$hasil['nilai_terbaik'] : null;
     $sesi['sudah_lulus']   = $sesi['nilai_terbaik'] !== null && $sesi['nilai_terbaik'] >= KKM;
     $sesi['habis_attempt'] = $sesi['total_attempt'] >= MAX_ATTEMPT;
+    $batas = (int)($hasil['batas_remedial'] ?? 0);
+    $sesi['batas_remedial'] = $batas > 0 ? $batas : 75;
+    // Info cap remedial hanya untuk yang belum lulus dan attempt berikutnya >= 2
+    $sesi['info_cap'] = !$sesi['sudah_lulus'] && ($sesi['total_attempt'] + 1) >= 2;
 }
 unset($sesi);
 ?>
@@ -108,6 +112,9 @@ unset($sesi);
                                 Percobaan ke-<strong><?= $sesi['total_attempt'] + 1 ?></strong> dari <?= MAX_ATTEMPT ?>
                                 <?php if ($sesi['nilai_terbaik'] !== null): ?>
                                     <br>Nilai terbaik sebelumnya: <strong><?= $sesi['nilai_terbaik'] ?></strong>
+                                <?php endif; ?>
+                                <?php if ($sesi['info_cap']): ?>
+                                    <br>Percobaan berikutnya: nilai tercatat maksimal <strong><?= (int)$sesi['batas_remedial'] ?></strong>
                                 <?php endif; ?>
                             </p>
                             <a href="kerjakan_kuis.php?sesi=<?= $sesi['id'] ?>" class="btn btn-primary w-100 mt-auto fw-bold">
