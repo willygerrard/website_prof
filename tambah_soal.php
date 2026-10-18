@@ -1,6 +1,6 @@
 <?php
-require_once 'session.php';      // session dulu
-require_once 'csrf_helper.php';  // baru helper
+require_once 'session.php';
+require_once 'csrf_helper.php';
 require 'koneksi.php';
 include __DIR__ . '/includes/soal_writer.php';
 
@@ -10,9 +10,8 @@ checkRole(['admin']);
 $pesan = '';
 $pesan_type = '';
 
-// Daftar materi yang sudah ada, untuk dropdown + opsi tambah baru
-$materi_list = $pdo->query("SELECT DISTINCT materi FROM kuis_soal WHERE materi IS NOT NULL AND materi <> '' ORDER BY materi")
-                    ->fetchAll(PDO::FETCH_COLUMN);
+$materi_list = $pdo->query("SELECT DISTINCT materi FROM kuis_soal WHERE materi IS NOT NULL AND materi <> '' ORDER BY materi")->fetchAll(PDO::FETCH_COLUMN);
+$modul_list = $pdo->query("SELECT id, title, category FROM modules ORDER BY title")->fetchAll(PDO::FETCH_ASSOC);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori']) && !isset($_POST['quiz_json'])) {
     csrf_require_valid_post();
@@ -35,15 +34,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori']) && !isset
 
         if ($kategori && $pertanyaan && $pilihan_a && $pilihan_b && $pilihan_c && $pilihan_d && $jawaban && $level) {
             simpanSoalPilgan($pdo, [
-                'kategori'   => $kategori,
-                'level'      => $level,
-                'materi'     => $materi,
-                'pertanyaan' => $pertanyaan,
-                'pilihan_a'  => $pilihan_a,
-                'pilihan_b'  => $pilihan_b,
-                'pilihan_c'  => $pilihan_c,
-                'pilihan_d'  => $pilihan_d,
-                'jawaban'    => $jawaban,
+                'kategori'   => $kategori, 'level' => $level, 'materi' => $materi,
+                'pertanyaan' => $pertanyaan, 'pilihan_a' => $pilihan_a, 'pilihan_b' => $pilihan_b,
+                'pilihan_c'  => $pilihan_c, 'pilihan_d' => $pilihan_d, 'jawaban'   => $jawaban,
             ]);
             $pesan = '✅ Soal pilihan ganda berhasil ditambahkan!';
             $pesan_type = 'success';
@@ -52,18 +45,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori']) && !isset
             $pesan_type = 'danger';
         }
     } else {
-        // Isian pendek: 1 baris = 1 alternatif jawaban yang diterima
         $alternatif_raw = $_POST['jawaban_alternatif'] ?? '';
         $alternatif_list = array_values(array_filter(array_map('trim', explode("\n", $alternatif_raw))));
 
         if ($kategori && $pertanyaan && $level && !empty($alternatif_list)) {
             try {
                 simpanSoalIsian($pdo, [
-                    'kategori'   => $kategori,
-                    'level'      => $level,
-                    'materi'     => $materi,
-                    'pertanyaan' => $pertanyaan,
-                    'alternatif' => $alternatif_list,
+                    'kategori' => $kategori, 'level' => $level, 'materi' => $materi,
+                    'pertanyaan' => $pertanyaan, 'alternatif' => $alternatif_list,
                 ]);
                 $pesan = '✅ Soal isian berhasil ditambahkan dengan ' . count($alternatif_list) . ' alternatif jawaban!';
                 $pesan_type = 'success';
@@ -89,23 +78,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori']) && !isset
     <style>
         .card { border-radius: 15px; height: 100%; display: flex; flex-direction: column; }
         .card-body { flex: 1; display: flex; flex-direction: column; }
-        #quizRawText { 
-            flex-grow: 1; 
-            min-height: 300px; 
-            resize: none; 
-            width: 100%;
-            padding: 10px;
-            text-align: left;
-            white-space: pre-wrap;
-            display: block;
-        }
+        #quizRawText { flex-grow: 1; min-height: 300px; resize: none; width: 100%; padding: 10px; text-align: left; white-space: pre-wrap; display: block; }
         #previewContainer { flex-grow: 1; min-height: 300px; overflow-y: auto; }
-        #editSection {
-            display: flex;
-            flex-direction: column;
-            width: 100%;
-            text-align: left;
-        }
+        #editSection { display: flex; flex-direction: column; width: 100%; text-align: left; }
         .card-header { font-weight: 600; }
     </style>
 </head>
@@ -160,9 +135,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori']) && !isset
                             <?php endforeach; ?>
                             <option value="__baru__">+ Tambah materi baru...</option>
                         </select>
-                        <input type="text" id="sharedMateriBaru" class="form-control mt-2"
-                               placeholder="Ketik nama materi baru" style="display:none;" oninput="syncSharedMetadata()">
+                        <input type="text" id="sharedMateriBaru" class="form-control mt-2" placeholder="Ketik nama materi baru" style="display:none;" oninput="syncSharedMetadata()">
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI QUIZ MAKER -->
+        <div class="card shadow-sm border-0 mb-4" style="height:auto;">
+            <div class="card-header bg-info text-dark"><i class="bi bi-stars"></i> AI Quiz Maker</div>
+            <div class="card-body">
+                <form id="aiGenForm" onsubmit="return false;">
+                    <?= csrf_field() ?>
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label">Permintaan</label>
+                            <textarea class="form-control" name="prompt" id="aiqPrompt" rows="2"
+                                placeholder="Contoh: buatkan 20 soal pilihan ganda dari modul subnetting VLSM"></textarea>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Modul rujukan (opsional)</label>
+                            <select class="form-select" name="modul_id" id="aiqModul" onchange="aiqPilihModul(this)">
+                                <option value="">-- Tanpa modul --</option>
+                                <?php foreach ($modul_list as $mm): ?>
+                                    <option value="<?= (int)$mm['id'] ?>" data-category="<?= htmlspecialchars($mm['category'] ?? '') ?>">
+                                        <?= htmlspecialchars($mm['title']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <div class="form-text">Kategori, level, dan materi mengikuti panel Metadata di atas.</div>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <label class="form-label">Isi materi modul <span class="text-muted">(Opsional jika memilih modul)</span></label>
+                        <textarea class="form-control" name="sumber" id="aiqSumber" rows="4" maxlength="12000"
+                            placeholder="Kosongkan saja jika sudah memilih modul di atas. AI akan meracik soal dari Judul & Deskripsi modul. Jika ingin materi spesifik, tempel teksnya di sini."></textarea>
+                        <div class="form-text">AI akan mengekstrak teks dari modul yang dipilih. Jika modul sangat panjang, AI hanya akan fokus pada bagian yang relevan dengan prompt.</div>
+                    </div>
+                    <div class="d-flex flex-wrap align-items-center gap-3 mt-3">
+                        <button type="button" id="aiqBtn" class="btn btn-info fw-bold" onclick="aiqGenerate()">
+                            <i class="bi bi-stars"></i> Generate Soal
+                        </button>
+                        <div class="form-check mb-0">
+                            <input class="form-check-input" type="checkbox" name="verify" value="1" id="aiqVerify" checked>
+                            <label class="form-check-label small" for="aiqVerify">Verifikasi otomatis (AI mengerjakan ulang tiap soal, lebih lambat)</label>
+                        </div>
+                        <span id="aiqStatus" class="small text-muted"></span>
+                    </div>
+                </form>
+
+                <div id="aiqPreviewWrap" style="display:none;" class="mt-4">
+                    <div id="aiqMeta" class="alert alert-secondary py-2 small"></div>
+                    <div id="aiqList"></div>
+                    <form action="save_quiz.php" method="POST" onsubmit="return aiqSiapSimpan();" class="d-flex gap-2 mt-3">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="quiz_json" id="aiqJson">
+                        <input type="hidden" name="kategori" id="aiqKategori">
+                        <input type="hidden" name="level" id="aiqLevel">
+                        <input type="hidden" name="materi" id="aiqMateri">
+                        <input type="hidden" name="jenis_soal" id="aiqJenisSoal"> <!-- Input hidden jenis soal -->
+                        <button type="button" class="btn btn-outline-secondary" onclick="aiqGenerate()">Generate Ulang</button>
+                        <button type="submit" class="btn btn-success flex-grow-1">Simpan Soal yang Dipilih ke Database</button>
+                    </form>
                 </div>
             </div>
         </div>
@@ -210,7 +244,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori']) && !isset
                                 <textarea class="form-control" name="pertanyaan" rows="2" required></textarea>
                             </div>
 
-                            <!-- Bagian khusus Pilihan Ganda -->
                             <div id="bagianPilgan">
                                 <div class="row g-2">
                                     <?php foreach(['a','b','c','d'] as $h): ?>
@@ -226,14 +259,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori']) && !isset
                                 </div>
                             </div>
 
-                            <!-- Bagian khusus Isian Pendek -->
                             <div id="bagianIsian" style="display:none;">
                                 <label class="form-label">Alternatif Jawaban Benar</label>
                                 <textarea class="form-control" name="jawaban_alternatif" rows="3"
                                           placeholder="Satu alternatif per baris, misal:&#10;IP address&#10;alamat IP&#10;Internet Protocol"></textarea>
                                 <div class="form-text">
                                     Tulis semua variasi istilah yang dianggap benar, 1 baris = 1 alternatif.
-                                    Sistem otomatis abaikan besar-kecil huruf, spasi berlebih, dan tanda baca saat mencocokkan.
                                 </div>
                             </div>
 
@@ -311,7 +342,6 @@ Answer: B" style="min-height: 250px; resize: vertical;"></textarea>
             const sharedMateri = sharedMateriSelect?.value || '';
             const sharedMateriBaru = document.getElementById('sharedMateriBaru')?.value.trim() || '';
 
-            // 1. Sinkronisasi ke Form Manual (Sebelah Kiri)
             const manualJenisSoal = document.getElementById('manualJenisSoal');
             const manualKategori = document.getElementById('manualKategori');
             const manualLevel = document.getElementById('manualLevel');
@@ -330,9 +360,7 @@ Answer: B" style="min-height: 250px; resize: vertical;"></textarea>
                 manualMateriBaru.value = sharedMateriBaru;
             }
 
-            // 2. Sinkronisasi ke Form AI Import (Sebelah Kanan)
             const finalSharedMateri = sharedMateri === '__baru__' ? sharedMateriBaru : sharedMateri;
-            
             const inputKategori = document.getElementById('inputKategori');
             const inputLevel = document.getElementById('inputLevel');
             const inputMateri = document.getElementById('inputMateri');
@@ -345,7 +373,6 @@ Answer: B" style="min-height: 250px; resize: vertical;"></textarea>
         function toggleMateriBaru(select, inputId) {
             const inputBaru = document.getElementById(inputId);
             if (!inputBaru) return;
-
             if (select.value === '__baru__') {
                 inputBaru.style.display = 'block';
             } else {
@@ -355,31 +382,19 @@ Answer: B" style="min-height: 250px; resize: vertical;"></textarea>
         }
 
         function generatePreviewFromText() {
-            // Pastikan nilai terbaru tersinkronisasi sebelum parsing
             syncSharedMetadata();
-
             const rawText = document.getElementById('quizRawText').value.trim();
             const previewContainer = document.getElementById('previewContainer');
-            
-            if (!rawText) {
-                alert("Silakan paste soal terlebih dahulu!");
-                return;
-            }
+            if (!rawText) { alert("Silakan paste soal terlebih dahulu!"); return; }
 
-            // Parsing teks menjadi array JSON (fungsi parseQuizText dari js/quiz_parser.js)
             const questionsArray = parseQuizText(rawText);
-
-            // Render Preview HTML
             previewContainer.innerHTML = "";
             questionsArray.forEach((q, idx) => {
                 let opts = q.options.map(o => `<li>${o} ${o === q.correct_answer ? '✓' : ''}</li>`).join('');
                 previewContainer.innerHTML += `<div class="mb-3 p-2 border"><strong>Q${idx + 1}: ${q.question_text}</strong><ul>${opts}</ul></div>`;
             });
 
-            // Set ke hidden input
             document.getElementById('finalJsonData').value = JSON.stringify({ questions: questionsArray });
-
-            // Sembunyikan editor, tampilkan preview
             document.getElementById('editSection').style.display = 'none';
             document.getElementById('previewSection').style.display = 'block';
         }
@@ -394,8 +409,154 @@ Answer: B" style="min-height: 250px; resize: vertical;"></textarea>
             toggleJenisSoalUI();
         });
     </script>
-    <?php include 'includes/footer.php'; ?>
+    <script>
+        // ===== AI QUIZ MAKER =====
+        let aiqSoal = [];
 
+        function aiqEsc(t) {
+            return String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        }
+
+        function aiqPilihModul(sel) {
+            const cat = sel.selectedOptions[0]?.dataset.category || '';
+            const kat = document.getElementById('sharedKategori');
+            if (cat && [...kat.options].some(o => o.value === cat)) { kat.value = cat; syncSharedMetadata(); }
+        }
+
+        async function aiqGenerate() {
+            const prompt = document.getElementById('aiqPrompt').value.trim();
+            const modul  = document.getElementById('aiqModul').value;
+            const sumber = document.getElementById('aiqSumber').value.trim();
+            
+            if (modul === "" && sumber.length < 100) { 
+                alert('Pilih modul dari dropdown, ATAU tempel isi materi modul dulu (minimal 100 karakter).'); 
+                return; 
+            }
+
+            syncSharedMetadata();
+            const fd = new FormData(document.getElementById('aiGenForm')); 
+            fd.set('kategori', document.getElementById('sharedKategori').value);
+            fd.set('level', document.getElementById('sharedLevel').value);
+            fd.set('jenis_soal', document.getElementById('sharedJenisSoal').value); // Kirim jenis soal ke backend
+            const mSel = document.getElementById('sharedMateri').value;
+            fd.set('materi', mSel === '__baru__' ? document.getElementById('sharedMateriBaru').value.trim() : mSel);
+            fd.set('verify', document.getElementById('aiqVerify').checked ? '1' : '0');
+
+            const btn = document.getElementById('aiqBtn'), st = document.getElementById('aiqStatus');
+            btn.disabled = true;
+            st.textContent = 'Mengirim permintaan ke AI... bisa sampai 1 menit.';
+
+            try {
+                const ctrl = new AbortController();
+                const tm   = setTimeout(() => ctrl.abort(), 110000);
+                const res  = await fetch('ai_quiz_generate.php', { method: 'POST', body: fd, signal: ctrl.signal });
+                clearTimeout(tm);
+                const text = await res.text();
+                let data;
+                try { data = JSON.parse(text); } catch (e) { throw new Error('Server mengirim respons tidak valid (HTTP ' + res.status + ')'); }
+                if (data.status !== 'success') throw new Error(data.message || 'Gagal membuat soal');
+
+                aiqSoal = data.questions;
+                aiqRender(data.meta);
+                st.textContent = '';
+            } catch (err) {
+                const msg = err.name === 'AbortError' ? 'Permintaan terlalu lama (lebih dari 110 detik).' : err.message;
+                st.innerHTML = '<span class="text-danger fw-bold">Gagal: ' + aiqEsc(msg) + '</span>';
+                alert(msg);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function aiqRender(meta) {
+            const wrap = document.getElementById('aiqPreviewWrap');
+            const list = document.getElementById('aiqList');
+            wrap.style.display = 'block';
+
+            const perlu = aiqSoal.filter(q => q.cek === true).length;
+            let info = `Diterima ${aiqSoal.length} dari ${meta.diminta} soal diminta`;
+            if (meta.dibuang > 0) info += ` (${meta.dibuang} soal cacat dibuang)`;
+            if (meta.tanpa_bukti > 0) info += ` (${meta.tanpa_bukti} soal dibuang karena tidak ada dasarnya di materi)`;
+            info += meta.diverifikasi ? `. Terverifikasi otomatis, ${perlu} soal perlu Anda cek.` : '. Belum diverifikasi otomatis.';
+            document.getElementById('aiqMeta').textContent = info;
+
+            list.innerHTML = aiqSoal.map((q, i) => {
+                let isIsian = !q.options || q.options.length === 0;
+                let optsHtml = '';
+                
+                if (isIsian) {
+                    optsHtml = `<div class="text-success fw-bold mt-2">Kunci: ${aiqEsc(q.correct_answer)}</div>
+                                <div class="small text-muted">Alternatif: ${q.alternatif ? q.alternatif.join(', ') : '-'}</div>`;
+                } else {
+                    optsHtml = `<ul class="list-unstyled mt-2 mb-1 small">` + q.options.map((o, k) => {
+                        const benar = o === q.correct_answer;
+                        return `<li class="${benar ? 'fw-bold text-success' : ''}">${String.fromCharCode(65 + k)}. ${aiqEsc(o)} ${benar ? '✓' : ''}</li>`;
+                    }).join('') + `</ul>`;
+                }
+
+                let badge = '';
+                if (q.cek === true)  badge += '<span class="badge bg-danger me-1">AI menjawab beda - periksa kunci</span>';
+                if (q.cek === false) badge += '<span class="badge bg-success me-1">Lolos verifikasi</span>';
+                if (q.duplikat)      badge += '<span class="badge bg-warning text-dark me-1">Mirip soal yang sudah ada</span>';
+                
+                return `<div class="border rounded p-3 mb-2 ${q.cek === true ? 'border-danger' : ''}" data-i="${i}">
+                    <div class="d-flex justify-content-between gap-2">
+                        <strong>${i + 1}. ${aiqEsc(q.question_text)}</strong>
+                        <button type="button" class="btn btn-sm btn-outline-danger flex-shrink-0" onclick="aiqHapus(${i})" title="Buang soal ini"><i class="bi bi-trash"></i></button>
+                    </div>
+                    ${optsHtml}
+                    ${q.penjelasan ? `<div class="small text-muted mt-1">Penjelasan: ${aiqEsc(q.penjelasan)}</div>` : ''}
+                    ${q.bukti ? `<div class="small text-muted fst-italic">Dasar di materi: "${aiqEsc(q.bukti)}"</div>` : ''}
+                    <div class="mt-1">${badge}</div>
+                </div>`;
+            }).join('');
+        }
+
+        function aiqHapus(i) {
+            aiqSoal.splice(i, 1);
+            aiqRender({ diminta: aiqSoal.length, dibuang: 0, tanpa_bukti: 0, diverifikasi: aiqSoal.some(q => q.cek !== null) });
+        }
+
+        function aiqSiapSimpan() {
+            if (aiqSoal.length === 0) { alert('Tidak ada soal untuk disimpan.'); return false; }
+            const belum = aiqSoal.filter(q => q.cek === true).length;
+            if (belum > 0 && !confirm(belum + ' soal ditandai "AI menjawab beda". Tetap simpan semuanya?')) return false;
+
+            syncSharedMetadata();
+            const mSel = document.getElementById('sharedMateri').value;
+            
+            // Set hidden inputs untuk save_quiz.php
+            document.getElementById('aiqKategori').value = document.getElementById('sharedKategori').value;
+            document.getElementById('aiqLevel').value    = document.getElementById('sharedLevel').value;
+            document.getElementById('aiqMateri').value   = mSel === '__baru__' ? document.getElementById('sharedMateriBaru').value.trim() : mSel;
+            document.getElementById('aiqJenisSoal').value = document.getElementById('sharedJenisSoal').value; // Kirim jenis soal
+            
+            // Rakit payload JSON
+            document.getElementById('aiqJson').value = JSON.stringify({
+                questions: aiqSoal.map(q => {
+                    if (!q.options || q.options.length === 0) {
+                        // Format Isian
+                        return {
+                            question_text: q.question_text,
+                            correct_answer: q.correct_answer,
+                            alternatif: q.alternatif,
+                            materi: ''
+                        };
+                    } else {
+                        // Format Pilgan
+                        return {
+                            question_text: q.question_text, 
+                            options: q.options,
+                            correct_answer: q.correct_answer, 
+                            materi: ''
+                        };
+                    }
+                })
+            });
+            return true;
+        }
+    </script>
+    <?php include 'includes/footer.php'; ?>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
