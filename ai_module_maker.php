@@ -1,14 +1,14 @@
 <?php
 /**
- * ai_module_maker.php — AI Module Maker (KHUSUS ADMIN, backend handler AJAX)
+ * ai_module_maker.php — AI Module Maker (KHUSUS ADMIN).
  *
- * Fase 3: handler generate & submit. UI HTML menyusul (Fase 4).
- *
- * action=generate : validasi topik/tingkat -> Gemini API -> simpan draft
- *                   {title, html} ke $_SESSION['aimm_draft']
- * action=submit   : ambil draft dari session -> sanitasi XSS -> tulis file
- *                   ke /var/www/data_private/modul_ai/pending/ -> INSERT
- *                   modules (status='pending', file_path=NULL)
+ * GET  : halaman UI (form kategori + topik spesifik + tingkat, preview, submit).
+ * POST : handler AJAX (wajib CSRF).
+ *   action=generate : validasi input -> Gemini (validasi semantik + buat modul)
+ *                     -> validasi kelengkapan -> simpan draft di session.
+ *   action=submit   : ambil draft session -> sanitasi -> bungkus -> tulis file
+ *                     ke /var/www/data_private/modul_ai/pending/ -> INSERT
+ *                     modules (status='pending', file_path=NULL).
  */
 
 require_once 'session.php';
@@ -24,7 +24,7 @@ checkRole(['admin']);
 header('Content-Type: application/json; charset=utf-8');
 set_time_limit(100); // Cloudflared memutus request ~100 detik
 
-// Halaman UI testing (GET) memakai Content-Type HTML, bukan JSON.
+// Halaman UI (GET) memakai Content-Type HTML, bukan JSON.
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     header('Content-Type: text/html; charset=utf-8');
 }
@@ -34,8 +34,11 @@ const AIMM_MAX_HTML_LEN  = 200000;   // ~200 KB batas HTML modul
 const AIMM_COOLDOWN      = 10;       // detik antar generate
 const AIMM_MIN_TEXT_LEN  = 1500;     // teks terlihat minimum setelah sanitasi
 const AIMM_MIN_HEADINGS  = 3;        // minimal h1-h4 setelah sanitasi
-// AIMM_TOPICS dan AIMM_TINGKAT didefinisikan di ai_helper.php agar bisa
-// dipakai bersama oleh handler ini dan halaman UI (Fase 4b-2).
+const AIMM_MAX_TOPIK_LEN = 500;      // batas panjang topik spesifik
+
+// Kategori DB yang boleh dipilih. Urutan = urutan dropdown.
+// AIMM_TOPICS (label+category) tetap didefinisikan di ai_helper.php.
+const AIMM_KATEGORI_DB = ['Network', 'System Administration', 'Cloud Computing', 'DevOps'];
 
 function jsonOut(array $d, int $code = 200): void {
     http_response_code($code);
@@ -47,6 +50,19 @@ function aimmSlugify(string $s): string {
     $s = preg_replace('/[^a-z0-9]+/', '-', strtolower(trim($s)));
     $s = trim($s, '-');
     return $s !== '' ? substr($s, 0, 60) : 'modul';
+}
+
+/**
+ * Cari key AIMM_TOPICS berdasarkan kategori DB. Dipakai agar draft tetap
+ * menyimpan 'topic' internal seperti sebelumnya.
+ */
+function aimmTopicKeyByCategory(string $category): string {
+    foreach (AIMM_TOPICS as $key => $t) {
+        if ($t['category'] === $category) {
+            return $key;
+        }
+    }
+    return 'lainnya';
 }
 
 // Sanitasi HTML memakai aimmSanitizeHtml() dari ai_helper.php
@@ -88,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                 </a>
             </div>
 
-            <!-- Pesan hasil submit -->
+            <!-- Pesan hasil generate/submit -->
             <div id="aimmAlert" class="alert d-none" role="alert"></div>
 
             <!-- ===================== FORM GENERATE ===================== -->
@@ -97,32 +113,46 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                     <i class="bi bi-stars"></i> Generate Draft Modul
                 </div>
                 <div class="card-body p-4">
-                    <form id="aimmForm" class="row g-3 align-items-end">
-                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8') ?>">
-                        <div class="col-md-5">
-                            <label class="form-label fw-semibold" for="aimmTopic">Topik</label>
-                            <select class="form-select" id="aimmTopic" name="topic" required>
-                                <?php foreach (AIMM_TOPICS as $key => $t): ?>
-                                    <option value="<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>">
-                                        <?= htmlspecialchars($t['label'], ENT_QUOTES, 'UTF-8') ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold" for="aimmTingkat">Tingkat</label>
-                            <select class="form-select" id="aimmTingkat" name="tingkat" required>
-                                <?php foreach (AIMM_TINGKAT as $tk): ?>
-                                    <option value="<?= htmlspecialchars($tk, ENT_QUOTES, 'UTF-8') ?>">
-                                        <?= $tk === 'semua' ? 'Semua (X–XII)' : 'Kelas ' . htmlspecialchars($tk, ENT_QUOTES, 'UTF-8') ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-3 d-grid">
-                            <button type="submit" class="btn btn-primary fw-bold py-2" id="aimmGenBtn">
-                                <i class="bi bi-stars"></i> Generate
-                            </button>
+                    <form id="aimmForm" novalidate>
+                        <?= csrf_field() ?>
+                        <div class="row g-3">
+                            <div class="col-md-5">
+                                <label class="form-label fw-semibold" for="aimmKategori">Kategori (Database)</label>
+                                <select class="form-select" id="aimmKategori" name="kategori_db" required>
+                                    <?php foreach (AIMM_KATEGORI_DB as $kat): ?>
+                                        <option value="<?= htmlspecialchars($kat, ENT_QUOTES, 'UTF-8') ?>">
+                                            <?= htmlspecialchars($kat, ENT_QUOTES, 'UTF-8') ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold" for="aimmTingkat">Tingkat</label>
+                                <select class="form-select" id="aimmTingkat" name="tingkat" required>
+                                    <?php foreach (AIMM_TINGKAT as $tk): ?>
+                                        <option value="<?= htmlspecialchars($tk, ENT_QUOTES, 'UTF-8') ?>">
+                                            <?= $tk === 'semua' ? 'Semua (X–XII)' : 'Kelas ' . htmlspecialchars($tk, ENT_QUOTES, 'UTF-8') ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-4 d-grid align-self-end">
+                                <button type="submit" class="btn btn-primary fw-bold py-2" id="aimmGenBtn">
+                                    <i class="bi bi-stars"></i> Generate
+                                </button>
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label fw-semibold" for="aimmTopik">Topik Spesifik</label>
+                                <textarea class="form-control" id="aimmTopik" name="topik_spesifik" rows="2"
+                                          maxlength="<?= AIMM_MAX_TOPIK_LEN ?>"
+                                          placeholder="Contoh: Konfigurasi VoIP Server dengan Asterisk untuk Kelas X"
+                                          required></textarea>
+                                <div class="form-text">
+                                    Semakin spesifik, semakin baik hasil modulnya. AI akan menolak topik yang
+                                    tidak relevan dengan kategori yang dipilih.
+                                </div>
+                            </div>
                         </div>
                     </form>
                     <div class="form-text mt-2">
@@ -175,6 +205,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             const submitBtn   = document.getElementById('aimmSubmitBtn');
             const alertBox    = document.getElementById('aimmAlert');
             const csrfToken   = form.querySelector('input[name="csrf_token"]').value;
+            const topikEl     = document.getElementById('aimmTopik');
 
             function showAlert(type, msg) {
                 alertBox.className = 'alert alert-' + type;
@@ -203,10 +234,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                 previewCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
 
-            async function postAction(action) {
+            async function postAction(extra) {
                 const fd = new FormData();
-                fd.set('action', action);
                 fd.set('csrf_token', csrfToken);
+                for (const [k, v] of Object.entries(extra)) fd.set(k, v);
+
                 const res  = await fetch(window.location.pathname, {
                     method: 'POST',
                     body: fd,
@@ -223,29 +255,41 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             form.addEventListener('submit', async function (e) {
                 e.preventDefault();
                 hideAlert();
+
+                // Validasi sisi klien: topik spesifik wajib diisi
+                const topik = topikEl.value.trim();
+                if (topik === '') {
+                    showAlert('danger', 'Topik Spesifik wajib diisi.');
+                    topikEl.focus();
+                    return;
+                }
+
+                const kategori = document.getElementById('aimmKategori').value;
+                const tingkat  = document.getElementById('aimmTingkat').value;
+
                 genBtn.disabled = true;
                 const original = genBtn.innerHTML;
                 genBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Membuat...';
 
-                const fd = new FormData(form);
-                fd.set('action', 'generate');
-
                 try {
-                    const res  = await fetch(window.location.pathname, {
-                        method: 'POST',
-                        body: fd,
-                        credentials: 'same-origin'
+                    const r = await postAction({
+                        action: 'generate',
+                        kategori_db: kategori,
+                        topik_spesifik: topik,
+                        tingkat: tingkat
                     });
-                    const text = await res.text();
-                    let data;
-                    try { data = JSON.parse(text); }
-                    catch (err) { throw new Error('Respons server tidak valid (HTTP ' + res.status + ')'); }
 
-                    if (res.ok && data.status === 'success' && data.draft) {
-                        meta.textContent = data.draft.title + ' · ' + data.draft.topic.toUpperCase() + ' · ' + data.draft.tingkat;
+                    // AI menolak secara semantik: status error -> alert merah, tanpa iframe
+                    if (r.data.status === 'error') {
+                        showAlert('danger', r.data.message || 'AI menolak permintaan ini.');
+                        return;
+                    }
+
+                    if (r.ok && r.data.status === 'success' && r.data.draft) {
+                        meta.textContent = r.data.draft.title + ' · ' + r.data.draft.category + ' · ' + r.data.draft.tingkat;
                         showPreview();
                     } else {
-                        showAlert('danger', data.message || ('Generate gagal (HTTP ' + res.status + ').'));
+                        showAlert('danger', r.data.message || ('Generate gagal (HTTP ' + r.status + ').'));
                     }
                 } catch (err) {
                     showAlert('danger', 'Generate gagal: ' + (err && err.message ? err.message : err));
@@ -255,7 +299,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                 }
             });
 
-            // ---- Regenerate (kembali ke form) ----
+            // ---- Regenerate (kembali ke form, input tetap) ----
             regenBtn.addEventListener('click', function () {
                 showForm();
                 form.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -272,7 +316,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                 submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Menyimpan...';
 
                 try {
-                    const r = await postAction('submit');
+                    const r = await postAction({ action: 'submit' });
 
                     if (r.ok && r.data.status === 'success') {
                         showAlert('success', 'Modul berhasil disimpan sebagai Pending, menunggu persetujuan Admin.');
@@ -317,19 +361,26 @@ $action = $_POST['action'];
 if ($action === 'generate') {
     csrf_require_valid_post();
 
-    $topic  = trim($_POST['topic'] ?? '');
-    $tingkat = trim($_POST['tingkat'] ?? 'X');
+    $kategoriDb     = trim($_POST['kategori_db'] ?? '');
+    $topikSpesifik  = trim($_POST['topik_spesifik'] ?? '');
+    $tingkat        = trim($_POST['tingkat'] ?? 'X');
 
-    // Whitelist ketat topik — berasal dari konstanta server, bukan input bebas
-    if (!isset(AIMM_TOPICS[$topic])) {
-        jsonOut(['status' => 'error', 'message' => 'Topik tidak valid. Pilih: network, sysadmin, cloud, atau webdev.'], 400);
+    // Validasi ketiga input dari klien (whitelist + wajib isi)
+    if (!in_array($kategoriDb, AIMM_KATEGORI_DB, true)) {
+        jsonOut(['status' => 'error', 'message' => 'Kategori tidak valid. Pilih salah satu kategori yang tersedia.'], 400);
+    }
+    if ($topikSpesifik === '') {
+        jsonOut(['status' => 'error', 'message' => 'Topik Spesifik wajib diisi.'], 400);
+    }
+    if (mb_strlen($topikSpesifik) > AIMM_MAX_TOPIK_LEN) {
+        jsonOut(['status' => 'error', 'message' => 'Topik Spesifik terlalu panjang (maks ' . AIMM_MAX_TOPIK_LEN . ' karakter).'], 400);
     }
     if (!in_array($tingkat, AIMM_TINGKAT, true)) {
         jsonOut(['status' => 'error', 'message' => 'Tingkat kelas tidak valid.'], 400);
     }
 
     // Cooldown per-session (hemat kuota API / anti spam) —
-    // dihitung SETELAH validasi topik/tingkat lolos
+    // dihitung SETELAH validasi input lolos
     $now = time();
     if ($now - (int)($_SESSION['aimm_last'] ?? 0) < AIMM_COOLDOWN) {
         jsonOut(['status' => 'error', 'message' => 'Tunggu beberapa detik sebelum generate lagi.'], 429);
@@ -337,8 +388,8 @@ if ($action === 'generate') {
     $_SESSION['aimm_last'] = $now;
     session_write_close();
 
-    $topicLabel    = AIMM_TOPICS[$topic]['label'];
-    $topicCategory = AIMM_TOPICS[$topic]['category'];
+    $topicKey      = aimmTopicKeyByCategory($kategoriDb);
+    $topicCategory = $kategoriDb;
 
     $apiKey = aiqEnv('GEMINI_API_KEY');
     if ($apiKey === '') {
@@ -349,28 +400,35 @@ if ($action === 'generate') {
     $schema = [
         'type' => 'OBJECT',
         'properties' => [
-            'title' => ['type' => 'STRING'],
-            'html'  => ['type' => 'STRING'],
+            'status'        => ['type' => 'STRING', 'enum' => ['success', 'error']],
+            'error_message' => ['type' => 'STRING'],
+            'title'         => ['type' => 'STRING'],
+            'html'          => ['type' => 'STRING'],
         ],
-        'required' => ['title', 'html'],
+        'required' => ['status', 'error_message', 'title', 'html'],
     ];
 
-    // Jika tingkat = 'semua', tampilkan label yang lebih deskriptif di prompt AI
     $tingkatLabel = ($tingkat === 'semua')
         ? 'siswa SMK kelas X sampai XII'
         : "siswa kelas {$tingkat}";
 
     $prompt = <<<TXT
-Kamu adalah guru SMK jurusan TKJ/SIJA yang menyusun modul pembelajaran dalam Bahasa Indonesia.
-Buat modul pembelajaran lengkap untuk topik: {$topicLabel}, untuk {$tingkatLabel}.
+Kamu adalah Asisten Kurikulum SMK jurusan TKJ dan SIJA. Tugasmu MEMBUAT modul, TAPI kamu harus MEMVALIDASI input user terlebih dahulu.
+Kategori DB: {$kategoriDb}
+Topik Spesifik: {$topikSpesifik}
+Tingkat: {$tingkat} ({$tingkatLabel})
 
-Aturan WAJIB:
-- Kembalikan JSON murni dengan struktur: {"title": "...", "html": "..."}.
+ATURAN KETAT: Jika Topik Spesifik TIDAK RELEVAN dengan Kategori (misal Kategori 'Network' tapi Topik 'Foreign Key Database'), KAMU HARUS MENOLAK. Kembalikan JSON dengan status: 'error', error_message: 'Topik tidak relevan dengan kategori yang dipilih.', dan html: ''.
+Jika relevan, buat modul HTML semantik (tanpa CSS, tanpa tag script). Kembalikan status: 'success', title, dan html.
+
+Aturan tambahan untuk hasil modul:
 - "html" berisi FRAGMEN isi body saja: TANPA <html>, <head>, <body>, <style>, <script>, tanpa doctype.
 - Gunakan HANYA class Bootstrap 5 (mis. container, card, table, alert, badge) — CSS dimuat oleh pembungkus di sisi server, jadi jangan tulis CSS sendiri.
 - Isi modul minimal memuat: judul, tujuan pembelajaran, penjelasan materi, contoh penerapan/perintah praktik, latihan/evaluasi singkat, dan rangkuman.
+- Gunakan minimal 3 heading (h1-h4) dan beberapa paragraf <p> dengan total teks yang cukup panjang dan lengkap.
 - KERASLARANG menyertakan: tag <script>, atribut event (onclick, onerror, dll.), iframe, form, javascript: URL, atau konten PHP.
 - Bahasa santai edukatif yang cocok untuk siswa SMK.
+- Saat status 'success', "error_message" diisi string kosong.
 TXT;
 
     try {
@@ -382,6 +440,20 @@ TXT;
             ? $e->getMessage()
             : 'AI gagal membuat modul (kuota habis atau koneksi bermasalah).';
         jsonOut(['status' => 'error', 'message' => $msg], 500);
+    }
+
+    // AI bisa menolak secara semantik (topik tidak relevan dengan kategori)
+    $aiStatus = (string)($result['status'] ?? '');
+    if ($aiStatus === 'error') {
+        $aiMessage = trim((string)($result['error_message'] ?? ''));
+        if ($aiMessage === '') {
+            $aiMessage = 'Topik tidak relevan dengan kategori yang dipilih.';
+        }
+        jsonOut(['status' => 'error', 'message' => $aiMessage], 422);
+    }
+    if ($aiStatus !== 'success') {
+        error_log('[ai_module_maker] generate: status AI tidak dikenal: ' . $aiStatus);
+        jsonOut(['status' => 'error', 'message' => 'Respons AI tidak valid. Coba generate ulang.'], 502);
     }
 
     $title = mb_substr(trim((string)($result['title'] ?? '')), 0, 150);
@@ -396,9 +468,9 @@ TXT;
 
     // Validasi kelengkapan hasil AI SEBELUM draft disimpan.
     // Pengecekan memakai hasil sanitasi (draft yang disimpan tetap fragmen mentah).
-    $sanitized   = aimmSanitizeHtml($html);
-    $visibleText = trim(strip_tags($sanitized));
-    $textLen     = mb_strlen($visibleText);
+    $sanitized    = aimmSanitizeHtml($html);
+    $visibleText  = trim(strip_tags($sanitized));
+    $textLen      = mb_strlen($visibleText);
     $headingCount = preg_match_all('/<h[1-4]\b/i', $sanitized);
     $paraCount    = preg_match_all('/<p\b/i', $sanitized);
     $hangingTag   = (bool)preg_match('/<[^>]*$/', rtrim($html));
@@ -432,21 +504,23 @@ TXT;
     // draft. $_SESSION['aimm_last'] tetap terbaca karena tersimpan di storage.
     session_start();
     $_SESSION['aimm_draft'] = [
-        'title'    => $title,
-        'html'     => $html,
-        'topic'    => $topic,
-        'category' => $topicCategory,
-        'tingkat'  => $tingkat,
-        'created'  => time(),
+        'title'           => $title,
+        'html'            => $html,
+        'topic'           => $topicKey,
+        'category'        => $topicCategory,
+        'topik_spesifik'  => $topikSpesifik,
+        'tingkat'         => $tingkat,
+        'created'         => time(),
     ];
     session_write_close();
 
     jsonOut([
         'status' => 'success',
         'draft'  => [
-            'title'   => $title,
-            'topic'   => $topic,
-            'tingkat' => $tingkat,
+            'title'    => $title,
+            'topic'    => $topicKey,
+            'category' => $topicCategory,
+            'tingkat'  => $tingkat,
             // HTML tidak dikirim ke klien untuk disimpan kembali —
             // preview dirender oleh endpoint terpisah (Fase 4)
         ],
@@ -484,9 +558,10 @@ if ($action === 'submit') {
         session_write_close();
     };
 
-    $title    = $draft['title'];
-    $category = $draft['category'];
-    $tingkat  = $draft['tingkat'];
+    $title          = $draft['title'];
+    $category       = $draft['category'];
+    $tingkat        = $draft['tingkat'];
+    $topikSpesifik  = trim((string)($draft['topik_spesifik'] ?? ''));
 
     // Urutan: sanitasi fragmen -> bungkus dokumen -> cek panjang -> tulis file.
     // Draft di session tetap menyimpan fragmen mentah (belum tersentuh).
@@ -519,6 +594,12 @@ if ($action === 'submit') {
     }
     @chmod($fullPath, 0664);
 
+    // description menyimpan topik spesifik (kolom text yang sudah ada) agar
+    // guru/siswa tahu cakupan modul. Fallback ke format lama bila kosong.
+    $description = $topikSpesifik !== ''
+        ? mb_substr($topikSpesifik, 0, 1000)
+        : 'Modul pembelajaran AI — topik ' . $category . ' (kelas ' . $tingkat . ')';
+
     try {
         $stmt = $pdo->prepare(
             "INSERT INTO modules (title, category, description, image_path, ai_file, file_path, jenis_resource, kelas_target, status)
@@ -527,7 +608,7 @@ if ($action === 'submit') {
         $stmt->execute([
             ':title'       => $title,
             ':category'    => $category,
-            ':description' => 'Modul pembelajaran AI — topik ' . $category . ' (kelas ' . $tingkat . ')',
+            ':description' => $description,
             ':image_path'  => 'img/debian.webp',
             ':ai_file'     => $filename,
             ':file_path'   => null,
