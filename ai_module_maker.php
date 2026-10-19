@@ -180,8 +180,22 @@ if ($action === 'submit') {
     // Draft kedaluwarsa (1 jam) — paksa generate ulang
     if (time() - (int)($draft['created'] ?? 0) > 3600) {
         unset($_SESSION['aimm_draft']);
+        session_write_close();
         jsonOut(['status' => 'error', 'message' => 'Draft kedaluwarsa. Silakan generate ulang.'], 410);
     }
+
+    // Kunci draft SEKARANG (unset + tutup session) sebelum operasi lambat
+    // (tulis file, INSERT DB) — mencegah submit ganda paralel.
+    // Jika salah satu gagal, draft dikembalikan ke session agar admin
+    // bisa mencoba submit ulang.
+    unset($_SESSION['aimm_draft']);
+    session_write_close();
+
+    $restoreDraft = function () use ($draft) {
+        session_start();
+        $_SESSION['aimm_draft'] = $draft;
+        session_write_close();
+    };
 
     $title    = $draft['title'];
     $category = $draft['category'];
@@ -204,6 +218,7 @@ if ($action === 'submit') {
     // Pastikan folder penyimpanan ada
     if (!is_dir(AIMM_PATH) && !mkdir(AIMM_PATH, 0775, true) && !is_dir(AIMM_PATH)) {
         error_log('[ai_module_maker] submit: gagal mkdir ' . AIMM_PATH);
+        $restoreDraft();
         jsonOut(['status' => 'error', 'message' => 'Gagal menyiapkan folder penyimpanan modul.'], 500);
     }
 
@@ -212,6 +227,7 @@ if ($action === 'submit') {
 
     if (file_put_contents($fullPath, $html, LOCK_EX) === false) {
         error_log('[ai_module_maker] submit: gagal menulis file ' . $fullPath);
+        $restoreDraft();
         jsonOut(['status' => 'error', 'message' => 'Gagal menyimpan file modul ke disk.'], 500);
     }
     @chmod($fullPath, 0664);
@@ -236,12 +252,9 @@ if ($action === 'submit') {
     } catch (PDOException $e) {
         error_log('[ai_module_maker] submit: DB error: ' . $e->getMessage());
         @unlink($fullPath); // jangan sisakan file yatim jika DB gagal
+        $restoreDraft();
         jsonOut(['status' => 'error', 'message' => 'Gagal menyimpan modul ke database.'], 500);
     }
-
-    // Draft sudah terpakai — hapus agar tidak bisa di-submit dua kali
-    unset($_SESSION['aimm_draft']);
-    session_write_close();
 
     jsonOut([
         'status'    => 'success',
