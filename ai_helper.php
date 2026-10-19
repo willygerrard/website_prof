@@ -35,18 +35,42 @@ function aiqEnvInfo(string $k): array {
 function aiqEnv(string $k): string { return aiqEnvInfo($k)[0]; }
 
 
-function geminiJson(string $key, string $model, string $text, array $schema, int $timeout, float $temp): array {
+/**
+ * Panggil Gemini dengan JSON schema. Backward compatible:
+ * $maxOutputTokens dan $maxTries opsional di akhir (default = perilaku lama).
+ *
+ * Throws RuntimeException dengan pesan "Output AI terpotong, coba generate
+ * ulang" bila respons berakhir karena MAX_TOKENS / JSON tak bisa di-parse.
+ */
+function geminiJson(
+    string $key,
+    string $model,
+    string $text,
+    array $schema,
+    int $timeout,
+    float $temp,
+    int $maxOutputTokens = 0,
+    int $maxTries = 2
+): array {
+    $genConfig = [
+        'response_mime_type' => 'application/json',
+        'response_schema'    => $schema,
+        'temperature'        => $temp,
+    ];
+    if ($maxOutputTokens > 0) {
+        $genConfig['maxOutputTokens'] = $maxOutputTokens;
+    }
+
     $payload = [
-        'contents' => [['parts' => [['text' => $text]]]],
-        'generationConfig' => [
-            'response_mime_type' => 'application/json',
-            'response_schema'    => $schema,
-            'temperature'        => $temp,
-        ],
+        'contents'         => [['parts' => [['text' => $text]]]],
+        'generationConfig' => $genConfig,
     ];
     $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
 
-    for ($try = 1; $try <= 2; $try++) {
+    $resp = '';
+    $code = 0;
+    $err  = '';
+    for ($try = 1; $try <= max(1, $maxTries); $try++) {
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
@@ -63,14 +87,29 @@ function geminiJson(string $key, string $model, string $text, array $schema, int
         curl_close($ch);
 
         if (!$err && $code === 200) break;
-        if ($try < 2 && in_array($code, [429, 503], true)) { sleep(2); continue; }
+        if ($try < $maxTries && in_array($code, [429, 503], true)) { sleep(2); continue; }
         throw new RuntimeException($err ?: "HTTP $code: " . mb_substr((string)$resp, 0, 300));
     }
 
-    $data = json_decode((string)$resp, true);
-    $txt  = $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
-    $out  = $txt ? json_decode($txt, true) : null;
-    if (!is_array($out)) throw new RuntimeException('Respons AI bukan JSON yang valid');
+    $data         = json_decode((string)$resp, true);
+    $cand         = $data['candidates'][0] ?? [];
+    $txt          = $cand['content']['parts'][0]['text'] ?? null;
+    $finishReason = $cand['finishReason'] ?? null;
+
+    if ($finishReason === 'MAX_TOKENS') {
+        throw new RuntimeException('Output AI terpotong, coba generate ulang');
+    }
+
+    $out = $txt ? json_decode($txt, true) : null;
+    if (!is_array($out)) {
+        // JSON tidak valid tapi finishReason bukan MAX_TOKENS — bisa saja
+        // respons terpotong tanpa flag; laporkan sebagai truncation bila ada
+        // teks yang gagal di-parse, bukan sekadar respons kosong.
+        if (is_string($txt) && trim($txt) !== '' && json_decode($txt) === null) {
+            throw new RuntimeException('Output AI terpotong atau tidak valid, coba generate ulang');
+        }
+        throw new RuntimeException('Respons AI bukan JSON yang valid');
+    }
     return $out;
 }
 

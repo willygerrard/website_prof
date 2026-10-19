@@ -22,7 +22,7 @@ checkLogin();
 checkRole(['admin']);
 
 header('Content-Type: application/json; charset=utf-8');
-set_time_limit(120);
+set_time_limit(100); // Cloudflared memutus request ~100 detik
 
 const AIMM_PATH          = '/var/www/data_private/modul_ai/pending';
 const AIMM_MAX_HTML_LEN  = 200000;   // ~200 KB batas HTML modul
@@ -121,10 +121,14 @@ Aturan WAJIB:
 TXT;
 
     try {
-        $result = geminiJson($apiKey, $model, $prompt, $schema, 90, 0.7);
+        // timeout 80 + maxTries 1 + maxOutputTokens: total < batas Cloudflared ~100s
+        $result = geminiJson($apiKey, $model, $prompt, $schema, 80, 0.7, 24000, 1);
     } catch (Throwable $e) {
         error_log('[ai_module_maker] generate: ' . $e->getMessage());
-        jsonOut(['status' => 'error', 'message' => 'AI gagal membuat modul (kuota habis atau koneksi bermasalah).'], 500);
+        $msg = (strpos($e->getMessage(), 'terpotong') !== false)
+            ? $e->getMessage()
+            : 'AI gagal membuat modul (kuota habis atau koneksi bermasalah).';
+        jsonOut(['status' => 'error', 'message' => $msg], 500);
     }
 
     $title = mb_substr(trim((string)($result['title'] ?? '')), 0, 150);
