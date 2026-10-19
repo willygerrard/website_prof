@@ -47,6 +47,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $queryParams[]     = "%" . strtolower($userPrompt) . "%";
         $queryParams[]     = "%" . strtolower($userPrompt) . "%";
 
+        $whereConditions[] = "status = 'approved'";
+
         $sql = "SELECT id, title, category, jenis_resource, description, file_path, image_path, kelas_target
                 FROM modules
                 WHERE " . implode(" AND ", $whereConditions) . "
@@ -66,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 
     // ---------- MODE AI ----------
-    $dbCategories = $pdo->query("SELECT DISTINCT category FROM modules WHERE category IS NOT NULL AND category <> ''")->fetchAll(PDO::FETCH_COLUMN);
+    $dbCategories = $pdo->query("SELECT DISTINCT category FROM modules WHERE category IS NOT NULL AND category <> '' AND status = 'approved'")->fetchAll(PDO::FETCH_COLUMN);
     $catListStr   = "'" . implode("', '", $dbCategories) . "'";
 
     if (!getenv('GEMINI_API_KEY') && file_exists(__DIR__ . '/.env')) {
@@ -222,7 +224,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         }
     }
 
-    $whereClauseStr = !empty($whereConditions) ? "WHERE " . implode(" AND ", $whereConditions) : "";
+    // Filter status approved selalu ditambahkan untuk mode AI
+    $whereConditions[] = "status = 'approved'";
+
+    $whereClauseStr = !empty($whereConditions) ? "WHERE " . implode(" AND ", $whereConditions) : "WHERE status = 'approved'";
 
     $sql = "SELECT id, title, category, jenis_resource, description, file_path, image_path, kelas_target
             FROM modules {$whereClauseStr} ORDER BY id DESC LIMIT 20";
