@@ -37,7 +37,7 @@ const AIMM_TOPICS = [
     'cloud'      => ['label' => 'Cloud Computing',  'category' => 'Cloud Computing'],
     'webdev'     => ['label' => 'Web Dev',          'category' => 'DevOps'],
 ];
-const AIMM_TINGKAT = ['X', 'XI', 'XII', 'XIII'];
+const AIMM_TINGKAT = ['semua', 'X', 'XI', 'XII'];
 
 function jsonOut(array $d, int $code = 200): void {
     http_response_code($code);
@@ -107,9 +107,14 @@ if ($action === 'generate') {
         'required' => ['title', 'html'],
     ];
 
+    // Jika tingkat = 'semua', tampilkan label yang lebih deskriptif di prompt AI
+    $tingkatLabel = ($tingkat === 'semua')
+        ? 'siswa SMK kelas X sampai XII'
+        : "siswa kelas {$tingkat}";
+
     $prompt = <<<TXT
 Kamu adalah guru SMK jurusan TKJ/SIJA yang menyusun modul pembelajaran dalam Bahasa Indonesia.
-Buat modul pembelajaran lengkap untuk topik: {$topicLabel}, untuk siswa kelas {$tingkat}.
+Buat modul pembelajaran lengkap untuk topik: {$topicLabel}, untuk {$tingkatLabel}.
 
 Aturan WAJIB:
 - Kembalikan JSON murni dengan struktur: {"title": "...", "html": "..."}.
