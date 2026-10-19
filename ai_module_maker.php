@@ -118,7 +118,7 @@ TXT;
 
     try {
         // timeout 80 + maxTries 1 + maxOutputTokens: total < batas Cloudflared ~100s
-        $result = geminiJson($apiKey, $model, $prompt, $schema, 80, 0.7, 24000, 1);
+        $result = geminiJson($apiKey, $model, $prompt, $schema, 80, 0.7, 24000, 1, 'aimm');
     } catch (Throwable $e) {
         error_log('[ai_module_maker] generate: ' . $e->getMessage());
         $msg = (strpos($e->getMessage(), 'terpotong') !== false)

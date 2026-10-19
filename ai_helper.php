@@ -67,7 +67,8 @@ function geminiJson(
     int $timeout,
     float $temp,
     int $maxOutputTokens = 0,
-    int $maxTries = 2
+    int $maxTries = 2,
+    string $logTag = ''
 ): array {
     $genConfig = [
         'response_mime_type' => 'application/json',
@@ -110,8 +111,26 @@ function geminiJson(
 
     $data         = json_decode((string)$resp, true);
     $cand         = $data['candidates'][0] ?? [];
-    $txt          = $cand['content']['parts'][0]['text'] ?? null;
+    $parts        = $cand['content']['parts'] ?? [];
+    $txt          = $parts[0]['text'] ?? null;
     $finishReason = $cand['finishReason'] ?? null;
+
+    // Diagnostik opsional ($logTag kosong = perilaku lama persis).
+    // Satu baris per panggilan; TIDAK memuat isi prompt atau konten modul.
+    if ($logTag !== '') {
+        $usage = $data['usageMetadata'] ?? [];
+        error_log(sprintf(
+            '[%s] model=%s finishReason=%s promptTokenCount=%s candidatesTokenCount=%s thoughtsTokenCount=%s parts=%d textLen=%d',
+            $logTag,
+            $model,
+            (string)($finishReason ?? 'null'),
+            (string)($usage['promptTokenCount'] ?? 'null'),
+            (string)($usage['candidatesTokenCount'] ?? 'null'),
+            (string)($usage['thoughtsTokenCount'] ?? 'null'),
+            is_array($parts) ? count($parts) : 0,
+            is_string($txt) ? strlen($txt) : 0
+        ));
+    }
 
     if ($finishReason === 'MAX_TOKENS') {
         throw new RuntimeException('Output AI terpotong, coba generate ulang');
