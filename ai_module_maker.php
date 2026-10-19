@@ -27,11 +27,15 @@ set_time_limit(120);
 const AIMM_PATH          = '/var/www/data_private/modul_ai/pending';
 const AIMM_MAX_HTML_LEN  = 200000;   // ~200 KB batas HTML modul
 const AIMM_COOLDOWN      = 10;       // detik antar generate
+// Kategori 'category' di bawah mengikuti verifikasi DB staging:
+// SELECT DISTINCT category -> 'Network', 'System Administration'.
+// 'Cloud Computing' & 'DevOps' ada di kosakata README (belum ada barisnya).
+// webdev -> 'DevOps' SEMENTARA (keputusan user, belum ada kategori web dev).
 const AIMM_TOPICS = [
     'network'    => ['label' => 'Network',          'category' => 'Network'],
     'sysadmin'   => ['label' => 'Sysadmin',         'category' => 'System Administration'],
     'cloud'      => ['label' => 'Cloud Computing',  'category' => 'Cloud Computing'],
-    'webdev'     => ['label' => 'Web Dev',          'category' => 'Web Development'],
+    'webdev'     => ['label' => 'Web Dev',          'category' => 'DevOps'],
 ];
 const AIMM_TINGKAT = ['X', 'XI', 'XII', 'XIII'];
 
