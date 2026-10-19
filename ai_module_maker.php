@@ -100,14 +100,6 @@ $action = $_POST['action'];
 if ($action === 'generate') {
     csrf_require_valid_post();
 
-    // Cooldown per-session (hemat kuota API / anti spam)
-    $now = time();
-    if ($now - (int)($_SESSION['aimm_last'] ?? 0) < AIMM_COOLDOWN) {
-        jsonOut(['status' => 'error', 'message' => 'Tunggu beberapa detik sebelum generate lagi.'], 429);
-    }
-    $_SESSION['aimm_last'] = $now;
-    session_write_close();
-
     $topic  = trim($_POST['topic'] ?? '');
     $tingkat = trim($_POST['tingkat'] ?? 'X');
 
@@ -118,6 +110,15 @@ if ($action === 'generate') {
     if (!in_array($tingkat, AIMM_TINGKAT, true)) {
         jsonOut(['status' => 'error', 'message' => 'Tingkat kelas tidak valid.'], 400);
     }
+
+    // Cooldown per-session (hemat kuota API / anti spam) —
+    // dihitung SETELAH validasi topik/tingkat lolos
+    $now = time();
+    if ($now - (int)($_SESSION['aimm_last'] ?? 0) < AIMM_COOLDOWN) {
+        jsonOut(['status' => 'error', 'message' => 'Tunggu beberapa detik sebelum generate lagi.'], 429);
+    }
+    $_SESSION['aimm_last'] = $now;
+    session_write_close();
 
     $topicLabel    = AIMM_TOPICS[$topic]['label'];
     $topicCategory = AIMM_TOPICS[$topic]['category'];
@@ -167,7 +168,9 @@ TXT;
         jsonOut(['status' => 'error', 'message' => 'Modul hasil AI terlalu besar. Coba generate ulang.'], 502);
     }
 
-    // Simpan draft di session — submit TIDAK menerima HTML dari klien
+    // Session ditutup selama panggilan API — buka kembali untuk menyimpan
+    // draft. $_SESSION['aimm_last'] tetap terbaca karena tersimpan di storage.
+    session_start();
     $_SESSION['aimm_draft'] = [
         'title'    => $title,
         'html'     => $html,
