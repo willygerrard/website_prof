@@ -27,6 +27,8 @@ set_time_limit(100); // Cloudflared memutus request ~100 detik
 const AIMM_PATH          = '/var/www/data_private/modul_ai/pending';
 const AIMM_MAX_HTML_LEN  = 200000;   // ~200 KB batas HTML modul
 const AIMM_COOLDOWN      = 10;       // detik antar generate
+const AIMM_MIN_TEXT_LEN  = 1500;     // teks terlihat minimum setelah sanitasi
+const AIMM_MIN_HEADINGS  = 3;        // minimal h1-h4 setelah sanitasi
 // AIMM_TOPICS dan AIMM_TINGKAT didefinisikan di ai_helper.php agar bisa
 // dipakai bersama oleh handler ini dan halaman UI (Fase 4b-2).
 
@@ -135,6 +137,40 @@ TXT;
     }
     if (strlen($html) > AIMM_MAX_HTML_LEN) {
         jsonOut(['status' => 'error', 'message' => 'Modul hasil AI terlalu besar. Coba generate ulang.'], 502);
+    }
+
+    // Validasi kelengkapan hasil AI SEBELUM draft disimpan.
+    // Pengecekan memakai hasil sanitasi (draft yang disimpan tetap fragmen mentah).
+    $sanitized   = aimmSanitizeHtml($html);
+    $visibleText = trim(strip_tags($sanitized));
+    $textLen     = mb_strlen($visibleText);
+    $headingCount = preg_match_all('/<h[1-4]\b/i', $sanitized);
+    $paraCount    = preg_match_all('/<p\b/i', $sanitized);
+    $hangingTag   = (bool)preg_match('/<[^>]*$/', rtrim($html));
+
+    $alasan = [];
+    if ($textLen < AIMM_MIN_TEXT_LEN) {
+        $alasan[] = "teks {$textLen} < " . AIMM_MIN_TEXT_LEN;
+    }
+    if ($headingCount < AIMM_MIN_HEADINGS) {
+        $alasan[] = "heading {$headingCount} < " . AIMM_MIN_HEADINGS;
+    }
+    if ($paraCount < 1) {
+        $alasan[] = 'tidak ada <p>';
+    }
+    if ($hangingTag) {
+        $alasan[] = 'tag menggantung di akhir fragmen';
+    }
+
+    if ($alasan) {
+        error_log(sprintf(
+            '[ai_module_maker] generate: hasil tidak lolos validasi (%s) rawLen=%d sanitizedLen=%d textLen=%d',
+            implode('; ', $alasan),
+            strlen($html),
+            strlen($sanitized),
+            $textLen
+        ));
+        jsonOut(['status' => 'error', 'message' => 'Hasil AI terlalu pendek atau tidak lengkap, coba generate ulang.'], 502);
     }
 
     // Session ditutup selama panggilan API — buka kembali untuk menyimpan
