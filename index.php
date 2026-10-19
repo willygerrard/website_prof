@@ -23,7 +23,7 @@ $search           = trim($_GET['keyword'] ?? '');
 $filter_jenis     = $_GET['jenis'] ?? 'semua';
 $kategori_pilihan = $_GET['kategori'] ?? 'Semua Materi';
 
-$query_str = "SELECT * FROM modules WHERE 1=1";
+$query_str = "SELECT * FROM modules WHERE status = 'approved'";
 $params    = [];
 
 if (!empty($search)) {
@@ -74,7 +74,8 @@ if ($_SESSION['role'] === 'siswa') {
                 FROM modules m
                 LEFT JOIN modul_tuntas mt
                        ON mt.modul_id = m.id AND mt.user_id = :uid
-                WHERE (m.kelas_target = 'semua' OR FIND_IN_SET(:tingkat, m.kelas_target))
+                WHERE m.status = 'approved'
+                  AND (m.kelas_target = 'semua' OR FIND_IN_SET(:tingkat, m.kelas_target))
                 GROUP BY m.category";
         $st_progress = $pdo->prepare($sql_progress);
         $st_progress->execute(['uid' => $user_id_progress, 'tingkat' => $tingkat_progress]);
