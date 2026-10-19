@@ -55,31 +55,50 @@ function aimmSlugify(string $s): string {
 // ============================================================
 // ROUTER AJAX
 // ============================================================
-// GET: hanya menampilkan UI testing (tanpa menjalankan handler apa pun).
+// GET: halaman UI AI Module Maker (preview & submit).
 // Handler generate/submit tetap WAJIB POST + CSRF.
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        $csrf = csrf_token();
         ?>
         <!DOCTYPE html>
         <html lang="id">
         <head>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>AI Module Maker — UI Test</title>
+            <title>AI Module Maker — Pusat Pembelajaran SIJA</title>
             <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+            <style>
+                #aimmPreviewFrame { width: 100%; height: 70vh; min-height: 420px; border: 0; background: #fff; }
+            </style>
         </head>
         <body class="bg-light">
-        <div class="container py-4" style="max-width: 900px;">
-            <div class="alert alert-warning small">
-                <strong>UI testing saja.</strong> Form ini memanggil handler <code>action=generate</code>.
-                Submit modul tidak tersedia di halaman ini.
+        <?php include __DIR__ . '/includes/admin_header.php'; ?>
+
+        <div class="container py-4" style="max-width: 1100px;">
+
+            <div class="d-flex align-items-center justify-content-between mb-4">
+                <div>
+                    <h4 class="fw-bold mb-1">AI Module Maker</h4>
+                    <div class="text-muted small">Buat modul dengan AI, tinjau, lalu simpan sebagai pending.</div>
+                </div>
+                <a href="gerbang-rahasia-sija" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-left"></i> Kelola Modul
+                </a>
             </div>
 
-            <div class="card shadow-sm border-0 rounded-3 mb-3">
-                <div class="card-header bg-dark text-white py-3 fw-bold">Generate Draft Modul</div>
+            <!-- Pesan hasil submit -->
+            <div id="aimmAlert" class="alert d-none" role="alert"></div>
+
+            <!-- ===================== FORM GENERATE ===================== -->
+            <div class="card shadow-sm border-0 rounded-3 mb-4" id="aimmFormCard">
+                <div class="card-header bg-primary text-white py-3 fw-bold">
+                    <i class="bi bi-stars"></i> Generate Draft Modul
+                </div>
                 <div class="card-body p-4">
-                    <form id="aimmTestForm" class="row g-3">
-                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>">
+                    <form id="aimmForm" class="row g-3 align-items-end">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8') ?>">
                         <div class="col-md-5">
                             <label class="form-label fw-semibold" for="aimmTopic">Topik</label>
                             <select class="form-select" id="aimmTopic" name="topic" required>
@@ -100,44 +119,117 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <div class="col-md-3 d-grid align-self-end">
-                            <button type="submit" class="btn btn-primary fw-bold" id="aimmGenBtn">Generate</button>
+                        <div class="col-md-3 d-grid">
+                            <button type="submit" class="btn btn-primary fw-bold py-2" id="aimmGenBtn">
+                                <i class="bi bi-stars"></i> Generate
+                            </button>
                         </div>
                     </form>
-                    <div class="form-text mt-2">Generate memanggil Gemini (kuota + cooldown 10 detik).</div>
+                    <div class="form-text mt-2">
+                        Generate memanggil Gemini; cooldown 10 detik antar permintaan.
+                    </div>
                 </div>
             </div>
 
-            <div class="card shadow-sm border-0 rounded-3">
-                <div class="card-header bg-secondary text-white py-2 fw-bold">Hasil / Error</div>
+            <!-- ===================== PREVIEW + AKSI ===================== -->
+            <div class="card shadow-sm border-0 rounded-3 d-none" id="aimmPreviewCard">
+                <div class="card-header bg-dark text-white py-3 d-flex justify-content-between align-items-center">
+                    <span class="fw-bold"><i class="bi bi-eye"></i> Preview Modul</span>
+                    <span class="badge bg-light text-dark" id="aimmPreviewMeta"></span>
+                </div>
                 <div class="card-body p-0">
-                    <pre id="aimmOut" class="m-0 p-3 small" style="min-height: 120px; max-height: 60vh; overflow: auto;">Belum ada hasil.</pre>
+                    <!-- Preview selalu lewat endpoint agar header CSP berlaku (tanpa srcdoc) -->
+                    <iframe id="aimmPreviewFrame"
+                            src="about:blank"
+                            sandbox
+                            title="Preview modul AI"
+                            referrerpolicy="no-referrer"></iframe>
+                </div>
+                <div class="card-footer bg-white py-3">
+                    <div class="d-flex flex-wrap gap-2 justify-content-end">
+                        <button type="button" class="btn btn-outline-secondary fw-semibold" id="aimmRegenBtn">
+                            <i class="bi bi-arrow-clockwise"></i> Regenerate
+                        </button>
+                        <button type="button" class="btn btn-success fw-bold" id="aimmSubmitBtn">
+                            <i class="bi bi-save"></i> Submit &amp; Simpan Modul
+                        </button>
+                    </div>
                 </div>
             </div>
+
         </div>
+
+        <?php include __DIR__ . '/includes/footer.php'; ?>
 
         <script>
         (function () {
             'use strict';
-            const form = document.getElementById('aimmTestForm');
-            const out  = document.getElementById('aimmOut');
-            const btn  = document.getElementById('aimmGenBtn');
 
-            function esc(s) {
-                return String(s ?? '').replace(/[&<>"']/g, c => ({
-                    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-                }[c]));
+            const form        = document.getElementById('aimmForm');
+            const genBtn      = document.getElementById('aimmGenBtn');
+            const formCard    = document.getElementById('aimmFormCard');
+            const previewCard = document.getElementById('aimmPreviewCard');
+            const frame       = document.getElementById('aimmPreviewFrame');
+            const meta        = document.getElementById('aimmPreviewMeta');
+            const regenBtn    = document.getElementById('aimmRegenBtn');
+            const submitBtn   = document.getElementById('aimmSubmitBtn');
+            const alertBox    = document.getElementById('aimmAlert');
+            const csrfToken   = form.querySelector('input[name="csrf_token"]').value;
+
+            function showAlert(type, msg) {
+                alertBox.className = 'alert alert-' + type;
+                alertBox.textContent = msg;
+                alertBox.classList.remove('d-none');
+                alertBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
 
+            function hideAlert() {
+                alertBox.classList.add('d-none');
+                alertBox.textContent = '';
+            }
+
+            function showForm() {
+                previewCard.classList.add('d-none');
+                formCard.classList.remove('d-none');
+                frame.src = 'about:blank';
+                hideAlert();
+            }
+
+            function showPreview() {
+                formCard.classList.add('d-none');
+                previewCard.classList.remove('d-none');
+                // Cache-buster agar preview selalu dirender ulang dari draft terbaru
+                frame.src = 'ai_module_preview.php?ts=' + Date.now();
+                previewCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+
+            async function postAction(action) {
+                const fd = new FormData();
+                fd.set('action', action);
+                fd.set('csrf_token', csrfToken);
+                const res  = await fetch(window.location.pathname, {
+                    method: 'POST',
+                    body: fd,
+                    credentials: 'same-origin'
+                });
+                const text = await res.text();
+                let data;
+                try { data = JSON.parse(text); }
+                catch (e) { throw new Error('Respons server tidak valid (HTTP ' + res.status + ')'); }
+                return { ok: res.ok, status: res.status, data: data };
+            }
+
+            // ---- Generate ----
             form.addEventListener('submit', async function (e) {
                 e.preventDefault();
-                btn.disabled = true;
-                out.textContent = 'Meminta generate ke Gemini... bisa sampai ~100 detik.';
+                hideAlert();
+                genBtn.disabled = true;
+                const original = genBtn.innerHTML;
+                genBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Membuat...';
 
                 const fd = new FormData(form);
                 fd.set('action', 'generate');
 
-                const t0 = Date.now();
                 try {
                     const res  = await fetch(window.location.pathname, {
                         method: 'POST',
@@ -145,30 +237,58 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                         credentials: 'same-origin'
                     });
                     const text = await res.text();
-                    const secs = ((Date.now() - t0) / 1000).toFixed(1);
-
                     let data;
                     try { data = JSON.parse(text); }
-                    catch (err) { data = { _non_json: text }; }
+                    catch (err) { throw new Error('Respons server tidak valid (HTTP ' + res.status + ')'); }
 
-                    const head = 'HTTP ' + res.status + '  (' + secs + 's)';
-
-                    // Tampilkan seluruh JSON untuk diagnostik
-                    let body = JSON.stringify(data, null, 2);
-
-                    // Jika draft punya html, tampilkan ringkasan panjang
-                    if (data && data.status === 'success' && data.draft) {
-                        body += '\n\n--- draft ---\n'
-                             + 'title: ' + (data.draft.title || '')
-                             + '\ntopic: ' + (data.draft.topic || '')
-                             + '\ntingkat: ' + (data.draft.tingkat || '');
+                    if (res.ok && data.status === 'success' && data.draft) {
+                        meta.textContent = data.draft.title + ' · ' + data.draft.topic.toUpperCase() + ' · ' + data.draft.tingkat;
+                        showPreview();
+                    } else {
+                        showAlert('danger', data.message || ('Generate gagal (HTTP ' + res.status + ').'));
                     }
-
-                    out.textContent = head + '\n\n' + body;
                 } catch (err) {
-                    out.textContent = 'Fetch gagal: ' + (err && err.message ? err.message : err);
+                    showAlert('danger', 'Generate gagal: ' + (err && err.message ? err.message : err));
                 } finally {
-                    btn.disabled = false;
+                    genBtn.disabled = false;
+                    genBtn.innerHTML = original;
+                }
+            });
+
+            // ---- Regenerate (kembali ke form) ----
+            regenBtn.addEventListener('click', function () {
+                showForm();
+                form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            });
+
+            // ---- Submit ----
+            submitBtn.addEventListener('click', async function () {
+                if (!confirm('Simpan modul ini sebagai pending dan tunggu persetujuan?')) return;
+
+                hideAlert();
+                submitBtn.disabled = true;
+                regenBtn.disabled = true;
+                const original = submitBtn.innerHTML;
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Menyimpan...';
+
+                try {
+                    const r = await postAction('submit');
+
+                    if (r.ok && r.data.status === 'success') {
+                        showAlert('success', 'Modul berhasil disimpan sebagai Pending, menunggu persetujuan Admin.');
+                        previewCard.classList.add('d-none');
+                        formCard.classList.remove('d-none');
+                        frame.src = 'about:blank';
+                        form.reset();
+                    } else {
+                        showAlert('danger', r.data.message || ('Submit gagal (HTTP ' + r.status + ').'));
+                    }
+                } catch (err) {
+                    showAlert('danger', 'Submit gagal: ' + (err && err.message ? err.message : err));
+                } finally {
+                    submitBtn.disabled = false;
+                    regenBtn.disabled = false;
+                    submitBtn.innerHTML = original;
                 }
             });
         })();
