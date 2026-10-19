@@ -113,10 +113,10 @@ Buat modul pembelajaran lengkap untuk topik: {$topicLabel}, untuk siswa kelas {$
 
 Aturan WAJIB:
 - Kembalikan JSON murni dengan struktur: {"title": "...", "html": "..."}.
-- "html" berisi SATU dokumen HTML lengkap (dari <html> sampai </html>) yang bisa dirender standalone.
+- "html" berisi FRAGMEN isi body saja: TANPA <html>, <head>, <body>, <style>, <script>, tanpa doctype.
+- Gunakan HANYA class Bootstrap 5 (mis. container, card, table, alert, badge) — CSS dimuat oleh pembungkus di sisi server, jadi jangan tulis CSS sendiri.
 - Isi modul minimal memuat: judul, tujuan pembelajaran, penjelasan materi, contoh penerapan/perintah praktik, latihan/evaluasi singkat, dan rangkuman.
 - KERASLARANG menyertakan: tag <script>, atribut event (onclick, onerror, dll.), iframe, form, javascript: URL, atau konten PHP.
-- CSS inline via tag <style> dan class Bootstrap 5 boleh digunakan (CDN Bootstrap SUDAH tersedia di halaman preview).
 - Bahasa santai edukatif yang cocok untuk siswa SMK.
 TXT;
 
@@ -182,7 +182,11 @@ if ($action === 'submit') {
     $title    = $draft['title'];
     $category = $draft['category'];
     $tingkat  = $draft['tingkat'];
-    $html     = aimmSanitizeHtml((string)$draft['html']);
+
+    // Urutan: sanitasi fragmen -> bungkus dokumen -> cek panjang -> tulis file.
+    // Draft di session tetap menyimpan fragmen mentah (belum tersentuh).
+    $bodyHtml = aimmSanitizeHtml((string)$draft['html']);
+    $html     = aimmWrapHtml($title, $bodyHtml);
 
     // Validasi pasca-sanitasi
     if (strlen($html) < 100) {
