@@ -24,6 +24,11 @@ checkRole(['admin']);
 header('Content-Type: application/json; charset=utf-8');
 set_time_limit(100); // Cloudflared memutus request ~100 detik
 
+// Halaman UI testing (GET) memakai Content-Type HTML, bukan JSON.
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    header('Content-Type: text/html; charset=utf-8');
+}
+
 const AIMM_PATH          = '/var/www/data_private/modul_ai/pending';
 const AIMM_MAX_HTML_LEN  = 200000;   // ~200 KB batas HTML modul
 const AIMM_COOLDOWN      = 10;       // detik antar generate
@@ -50,7 +55,137 @@ function aimmSlugify(string $s): string {
 // ============================================================
 // ROUTER AJAX
 // ============================================================
-if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['action'])) {
+// GET: hanya menampilkan UI testing (tanpa menjalankan handler apa pun).
+// Handler generate/submit tetap WAJIB POST + CSRF.
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        ?>
+        <!DOCTYPE html>
+        <html lang="id">
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>AI Module Maker — UI Test</title>
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+        </head>
+        <body class="bg-light">
+        <div class="container py-4" style="max-width: 900px;">
+            <div class="alert alert-warning small">
+                <strong>UI testing saja.</strong> Form ini memanggil handler <code>action=generate</code>.
+                Submit modul tidak tersedia di halaman ini.
+            </div>
+
+            <div class="card shadow-sm border-0 rounded-3 mb-3">
+                <div class="card-header bg-dark text-white py-3 fw-bold">Generate Draft Modul</div>
+                <div class="card-body p-4">
+                    <form id="aimmTestForm" class="row g-3">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>">
+                        <div class="col-md-5">
+                            <label class="form-label fw-semibold" for="aimmTopic">Topik</label>
+                            <select class="form-select" id="aimmTopic" name="topic" required>
+                                <?php foreach (AIMM_TOPICS as $key => $t): ?>
+                                    <option value="<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>">
+                                        <?= htmlspecialchars($t['label'], ENT_QUOTES, 'UTF-8') ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold" for="aimmTingkat">Tingkat</label>
+                            <select class="form-select" id="aimmTingkat" name="tingkat" required>
+                                <?php foreach (AIMM_TINGKAT as $tk): ?>
+                                    <option value="<?= htmlspecialchars($tk, ENT_QUOTES, 'UTF-8') ?>">
+                                        <?= $tk === 'semua' ? 'Semua (X–XII)' : 'Kelas ' . htmlspecialchars($tk, ENT_QUOTES, 'UTF-8') ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-3 d-grid align-self-end">
+                            <button type="submit" class="btn btn-primary fw-bold" id="aimmGenBtn">Generate</button>
+                        </div>
+                    </form>
+                    <div class="form-text mt-2">Generate memanggil Gemini (kuota + cooldown 10 detik).</div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 rounded-3">
+                <div class="card-header bg-secondary text-white py-2 fw-bold">Hasil / Error</div>
+                <div class="card-body p-0">
+                    <pre id="aimmOut" class="m-0 p-3 small" style="min-height: 120px; max-height: 60vh; overflow: auto;">Belum ada hasil.</pre>
+                </div>
+            </div>
+        </div>
+
+        <script>
+        (function () {
+            'use strict';
+            const form = document.getElementById('aimmTestForm');
+            const out  = document.getElementById('aimmOut');
+            const btn  = document.getElementById('aimmGenBtn');
+
+            function esc(s) {
+                return String(s ?? '').replace(/[&<>"']/g, c => ({
+                    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+                }[c]));
+            }
+
+            form.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                btn.disabled = true;
+                out.textContent = 'Meminta generate ke Gemini... bisa sampai ~100 detik.';
+
+                const fd = new FormData(form);
+                fd.set('action', 'generate');
+
+                const t0 = Date.now();
+                try {
+                    const res  = await fetch(window.location.pathname, {
+                        method: 'POST',
+                        body: fd,
+                        credentials: 'same-origin'
+                    });
+                    const text = await res.text();
+                    const secs = ((Date.now() - t0) / 1000).toFixed(1);
+
+                    let data;
+                    try { data = JSON.parse(text); }
+                    catch (err) { data = { _non_json: text }; }
+
+                    const head = 'HTTP ' + res.status + '  (' + secs + 's)';
+
+                    // Tampilkan seluruh JSON untuk diagnostik
+                    let body = JSON.stringify(data, null, 2);
+
+                    // Jika draft punya html, tampilkan ringkasan panjang
+                    if (data && data.status === 'success' && data.draft) {
+                        body += '\n\n--- draft ---\n'
+                             + 'title: ' + (data.draft.title || '')
+                             + '\ntopic: ' + (data.draft.topic || '')
+                             + '\ntingkat: ' + (data.draft.tingkat || '');
+                    }
+
+                    out.textContent = head + '\n\n' + body;
+                } catch (err) {
+                    out.textContent = 'Fetch gagal: ' + (err && err.message ? err.message : err);
+                } finally {
+                    btn.disabled = false;
+                }
+            });
+        })();
+        </script>
+        </body>
+        </html>
+        <?php
+        exit;
+    }
+
+    http_response_code(405);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['status' => 'error', 'message' => 'Metode tidak diizinkan.'], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if (!isset($_POST['action'])) {
     jsonOut(['status' => 'error', 'message' => 'Request tidak valid.'], 400);
 }
 

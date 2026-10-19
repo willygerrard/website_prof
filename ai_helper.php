@@ -52,6 +52,11 @@ function aiqEnvInfo(string $k): array {
 function aiqEnv(string $k): string { return aiqEnvInfo($k)[0]; }
 
 
+// Retry otomatis untuk HTTP 503 (high demand) / 429 (rate limit).
+// Maksimal 3 percobaan total, jeda 3 detik antar percobaan.
+const AIQ_RETRY_MAX   = 3;
+const AIQ_RETRY_DELAY = 3;
+
 /**
  * Panggil Gemini dengan JSON schema. Backward compatible:
  * $maxOutputTokens dan $maxTries opsional di akhir (default = perilaku lama).
@@ -105,7 +110,22 @@ function geminiJson(
         curl_close($ch);
 
         if (!$err && $code === 200) break;
-        if ($try < $maxTries && in_array($code, [429, 503], true)) { sleep(2); continue; }
+
+        // Retry khusus 503 (high demand) / 429 (rate limit): tunggu 3 detik,
+        // maksimal AIQ_RETRY_MAX percobaan. Error lain langsung dilempar.
+        $retryable = in_array($code, [429, 503], true);
+        if ($retryable && $try < AIQ_RETRY_MAX) {
+            error_log(sprintf(
+                '[geminiJson%s] retry %d/%d setelah HTTP %d, tunggu %ds',
+                $logTag !== '' ? ':' . $logTag : '',
+                $try,
+                AIQ_RETRY_MAX,
+                $code,
+                AIQ_RETRY_DELAY
+            ));
+            sleep(AIQ_RETRY_DELAY);
+            continue;
+        }
         throw new RuntimeException($err ?: "HTTP $code: " . mb_substr((string)$resp, 0, 300));
     }
 
