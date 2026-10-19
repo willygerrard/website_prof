@@ -19,8 +19,13 @@ if (!$user_id || !$modul_id) {
     exit();
 }
 
-// Ambil data modul (untuk judul di pesan WA)
-$stmt = $pdo->prepare("SELECT * FROM modules WHERE id = ?");
+// Ambil data modul (untuk judul di pesan WA) — non-admin hanya modul approved
+$is_admin = ($_SESSION['role'] ?? '') === 'admin';
+if ($is_admin) {
+    $stmt = $pdo->prepare("SELECT * FROM modules WHERE id = ?");
+} else {
+    $stmt = $pdo->prepare("SELECT * FROM modules WHERE id = ? AND status = 'approved'");
+}
 $stmt->execute([$modul_id]);
 $modul = $stmt->fetch(PDO::FETCH_ASSOC);
 
