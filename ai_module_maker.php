@@ -27,17 +27,8 @@ set_time_limit(100); // Cloudflared memutus request ~100 detik
 const AIMM_PATH          = '/var/www/data_private/modul_ai/pending';
 const AIMM_MAX_HTML_LEN  = 200000;   // ~200 KB batas HTML modul
 const AIMM_COOLDOWN      = 10;       // detik antar generate
-// Kategori 'category' di bawah mengikuti verifikasi DB staging:
-// SELECT DISTINCT category -> 'Network', 'System Administration'.
-// 'Cloud Computing' & 'DevOps' ada di kosakata README (belum ada barisnya).
-// webdev -> 'DevOps' SEMENTARA (keputusan user, belum ada kategori web dev).
-const AIMM_TOPICS = [
-    'network'    => ['label' => 'Network',          'category' => 'Network'],
-    'sysadmin'   => ['label' => 'Sysadmin',         'category' => 'System Administration'],
-    'cloud'      => ['label' => 'Cloud Computing',  'category' => 'Cloud Computing'],
-    'webdev'     => ['label' => 'Web Dev',          'category' => 'DevOps'],
-];
-const AIMM_TINGKAT = ['semua', 'X', 'XI', 'XII'];
+// AIMM_TOPICS dan AIMM_TINGKAT didefinisikan di ai_helper.php agar bisa
+// dipakai bersama oleh handler ini dan halaman UI (Fase 4b-2).
 
 function jsonOut(array $d, int $code = 200): void {
     http_response_code($code);

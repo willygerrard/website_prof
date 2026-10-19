@@ -5,6 +5,23 @@
  * ai_quiz_generate.php, ai_module_maker.php, dll.
  */
 
+// ============================================================
+// KONSTANTA AI MODULE MAKER (dipakai bersama oleh handler & UI)
+// ============================================================
+
+// Kategori 'category' mengikuti verifikasi DB staging:
+// SELECT DISTINCT category -> 'Network', 'System Administration'.
+// 'Cloud Computing' & 'DevOps' ada di kosakata README.
+// webdev -> 'DevOps' adalah keputusan FINAL: isi modul web dev (HTML, PHP, JS)
+// masuk ke kategori 'DevOps'.
+const AIMM_TOPICS = [
+    'network'    => ['label' => 'Network',          'category' => 'Network'],
+    'sysadmin'   => ['label' => 'Sysadmin',         'category' => 'System Administration'],
+    'cloud'      => ['label' => 'Cloud Computing',  'category' => 'Cloud Computing'],
+    'webdev'     => ['label' => 'Web Dev',          'category' => 'DevOps'],
+];
+const AIMM_TINGKAT = ['semua', 'X', 'XI', 'XII'];
+
 function aiqEnvFiles(): array {
     $staging = (getenv('APP_ENV') === 'staging')
         || (strpos($_SERVER['HTTP_HOST'] ?? '', 'staging') !== false);
