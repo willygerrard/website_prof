@@ -245,14 +245,15 @@ if ($action === 'submit') {
 
     try {
         $stmt = $pdo->prepare(
-            "INSERT INTO modules (title, category, description, image_path, file_path, jenis_resource, kelas_target, status)
-             VALUES (:title, :category, :description, :image_path, :file_path, :jenis, :kelas_target, :status)"
+            "INSERT INTO modules (title, category, description, image_path, ai_file, file_path, jenis_resource, kelas_target, status)
+             VALUES (:title, :category, :description, :image_path, :ai_file, :file_path, :jenis, :kelas_target, :status)"
         );
         $stmt->execute([
             ':title'       => $title,
             ':category'    => $category,
             ':description' => 'Modul pembelajaran AI — topik ' . $category . ' (kelas ' . $tingkat . ')',
             ':image_path'  => 'img/debian.webp',
+            ':ai_file'     => $filename,
             ':file_path'   => null,
             ':jenis'       => 'modul',
             ':kelas_target'=> $tingkat,
