@@ -138,7 +138,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                     <span class="badge bg-light text-dark" id="aimmPreviewMeta"></span>
                 </div>
                 <div class="card-body p-0">
-                    <!-- Preview selalu lewat endpoint agar header CSP berlaku (tanpa srcdoc) -->
+                    <!-- Preview lewat endpoint agar header CSP berlaku (bukan inline srcdoc) -->
                     <iframe id="aimmPreviewFrame"
                             src="about:blank"
                             sandbox
