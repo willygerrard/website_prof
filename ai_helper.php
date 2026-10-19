@@ -74,3 +74,138 @@ function geminiJson(string $key, string $model, string $text, array $schema, int
     return $out;
 }
 
+// ============================================================
+// SANITASI HTML MODUL AI (allowlist DOMDocument)
+// ============================================================
+
+const AIMM_ALLOWED_TAGS = [
+    'h1','h2','h3','h4','h5','h6','p','br','hr','ul','ol','li','strong','b','em','i','u',
+    'code','pre','blockquote','table','thead','tbody','tr','th','td','a','img','div','span',
+    'section','small','sup','sub',
+];
+
+// Tag berbahaya dibuang BESERTA isinya; tag lain di luar allowlist di-unwrap.
+const AIMM_DANGEROUS_TAGS = [
+    'script','style','iframe','object','embed','form','base','link','meta','svg','math',
+];
+
+function aimmAllowedAttrs(): array {
+    return [
+        'a'   => ['href', 'title', 'class'],
+        'img' => ['src', 'alt', 'width', 'height', 'class'],
+        '*'   => ['class'],
+    ];
+}
+
+/**
+ * Normalisasi nilai atribut URL: decode entity, buang whitespace & karakter
+ * kontrol (untuk menangkal "jav&#x09;ascript:" dsb), lalu cek skema.
+ */
+function aimmNormalizeUrl(string $val): string {
+    $decoded = html_entity_decode(trim($val), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $decoded = preg_replace('/[\x00-\x20\x7F]+/', '', $decoded);
+    return strtolower($decoded);
+}
+
+/**
+ * Sanitasi FRAGMEN HTML (bukan dokumen penuh) pakai allowlist DOMDocument.
+ * - Tag berbahaya (script, style, iframe, object, embed, form, base, link,
+ *   meta, svg, math) dibuang beserta isinya.
+ * - Tag di luar allowlist lain di-unwrap (isinya dipertahankan).
+ * - Atribut dibatasi allowlist; href hanya http/https/mailto/#, src img hanya
+ *   https atau data:image/png|jpeg|gif|webp. Semua atribut on* dan style dibuang.
+ * - <a> selalu mendapat rel="noopener noreferrer".
+ * - Tidak menambahkan <html>/<body> — keluaran tetap fragmen.
+ */
+function aimmSanitizeHtml(string $html): string {
+    $allowed  = AIMM_ALLOWED_TAGS;
+    $allowedL = array_map('strtolower', $allowed);
+    $danger   = array_map('strtolower', AIMM_DANGEROUS_TAGS);
+    $attrMap  = aimmAllowedAttrs();
+
+    $doc = new DOMDocument();
+    libxml_use_internal_errors(true);
+    // Trick encoding UTF-8: prefix XML declaration agar tidak dianggap ISO-8859-1.
+    $ok = $doc->loadHTML(
+        '<?xml encoding="utf-8"?><div id="aimm-root">' . $html . '</div>',
+        LIBXML_NOERROR | LIBXML_NOWARNING
+    );
+    libxml_clear_errors();
+    if (!$ok) {
+        return ''; // gagal parse -> buang semua (fail closed)
+    }
+
+    $root = $doc->getElementById('aimm-root');
+    if ($root === null) return '';
+
+    $clean = function (DOMNode $parent) use ($doc, &$clean, $allowedL, $danger, $attrMap) {
+        // Snapshot dulu — childNodes berubah saat modifikasi
+        $children = [];
+        foreach ($parent->childNodes as $c) $children[] = $c;
+
+        foreach ($children as $node) {
+            if ($node->nodeType === XML_COMMENT_NODE) {
+                $parent->removeChild($node);
+                continue;
+            }
+            if ($node->nodeType !== XML_ELEMENT_NODE) continue;
+
+            $tag = strtolower($node->nodeName);
+
+            // 1) Tag berbahaya: buang beserta seluruh isi
+            if (in_array($tag, $danger, true)) {
+                $parent->removeChild($node);
+                continue;
+            }
+
+            // 2) Tag di luar allowlist: unwrap — proses isinya, angkat ke atas
+            if (!in_array($tag, $allowedL, true)) {
+                $clean($node);
+                while ($node->firstChild !== null) {
+                    $parent->insertBefore($node->firstChild, $node);
+                }
+                $parent->removeChild($node);
+                continue;
+            }
+
+            // 3) Tag diizinkan: filter atribut
+            $tagAttrs = $attrMap[$tag] ?? $attrMap['*'];
+            $attrs = [];
+            foreach ($node->attributes as $a) $attrs[] = $a->nodeName;
+            foreach ($attrs as $name) {
+                $lname = strtolower($name);
+                if (!in_array($lname, $tagAttrs, true)) {
+                    $node->removeAttribute($name); // termasuk semua on* dan style
+                    continue;
+                }
+                if ($tag === 'a' && $lname === 'href') {
+                    $val = aimmNormalizeUrl($node->getAttribute($name));
+                    if (!preg_match('@^(https?://|mailto:|#)@', $val)) {
+                        $node->removeAttribute($name);
+                    }
+                }
+                if ($tag === 'img' && $lname === 'src') {
+                    $val = aimmNormalizeUrl($node->getAttribute($name));
+                    if (!preg_match('#^(https://|data:image/(png|jpeg|gif|webp);)#', $val)) {
+                        $node->removeAttribute($name);
+                    }
+                }
+            }
+            if ($tag === 'a') {
+                $node->setAttribute('rel', 'noopener noreferrer');
+            }
+
+            // 4) Rekursi ke anak
+            $clean($node);
+        }
+    };
+
+    $clean($root);
+
+    // Serialisasi hanya anak-anak root — fragmen, tanpa wrapper <div>
+    $out = '';
+    foreach ($root->childNodes as $child) {
+        $out .= $doc->saveHTML($child);
+    }
+    return trim($out);
+}

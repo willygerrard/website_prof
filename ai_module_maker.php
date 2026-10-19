@@ -51,43 +51,8 @@ function aimmSlugify(string $s): string {
     return $s !== '' ? substr($s, 0, 60) : 'modul';
 }
 
-/**
- * Sanitasi XSS ketat untuk HTML modul hasil AI:
- * - buang <script>, <iframe>, <object>, <embed>, <style> berbahaya, dll.
- * - buang semua atribut on*
- * - buang javascript:/vbscript: & entity-encoded variants di URL atribut
- */
-function aimmSanitizeHtml(string $html): string {
-    // 1. Hapus blok elemen berbahaya seluruhnya (case-insensitive, multiline)
-    $html = preg_replace('#<\s*(script|iframe|object|embed|form|input|button|link|meta)\b[^>]*>.*?<\s*/\s*\1\s*>#is', '', $html);
-    // elemen void / tanpa tag penutup
-    $html = preg_replace('#<\s*(script|iframe|object|embed|form|input|button|link|meta)\b[^>]*/?\s*>#is', '', $html);
-
-    // 2. Hapus semua atribut event handler on*
-    $html = preg_replace('/\son[a-z0-9_\-]+\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $html);
-
-    // 3. Netralkan skema berbahaya pada atribut URL (termasuk versi di-encode)
-    $html = preg_replace_callback(
-        '/(\s(?:href|src|action|xlink:href)\s*=\s*)(?:"[^"]*"|\'[^\']*\'|[^\s>]+)/i',
-        function ($m) {
-            $attr = $m[2];
-            // buang kutip pembungkus
-            $val = trim($attr, "\"' ");
-            $decoded = html_entity_decode($val, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-            $decoded = preg_replace('/[\x00-\x20\x7F]+/', '', $decoded); // buang whitespace/control: "java\tscript:"
-            if (preg_match('#^(?:javascript|vbscript|data\s*:\s*text/html)#i', $decoded)) {
-                return $m[1] . '"#"';
-            }
-            return $m[1] . $attr;
-        },
-        $html
-    );
-
-    // 4. Buang komentar kondisional IE / komentar HTML yang bisa menyembunyikan markup
-    $html = preg_replace('#<!--.*?-->#s', '', $html);
-
-    return trim($html);
-}
+// Sanitasi HTML memakai aimmSanitizeHtml() dari ai_helper.php
+// (allowlist DOMDocument). Pengecekan akhir tetap dilakukan di handler submit.
 
 // ============================================================
 // ROUTER AJAX
