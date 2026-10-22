@@ -46,6 +46,18 @@ function jsonOut(array $d, int $code = 200): void {
     exit;
 }
 
+/**
+ * Lepas pembungkus code fence terluar (``` atau ```markdown) bila AI
+ * mengembalikan seluruh modul di dalam satu blok kode.
+ */
+function aimmStripOuterFence(string $md): string {
+    $md = trim($md);
+    if (preg_match('/^```[A-Za-z0-9_-]*[ \t]*\r?\n([\s\S]*?)\r?\n```$/', $md, $m)) {
+        return trim($m[1]);
+    }
+    return $md;
+}
+
 function aimmSlugify(string $s): string {
     $s = preg_replace('/[^a-z0-9]+/', '-', strtolower(trim($s)));
     $s = trim($s, '-');
@@ -442,16 +454,25 @@ TXT;
         jsonOut(['status' => 'error', 'message' => 'AI gagal membuat modul: ' . $e->getMessage()], 500);
     }
 
-    // Cek jika AI menolak topik secara semantik
-    if (str_starts_with(trim($rawMd), '[ERROR]:')) {
-        $errMsg = trim(str_replace('[ERROR]:', '', $rawMd));
+    // Lepas pembungkus kode terluar sebelum diproses lebih lanjut
+    $rawMd = aimmStripOuterFence($rawMd);
+
+    // Penanda penolakan AI: cek regex pada 200 karakter pertama (setelah trim)
+    $head200 = mb_substr(trim($rawMd), 0, 200);
+    if (preg_match('/\[ERROR\]\s*:?\s*(.+)/iu', $head200, $mErr)) {
+        $errMsg = trim($mErr[1]);
         jsonOut(['status' => 'error', 'message' => $errMsg ?: 'Topik tidak relevan dengan kategori yang dipilih.'], 422);
     }
 
-    // Ambil judul dari H1 Markdown (# Judul)
+    // Judul dari H1 Markdown: bersihkan tag & karakter penekanan, maks 150
     $title = 'Modul ' . $topikSpesifik;
     if (preg_match('/^#\s+(.+)$/m', $rawMd, $m)) {
-        $title = mb_substr(trim($m[1]), 0, 150);
+        $titleRaw = strip_tags($m[1]);
+        $titleRaw = str_replace(['*', '_', '`'], '', $titleRaw);
+        $titleRaw = trim($titleRaw);
+        if ($titleRaw !== '') {
+            $title = mb_substr($titleRaw, 0, 150);
+        }
     }
 
     // Konversi Markdown ke HTML
