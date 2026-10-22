@@ -33,7 +33,7 @@ const AIMM_PATH          = '/var/www/data_private/modul_ai/pending';
 const AIMM_MAX_HTML_LEN  = 200000;   // ~200 KB batas HTML modul
 const AIMM_COOLDOWN      = 10;       // detik antar generate
 const AIMM_MIN_TEXT_LEN  = 1500;     // teks terlihat minimum setelah sanitasi
-const AIMM_MIN_HEADINGS  = 3;        // minimal h1-h4 setelah sanitasi
+const AIMM_MIN_HEADINGS  = 5;        // minimal heading level-2 pada Markdown mentah
 const AIMM_MAX_TOPIK_LEN = 500;      // batas panjang topik spesifik
 
 // Kategori DB yang boleh dipilih. Urutan = urutan dropdown.
@@ -359,153 +359,126 @@ $action = $_POST['action'];
 // HANDLER: action=generate
 // ------------------------------------------------------------
 if ($action === 'generate') {
-    csrf_require_valid_post();
+   csrf_require_valid_post();
 
     $kategoriDb     = trim($_POST['kategori_db'] ?? '');
     $topikSpesifik  = trim($_POST['topik_spesifik'] ?? '');
     $tingkat        = trim($_POST['tingkat'] ?? 'X');
 
-    // Validasi ketiga input dari klien (whitelist + wajib isi)
     if (!in_array($kategoriDb, AIMM_KATEGORI_DB, true)) {
-        jsonOut(['status' => 'error', 'message' => 'Kategori tidak valid. Pilih salah satu kategori yang tersedia.'], 400);
+        jsonOut(['status' => 'error', 'message' => 'Kategori tidak valid.'], 400);
     }
     if ($topikSpesifik === '') {
         jsonOut(['status' => 'error', 'message' => 'Topik Spesifik wajib diisi.'], 400);
     }
     if (mb_strlen($topikSpesifik) > AIMM_MAX_TOPIK_LEN) {
-        jsonOut(['status' => 'error', 'message' => 'Topik Spesifik terlalu panjang (maks ' . AIMM_MAX_TOPIK_LEN . ' karakter).'], 400);
+        jsonOut(['status' => 'error', 'message' => 'Topik Spesifik terlalu panjang.'], 400);
     }
     if (!in_array($tingkat, AIMM_TINGKAT, true)) {
         jsonOut(['status' => 'error', 'message' => 'Tingkat kelas tidak valid.'], 400);
     }
 
-    // Cooldown per-session (hemat kuota API / anti spam) —
-    // dihitung SETELAH validasi input lolos
     $now = time();
     if ($now - (int)($_SESSION['aimm_last'] ?? 0) < AIMM_COOLDOWN) {
         jsonOut(['status' => 'error', 'message' => 'Tunggu beberapa detik sebelum generate lagi.'], 429);
     }
-    $_SESSION['aimm_last'] = $now;
+    $_SESSION['aimm_last'] =$now;
     session_write_close();
 
     $topicKey      = aimmTopicKeyByCategory($kategoriDb);
-    $topicCategory = $kategoriDb;
+    $topicCategory =$kategoriDb;
 
     $apiKey = aiqEnv('GEMINI_API_KEY');
-    if ($apiKey === '') {
-        jsonOut(['status' => 'error', 'message' => 'GEMINI_API_KEY tidak terbaca oleh PHP.'], 500);
-    }
-    $model = aiqEnv('GEMINI_MODULE_MODEL') ?: 'gemini-3.5-flash';
-
-    $schema = [
-        'type' => 'OBJECT',
-        'properties' => [
-            'status'        => ['type' => 'STRING', 'enum' => ['success', 'error']],
-            'error_message' => ['type' => 'STRING'],
-            'title'         => ['type' => 'STRING'],
-            'html'          => ['type' => 'STRING'],
-        ],
-        'required' => ['status', 'error_message', 'title', 'html'],
-    ];
+    if ($apiKey === '') { jsonOut(['status' => 'error', 'message' => 'GEMINI_API_KEY tidak terbaca oleh PHP.'], 500); }$model = aiqEnv('GEMINI_MODULE_MODEL') ?: 'gemini-3.5-flash';
 
     $tingkatLabel = ($tingkat === 'semua')
         ? 'siswa SMK kelas X sampai XII'
         : "siswa kelas {$tingkat}";
 
+    // PROMPT MARKDOWN MURNI
     $prompt = <<<TXT
-Kamu adalah Asisten Kurikulum SMK jurusan TKJ dan SIJA. Tugasmu MEMBUAT modul, TAPI kamu harus MEMVALIDASI input user terlebih dahulu.
+Kamu adalah Asisten Kurikulum SMK jurusan TKJ dan SIJA. Tugasmu menyusun Modul Pembelajaran lengkap dalam format MARKDOWN.
+
 Kategori DB: {$kategoriDb}
 Topik Spesifik: {$topikSpesifik}
-Tingkat: {$tingkat} ({$tingkatLabel})
+Tingkat Target: {$tingkat} ({$tingkatLabel})
 
-ATURAN KETAT: Jika Topik Spesifik TIDAK RELEVAN dengan Kategori (misal Kategori 'Network' tapi Topik 'Foreign Key Database'), KAMU HARUS MENOLAK. Kembalikan JSON dengan status: 'error', error_message: 'Topik tidak relevan dengan kategori yang dipilih.', dan html: ''.
-Jika relevan, buat modul HTML semantik (tanpa CSS, tanpa tag script). Kembalikan status: 'success', title, dan html.
+[ATURAN PENOLAKAN SANGAT KETAT]
+Jika Topik Spesifik TIDAK RELEVAN dengan Kategori "{$kategoriDb}", kamu WAJIB MENOLAK. Tulis baris pertama HANYA:
+[ERROR]: Topik tidak relevan dengan kategori yang dipilih.
 
-Aturan tambahan untuk hasil modul:
-- "html" berisi FRAGMEN isi body saja: TANPA <html>, <head>, <body>, <style>, <script>, tanpa doctype.
-- Gunakan HANYA class Bootstrap 5 (mis. container, card, table, alert, badge) — CSS dimuat oleh pembungkus di sisi server, jadi jangan tulis CSS sendiri.
-- Isi modul minimal memuat: judul, tujuan pembelajaran, penjelasan materi, contoh penerapan/perintah praktik, latihan/evaluasi singkat, dan rangkuman.
-- Gunakan minimal 3 heading (h1-h4) dan beberapa paragraf <p> dengan total teks yang cukup panjang dan lengkap.
-- KERASLARANG menyertakan: tag <script>, atribut event (onclick, onerror, dll.), iframe, form, javascript: URL, atau konten PHP.
-- Bahasa santai edukatif yang cocok untuk siswa SMK.
-- Saat status 'success', "error_message" diisi string kosong.
+[ATURAN PENULISAN MODUL]
+Jika topik relevan, tulis modul lengkap dalam struktur Markdown berikut:
+
+# [Judul Modul Pembelajaran Lengkap & Menarik]
+
+## 1. Pendahuluan & Tujuan Pembelajaran
+- Konsep dasar secara ringkas & aplikatif khas anak SMK.
+- Minimal 3 poin tujuan pembelajaran.
+
+## 2. Pembahasan Materi Utama
+- Penjelasan terstruktur, jelas, dan mendalam.
+- Berikan contoh skenario atau penerapan di dunia industri/kerja (DUDI).
+
+## 3. Langkah Praktik & Konfigurasi
+- Berikan contoh perintah CLI / skrip / langkah praktikum konkret.
+- Tulis langkah praktik sebagai DAFTAR BERNOMOR Markdown (1. 2. 3.), bukan bullet.
+- Gunakan codeblock Markdown (```bash / ```routeros / ```php dll) untuk sintaks/perintah.
+
+## 4. Latihan & Evaluasi Mandiri
+- Minimal 3 pertanyaan analisis atau soal studi kasus praktikum.
+
+## 5. Rangkuman
+- Poin-poin kunci materi di atas.
+
+Bahasa santai edukatif, teknis namun mudah dipahami siswa SMK. Tuliskan HANYA isi modul Markdown tanpa kata pengantar atau basa-basi tambahan.
 TXT;
 
     try {
-        // timeout 80 + maxTries 1 + maxOutputTokens: total < batas Cloudflared ~100s
-        $result = geminiJson($apiKey, $model, $prompt, $schema, 80, 0.7, 24000, 1, 'aimm');
+        // Menggunakan geminiText() tanpa JSON Schema constraint
+        $rawMd = geminiText($apiKey, $model, $prompt, 75, 0.7, 16384, 3, 'aimm');
     } catch (Throwable $e) {
         error_log('[ai_module_maker] generate: ' . $e->getMessage());
-        $msg = (strpos($e->getMessage(), 'terpotong') !== false)
-            ? $e->getMessage()
-            : 'AI gagal membuat modul (kuota habis atau koneksi bermasalah).';
-        jsonOut(['status' => 'error', 'message' => $msg], 500);
+        jsonOut(['status' => 'error', 'message' => 'AI gagal membuat modul: ' . $e->getMessage()], 500);
     }
 
-    // AI bisa menolak secara semantik (topik tidak relevan dengan kategori)
-    $aiStatus = (string)($result['status'] ?? '');
-    if ($aiStatus === 'error') {
-        $aiMessage = trim((string)($result['error_message'] ?? ''));
-        if ($aiMessage === '') {
-            $aiMessage = 'Topik tidak relevan dengan kategori yang dipilih.';
-        }
-        jsonOut(['status' => 'error', 'message' => $aiMessage], 422);
-    }
-    if ($aiStatus !== 'success') {
-        error_log('[ai_module_maker] generate: status AI tidak dikenal: ' . $aiStatus);
-        jsonOut(['status' => 'error', 'message' => 'Respons AI tidak valid. Coba generate ulang.'], 502);
+    // Cek jika AI menolak topik secara semantik
+    if (str_starts_with(trim($rawMd), '[ERROR]:')) {
+        $errMsg = trim(str_replace('[ERROR]:', '', $rawMd));
+        jsonOut(['status' => 'error', 'message' => $errMsg ?: 'Topik tidak relevan dengan kategori yang dipilih.'], 422);
     }
 
-    $title = mb_substr(trim((string)($result['title'] ?? '')), 0, 150);
-    $html  = (string)($result['html'] ?? '');
-
-    if ($title === '' || trim($html) === '') {
-        jsonOut(['status' => 'error', 'message' => 'Respons AI tidak lengkap (title/html kosong).'], 502);
-    }
-    if (strlen($html) > AIMM_MAX_HTML_LEN) {
-        jsonOut(['status' => 'error', 'message' => 'Modul hasil AI terlalu besar. Coba generate ulang.'], 502);
+    // Ambil judul dari H1 Markdown (# Judul)
+    $title = 'Modul ' . $topikSpesifik;
+    if (preg_match('/^#\s+(.+)$/m', $rawMd, $m)) {
+        $title = mb_substr(trim($m[1]), 0, 150);
     }
 
-    // Validasi kelengkapan hasil AI SEBELUM draft disimpan.
-    // Pengecekan memakai hasil sanitasi (draft yang disimpan tetap fragmen mentah).
-    $sanitized    = aimmSanitizeHtml($html);
+    // Konversi Markdown ke HTML
+    $rawHtml = aimmMarkdownToHtml($rawMd);
+
+    // Sanitasi HTML menggunakan DOMDocument allowlist bawaan sistem
+    $sanitized    = aimmSanitizeHtml($rawHtml);
     $visibleText  = trim(strip_tags($sanitized));
     $textLen      = mb_strlen($visibleText);
-    $headingCount = preg_match_all('/<h[1-4]\b/i', $sanitized);
-    $paraCount    = preg_match_all('/<p\b/i', $sanitized);
-    $hangingTag   = (bool)preg_match('/<[^>]*$/', rtrim($html));
+    $h2Count      = preg_match_all('/^##[ \t]+\S/m', $rawMd);
 
-    $alasan = [];
-    if ($textLen < AIMM_MIN_TEXT_LEN) {
-        $alasan[] = "teks {$textLen} < " . AIMM_MIN_TEXT_LEN;
-    }
-    if ($headingCount < AIMM_MIN_HEADINGS) {
-        $alasan[] = "heading {$headingCount} < " . AIMM_MIN_HEADINGS;
-    }
-    if ($paraCount < 1) {
-        $alasan[] = 'tidak ada <p>';
-    }
-    if ($hangingTag) {
-        $alasan[] = 'tag menggantung di akhir fragmen';
-    }
-
-    if ($alasan) {
+    if ($textLen < AIMM_MIN_TEXT_LEN || $h2Count < AIMM_MIN_HEADINGS) {
         error_log(sprintf(
-            '[ai_module_maker] generate: hasil tidak lolos validasi (%s) rawLen=%d sanitizedLen=%d textLen=%d',
-            implode('; ', $alasan),
-            strlen($html),
-            strlen($sanitized),
-            $textLen
+            '[ai_module_maker] Validasi gagal: textLen=%d (<%d), h2=%d (<%d)',
+            $textLen,
+            AIMM_MIN_TEXT_LEN,
+            $h2Count,
+            AIMM_MIN_HEADINGS
         ));
-        jsonOut(['status' => 'error', 'message' => 'Hasil AI terlalu pendek atau tidak lengkap, coba generate ulang.'], 502);
+        jsonOut(['status' => 'error', 'message' => 'Hasil modul terlalu singkat atau struktur tidak lengkap. Coba perjelas topik spesifik.'], 502);
     }
 
-    // Session ditutup selama panggilan API — buka kembali untuk menyimpan
-    // draft. $_SESSION['aimm_last'] tetap terbaca karena tersimpan di storage.
+    // Simpan ke Session Draft
     session_start();
     $_SESSION['aimm_draft'] = [
         'title'           => $title,
-        'html'            => $html,
+        'html'            => $sanitized,
         'topic'           => $topicKey,
         'category'        => $topicCategory,
         'topik_spesifik'  => $topikSpesifik,
@@ -521,8 +494,6 @@ TXT;
             'topic'    => $topicKey,
             'category' => $topicCategory,
             'tingkat'  => $tingkat,
-            // HTML tidak dikirim ke klien untuk disimpan kembali —
-            // preview dirender oleh endpoint terpisah (Fase 4)
         ],
     ]);
 }

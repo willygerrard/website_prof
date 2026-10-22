@@ -169,30 +169,53 @@ function geminiJson(
     return $out;
 }
 
+/**
+ * Panggil Gemini untuk output teks bebas (mis. Markdown modul).
+ *
+ * Thinking level rendah sesuai dokumentasi Gemini:
+ *  - Gemini 3.x        : generationConfig.thinkingConfig.thinkingLevel = 'low'
+ *  - Gemini 2.5 Flash  : generationConfig.thinkingConfig.thinkingBudget = 0
+ *  - Model lain        : tanpa thinkingConfig
+ *
+ * Throws RuntimeException bila HTTP gagal setelah retry, output terpotong
+ * (finishReason MAX_TOKENS), atau respons kosong.
+ */
 function geminiText(
     string $key,
     string $model,
     string $text,
     int $timeout = 75,
     float $temp = 0.7,
-    int $maxOutputTokens = 8192,
+    int $maxOutputTokens = 16384,
     int $maxTries = 3,
     string $logTag = 'aimm'
 ): string {
+    $genConfig = [
+        'temperature'     => $temp,
+        'maxOutputTokens' => $maxOutputTokens,
+    ];
+
+    // Thinking level rendah: kurangi token "thinking" agar anggaran output
+    // lebih banyak terpakai untuk isi modul.
+    $m = strtolower($model);
+    if (strpos($m, 'gemini-3') === 0) {
+        $genConfig['thinkingConfig'] = ['thinkingLevel' => 'low'];
+    } elseif (strpos($m, 'gemini-2.5-flash') === 0) {
+        $genConfig['thinkingConfig'] = ['thinkingBudget' => 0];
+    }
+
     $payload = [
         'contents' => [['parts' => [['text' => $text]]]],
-        'generationConfig' => [
-            'temperature'     => $temp,
-            'maxOutputTokens' => $maxOutputTokens,
-        ]
+        'generationConfig' => $genConfig,
     ];
 
     $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
 
-    $resp = '';$code = 0;
+    $resp = '';
+    $code = 0;
     $err  = '';
 
-    for ($try = 1; $try <= max(1, $maxTries);$try++) {
+    for ($try = 1; $try <= max(1, $maxTries); $try++) {
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
@@ -208,9 +231,9 @@ function geminiText(
         $err  = curl_error($ch);
         curl_close($ch);
 
-        if (!$err &&$code === 200) break;
+        if (!$err && $code === 200) break;
 
-        if (in_array($code, [429, 503], true) && $try <$maxTries) {
+        if (in_array($code, [429, 503], true) && $try < $maxTries) {
             error_log("[geminiText:{$logTag}] Retry {$try}/{$maxTries} setelah HTTP {$code}, sleep 4s...");
             sleep(4);
             continue;
@@ -219,16 +242,31 @@ function geminiText(
         throw new RuntimeException($err ?: "HTTP $code: " . mb_substr((string)$resp, 0, 300));
     }
 
-    $data = json_decode((string)$resp, true);
-    $cand =$data['candidates'][0] ?? [];
-    $finishReason =$cand['finishReason'] ?? null;
-    $txt  =$cand['content']['parts'][0]['text'] ?? '';
+    $data         = json_decode((string)$resp, true);
+    $cand         = $data['candidates'][0] ?? [];
+    $finishReason = $cand['finishReason'] ?? null;
+    $txt          = $cand['content']['parts'][0]['text'] ?? '';
 
-    if ($finishReason === 'MAX_TOKENS') {
-        throw new RuntimeException('Output AI terpotong karena mencapai batas token. Coba kecilkan ruang lingkup topik.');
+    // Diagnostik: satu baris per panggilan, tanpa isi prompt/modul.
+    if ($logTag !== '') {
+        $usage = $data['usageMetadata'] ?? [];
+        error_log(sprintf(
+            '[%s] model=%s finishReason=%s promptTokenCount=%s candidatesTokenCount=%s thoughtsTokenCount=%s textLen=%d',
+            $logTag,
+            $model,
+            (string)($finishReason ?? 'null'),
+            (string)($usage['promptTokenCount'] ?? 'null'),
+            (string)($usage['candidatesTokenCount'] ?? 'null'),
+            (string)($usage['thoughtsTokenCount'] ?? 'null'),
+            is_string($txt) ? strlen($txt) : 0
+        ));
     }
 
-    if (trim($txt) === '') {
+    if ($finishReason === 'MAX_TOKENS') {
+        throw new RuntimeException('Output AI terpotong, coba generate ulang.');
+    }
+
+    if (trim((string)$txt) === '') {
         throw new RuntimeException('Gemini mengembalikan respon kosong.');
     }
 
