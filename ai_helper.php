@@ -169,6 +169,91 @@ function geminiJson(
     return $out;
 }
 
+function geminiText(
+    string $key,
+    string $model,
+    string $text,
+    int $timeout = 75,
+    float $temp = 0.7,
+    int $maxOutputTokens = 8192,
+    int $maxTries = 3,
+    string $logTag = 'aimm'
+): string {
+    $payload = [
+        'contents' => [['parts' => [['text' => $text]]]],
+        'generationConfig' => [
+            'temperature'     => $temp,
+            'maxOutputTokens' => $maxOutputTokens,
+        ]
+    ];
+
+    $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
+
+    $resp = '';$code = 0;
+    $err  = '';
+
+    for ($try = 1; $try <= max(1, $maxTries);$try++) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => json_encode($payload, JSON_UNESCAPED_UNICODE),
+            CURLOPT_HTTPHEADER     => ['Content-Type: application/json', 'x-goog-api-key: ' . $key],
+            CURLOPT_TIMEOUT        => $timeout,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_IPRESOLVE      => CURL_IPRESOLVE_V4,
+        ]);
+        $resp = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err  = curl_error($ch);
+        curl_close($ch);
+
+        if (!$err &&$code === 200) break;
+
+        if (in_array($code, [429, 503], true) && $try <$maxTries) {
+            error_log("[geminiText:{$logTag}] Retry {$try}/{$maxTries} setelah HTTP {$code}, sleep 4s...");
+            sleep(4);
+            continue;
+        }
+
+        throw new RuntimeException($err ?: "HTTP $code: " . mb_substr((string)$resp, 0, 300));
+    }
+
+    $data = json_decode((string)$resp, true);
+    $cand =$data['candidates'][0] ?? [];
+    $finishReason =$cand['finishReason'] ?? null;
+    $txt  =$cand['content']['parts'][0]['text'] ?? '';
+
+    if ($finishReason === 'MAX_TOKENS') {
+        throw new RuntimeException('Output AI terpotong karena mencapai batas token. Coba kecilkan ruang lingkup topik.');
+    }
+
+    if (trim($txt) === '') {
+        throw new RuntimeException('Gemini mengembalikan respon kosong.');
+    }
+
+    return $txt;
+}
+
+/**
+ * Konversi Markdown ke HTML memakai Parsedown (lib/Parsedown.php, rilis 1.7.4).
+ *
+ * setSafeMode(true)      : blokir URL berbahaya (javascript:, data:, dll.)
+ * setMarkupEscaped(true) : HTML mentah di Markdown di-escape, bukan dirender.
+ *
+ * Hasil konversi TETAP harus dilewatkan ke aimmSanitizeHtml() sebelum
+ * ditampilkan/disimpan (allowlist tag & atribut).
+ */
+function aimmMarkdownToHtml(string $md): string {
+    require_once __DIR__ . '/lib/Parsedown.php';
+
+    $parsedown = new Parsedown();
+    $parsedown->setSafeMode(true);
+    $parsedown->setMarkupEscaped(true);
+
+    return $parsedown->text($md);
+}
+
 // ============================================================
 // SANITASI HTML MODUL AI (allowlist DOMDocument)
 // ============================================================
