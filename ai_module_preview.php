@@ -4,7 +4,7 @@
  *
  * Fase 4b-1: merender draft dari $_SESSION['aimm_draft'] dengan alur
  * sanitasi yang SAMA seperti submit (aimmSanitizeHtml + aimmWrapHtml).
- * Tidak ada logika generate/submit; hanya preview read-only.
+ * Fase 4b-2: juga mendukung preview file pending via parameter ?file=
  *
  * Header keamanan dikirim sebelum output:
  *  - Content-Type: text/html; charset=utf-8
@@ -24,9 +24,12 @@
 require_once 'session.php';
 require_once 'csrf_helper.php';
 require_once 'ai_helper.php';
+require 'koneksi.php';
 
 checkLogin();
 checkRole(['admin']);
+
+const AIMM_PATH = '/var/www/data_private/modul_ai/pending';
 
 /**
  * Kirim header keamanan preview sebelum output apa pun.
@@ -47,7 +50,87 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     exit;
 }
 
-// Ambil draft dari session
+$html = '';
+$title = 'Preview Modul';
+
+// Mode 1: Preview dari file pending (parameter ?file=)
+$fileParam = $_GET['file'] ?? '';
+if ($fileParam !== '') {
+    // Validasi nama file: hanya alfanumerik, underscore, dash, titik
+    if (!preg_match('/^[a-zA-Z0-9_.-]+$/', $fileParam)) {
+        http_response_code(400);
+        aimmPreviewSecurityHeaders('text/plain; charset=utf-8');
+        echo 'Nama file tidak valid.';
+        exit;
+    }
+    
+    $filePath = rtrim(AIMM_PATH, '/') . '/' . $fileParam;
+    
+    if (!file_exists($filePath) || !is_readable($filePath)) {
+        http_response_code(404);
+        aimmPreviewSecurityHeaders('text/plain; charset=utf-8');
+        echo 'File tidak ditemukan.';
+        exit;
+    }
+    
+    // Baca file HTML mentah
+    $rawHtml = file_get_contents($filePath);
+    if ($rawHtml === false) {
+        http_response_code(500);
+        aimmPreviewSecurityHeaders('text/plain; charset=utf-8');
+        echo 'Gagal membaca file.';
+        exit;
+    }
+    
+    // Ekstrak title dari file (dokumen penuh hasil aimmWrapHtml)
+    if (preg_match('/<title[^>]*>([^<]+)<\/title>/i', $rawHtml, $m)) {
+        $title = strip_tags($m[1]);
+    }
+
+    // File tersimpan adalah DOKUMEN PENUH. Ambil isi <body> saja agar saat
+    // dibungkus ulang tidak terjadi duplikasi judul/container. Jika body
+    // hanya berisi satu div.container (wrapper aimmWrapHtml), ambil anak-anaknya.
+    $doc = new DOMDocument();
+    libxml_use_internal_errors(true);
+    $doc->loadHTML('<?xml encoding="utf-8"?>' . $rawHtml, LIBXML_NOERROR | LIBXML_NOWARNING);
+    libxml_clear_errors();
+
+    $inner = '';
+    $body  = $doc->getElementsByTagName('body')->item(0);
+    if ($body !== null) {
+        $elementChildren = [];
+        foreach ($body->childNodes as $c) {
+            if ($c->nodeType === XML_ELEMENT_NODE) {
+                $elementChildren[] = $c;
+            }
+        }
+        $only = count($elementChildren) === 1 ? $elementChildren[0] : null;
+
+        if ($only !== null
+            && strtolower($only->nodeName) === 'div'
+            && preg_match('/(^|\s)container(\s|$)/', $only->getAttribute('class'))) {
+            foreach ($only->childNodes as $c) {
+                $inner .= $doc->saveHTML($c);
+            }
+        } else {
+            foreach ($body->childNodes as $c) {
+                $inner .= $doc->saveHTML($c);
+            }
+        }
+    }
+
+    session_write_close();
+
+    // Sanitasi ulang untuk keamanan (meski file seharusnya sudah bersih)
+    $bodyHtml = aimmSanitizeHtml($inner);
+    $html = aimmWrapHtml($title, $bodyHtml);
+
+    aimmPreviewSecurityHeaders('text/html; charset=utf-8');
+    echo $html;
+    exit;
+}
+
+// Mode 2: Preview dari session draft (original behavior)
 $draft = $_SESSION['aimm_draft'] ?? null;
 
 // Draft harus ada dan belum kedaluwarsa (3600 detik)

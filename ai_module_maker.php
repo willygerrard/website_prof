@@ -30,7 +30,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 }
 
 const AIMM_PATH          = '/var/www/data_private/modul_ai/pending';
-const AIMM_MAX_HTML_LEN  = 200000;   // ~200 KB batas HTML modul
 const AIMM_COOLDOWN      = 10;       // detik antar generate
 const AIMM_MIN_TEXT_LEN  = 1500;     // teks terlihat minimum setelah sanitasi
 const AIMM_MIN_HEADINGS  = 5;        // minimal heading level-2 pada Markdown mentah
@@ -371,7 +370,7 @@ $action = $_POST['action'];
 // HANDLER: action=generate
 // ------------------------------------------------------------
 if ($action === 'generate') {
-   csrf_require_valid_post();
+    csrf_require_valid_post();
 
     $kategoriDb     = trim($_POST['kategori_db'] ?? '');
     $topikSpesifik  = trim($_POST['topik_spesifik'] ?? '');
@@ -394,14 +393,17 @@ if ($action === 'generate') {
     if ($now - (int)($_SESSION['aimm_last'] ?? 0) < AIMM_COOLDOWN) {
         jsonOut(['status' => 'error', 'message' => 'Tunggu beberapa detik sebelum generate lagi.'], 429);
     }
-    $_SESSION['aimm_last'] =$now;
+    $_SESSION['aimm_last'] = $now;
     session_write_close();
 
     $topicKey      = aimmTopicKeyByCategory($kategoriDb);
-    $topicCategory =$kategoriDb;
+    $topicCategory = $kategoriDb;
 
     $apiKey = aiqEnv('GEMINI_API_KEY');
-    if ($apiKey === '') { jsonOut(['status' => 'error', 'message' => 'GEMINI_API_KEY tidak terbaca oleh PHP.'], 500); }$model = aiqEnv('GEMINI_MODULE_MODEL') ?: 'gemini-3.5-flash';
+    if ($apiKey === '') {
+        jsonOut(['status' => 'error', 'message' => 'GEMINI_API_KEY tidak terbaca oleh PHP.'], 500);
+    }
+    $model = aiqEnv('GEMINI_MODULE_MODEL') ?: 'gemini-3.5-flash';
 
     $tingkatLabel = ($tingkat === 'semua')
         ? 'siswa SMK kelas X sampai XII'
@@ -448,7 +450,7 @@ TXT;
 
     try {
         // Menggunakan geminiText() tanpa JSON Schema constraint
-        $rawMd = geminiText($apiKey, $model, $prompt, 75, 0.7, 16384, 3, 'aimm');
+        $rawMd = geminiText($apiKey, $model, $prompt, 45, 0.7, 16384, 2, 'aimm');
     } catch (Throwable $e) {
         error_log('[ai_module_maker] generate: ' . $e->getMessage());
         jsonOut(['status' => 'error', 'message' => 'AI gagal membuat modul: ' . $e->getMessage()], 500);

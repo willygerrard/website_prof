@@ -38,6 +38,8 @@ img/icon_*
 .env.staging
 *.swp
 *.bak
+Dockerfile
+kilo.jsonc
 
 
 # Seed scripts (jangan di-track, hanya untuk dev)

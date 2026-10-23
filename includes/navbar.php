@@ -69,6 +69,7 @@ if (!isset($link_tugas)) {
                     <a class="nav-link dropdown-toggle" id="adminDropdown" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Admin Panel</a>
                     <ul class="dropdown-menu" aria-labelledby="adminDropdown">
                         <li><a class="dropdown-item" href="gerbang-rahasia-sija">Manage Module</a></li>
+                        <li><a class="dropdown-item" href="management_pending.php"><i class="bi bi-hourglass-split me-2"></i>Modul Pending (AI)</a></li>
                         <li><hr class="dropdown-divider" /></li>
                         <li><a class="dropdown-item" href="pintu-belakang-sija">Manage User</a></li>
                         <li><hr class="dropdown-divider" /></li>
