@@ -44,3 +44,8 @@ kilo.jsonc
 
 # Seed scripts (jangan di-track, hanya untuk dev)
 seed/
+
+# AI module maker rancangan & modul dir
+RANCANGAN_AI_MODULE_MAKER.txt
+RANCANGAN_FINAL_AI_MODULE_MAKER.txt
+/modul/
