@@ -42,6 +42,9 @@ $delete_token = csrf_token();
                 <a href="tambah_modul.php" class="btn btn-success rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Tambah Modul Baru">
                     <i class="bi bi-plus-lg"></i>
                 </a>
+                <a href="ai_module_maker.php" class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="AI Module Maker">
+                    <i class="bi bi-robot"></i>
+                </a>
                 <a href="management_pending.php" class="btn btn-warning rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Kelola Modul Pending (AI)">
                     <i class="bi bi-hourglass-split"></i>
                 </a>

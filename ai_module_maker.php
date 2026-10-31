@@ -179,10 +179,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                     <span class="badge bg-light text-dark" id="aimmPreviewMeta"></span>
                 </div>
                 <div class="card-body p-0">
-                    <!-- Preview lewat endpoint agar header CSP berlaku (bukan inline srcdoc) -->
+                    <!-- Preview menggunakan srcdoc dengan HTML yang sudah dibungkus theme -->
                     <iframe id="aimmPreviewFrame"
-                            src="about:blank"
-                            sandbox
+                            srcdoc=""
+                            sandbox="allow-same-origin allow-forms"
                             title="Preview modul AI"
                             referrerpolicy="no-referrer"></iframe>
                 </div>
@@ -233,6 +233,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             function showForm() {
                 previewCard.classList.add('d-none');
                 formCard.classList.remove('d-none');
+                frame.srcdoc = '';
                 frame.src = 'about:blank';
                 hideAlert();
             }
@@ -240,8 +241,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             function showPreview() {
                 formCard.classList.add('d-none');
                 previewCard.classList.remove('d-none');
-                // Cache-buster agar preview selalu dirender ulang dari draft terbaru
-                frame.src = 'ai_module_preview.php?ts=' + Date.now();
                 previewCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
 
@@ -298,6 +297,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
                     if (r.ok && r.data.status === 'success' && r.data.draft) {
                         meta.textContent = r.data.draft.title + ' · ' + r.data.draft.category + ' · ' + r.data.draft.tingkat;
+                        // Set wrapped HTML ke iframe via srcdoc
+                        const wrappedHtml = r.data.draft.wrapped_html || '';
+                        if (wrappedHtml) {
+                            frame.srcdoc = wrappedHtml;
+                        }
                         showPreview();
                     } else {
                         showAlert('danger', r.data.message || ('Generate gagal (HTTP ' + r.status + ').'));
@@ -497,11 +501,15 @@ TXT;
         jsonOut(['status' => 'error', 'message' => 'Hasil modul terlalu singkat atau struktur tidak lengkap. Coba perjelas topik spesifik.'], 502);
     }
 
-    // Simpan ke Session Draft
+    // Bungkus HTML yang sudah disanitasi dengan theme untuk preview
+    $wrappedHtml = aimmWrapWithTheme($sanitized, $title);
+
+    // Simpan ke Session Draft (HTML mentah AI untuk submit, wrapped untuk preview)
     session_start();
     $_SESSION['aimm_draft'] = [
         'title'           => $title,
-        'html'            => $sanitized,
+        'html'            => $sanitized,        // HTML mentah AI (untuk disimpan ke file)
+        'wrapped_html'    => $wrappedHtml,      // HTML sudah dibungkus theme (untuk preview)
         'topic'           => $topicKey,
         'category'        => $topicCategory,
         'topik_spesifik'  => $topikSpesifik,
@@ -513,10 +521,11 @@ TXT;
     jsonOut([
         'status' => 'success',
         'draft'  => [
-            'title'    => $title,
-            'topic'    => $topicKey,
-            'category' => $topicCategory,
-            'tingkat'  => $tingkat,
+            'title'       => $title,
+            'topic'       => $topicKey,
+            'category'    => $topicCategory,
+            'tingkat'     => $tingkat,
+            'wrapped_html'=> $wrappedHtml,  // Kirim wrapped HTML ke frontend untuk preview
         ],
     ]);
 }
@@ -557,10 +566,11 @@ if ($action === 'submit') {
     $tingkat        = $draft['tingkat'];
     $topikSpesifik  = trim((string)($draft['topik_spesifik'] ?? ''));
 
-    // Urutan: sanitasi fragmen -> bungkus dokumen -> cek panjang -> tulis file.
-    // Draft di session tetap menyimpan fragmen mentah (belum tersentuh).
+    // SIMPAN HTML MENTAH AI (sudah disanitasi) KE FILE
+    // BUKAN yang sudah dibungkus theme.
+    // Nanti buka_modul.php yang akan membungkusnya dengan theme saat ditampilkan ke siswa.
     $bodyHtml = aimmSanitizeHtml((string)$draft['html']);
-    $html     = aimmWrapHtml($title, $bodyHtml);
+    $html     = $bodyHtml; // Simpan hanya fragmen HTML mentah
 
     // Validasi pasca-sanitasi
     if (strlen($html) < 100) {
@@ -605,7 +615,7 @@ if ($action === 'submit') {
             ':description' => $description,
             ':image_path'  => 'img/debian.webp',
             ':ai_file'     => $filename,
-            ':file_path'   => null,
+            ':file_path'   => $fullPath, // Simpan path lengkap file HTML mentah
             ':jenis'       => 'modul',
             ':kelas_target'=> $tingkat,
             ':status'      => 'pending',

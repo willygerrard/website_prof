@@ -73,7 +73,7 @@ if ($fileParam !== '') {
         exit;
     }
     
-    // Baca file HTML mentah
+    // Baca file HTML (bisa berupa dokumen penuh lama atau fragmen HTML mentah baru)
     $rawHtml = file_get_contents($filePath);
     if ($rawHtml === false) {
         http_response_code(500);
@@ -82,48 +82,53 @@ if ($fileParam !== '') {
         exit;
     }
     
-    // Ekstrak title dari file (dokumen penuh hasil aimmWrapHtml)
-    if (preg_match('/<title[^>]*>([^<]+)<\/title>/i', $rawHtml, $m)) {
-        $title = strip_tags($m[1]);
-    }
-
-    // File tersimpan adalah DOKUMEN PENUH. Ambil isi <body> saja agar saat
-    // dibungkus ulang tidak terjadi duplikasi judul/container. Jika body
-    // hanya berisi satu div.container (wrapper aimmWrapHtml), ambil anak-anaknya.
-    $doc = new DOMDocument();
-    libxml_use_internal_errors(true);
-    $doc->loadHTML('<?xml encoding="utf-8"?>' . $rawHtml, LIBXML_NOERROR | LIBXML_NOWARNING);
-    libxml_clear_errors();
-
-    $inner = '';
-    $body  = $doc->getElementsByTagName('body')->item(0);
-    if ($body !== null) {
-        $elementChildren = [];
-        foreach ($body->childNodes as $c) {
-            if ($c->nodeType === XML_ELEMENT_NODE) {
-                $elementChildren[] = $c;
-            }
+    // Deteksi apakah file adalah dokumen HTML penuh (memiliki <html> atau <!doctype>)
+    // atau fragmen HTML mentah (format baru)
+    $isFullDocument = (stripos($rawHtml, '<html') !== false || stripos($rawHtml, '<!doctype') !== false);
+    
+    $inner = $rawHtml;
+    if ($isFullDocument) {
+        $inner = '';
+        // Format lama: ekstrak isi <body> dari dokumen penuh
+        if (preg_match('/<title[^>]*>([^<]+)<\/title>/i', $rawHtml, $m)) {
+            $title = strip_tags($m[1]);
         }
-        $only = count($elementChildren) === 1 ? $elementChildren[0] : null;
+        
+        $doc = new DOMDocument();
+        libxml_use_internal_errors(true);
+        $doc->loadHTML('<?xml encoding="utf-8"?>' . $rawHtml, LIBXML_NOERROR | LIBXML_NOWARNING);
+        libxml_clear_errors();
 
-        if ($only !== null
-            && strtolower($only->nodeName) === 'div'
-            && preg_match('/(^|\s)container(\s|$)/', $only->getAttribute('class'))) {
-            foreach ($only->childNodes as $c) {
-                $inner .= $doc->saveHTML($c);
-            }
-        } else {
+        $body  = $doc->getElementsByTagName('body')->item(0);
+        if ($body !== null) {
+            // Cari elemen container pertama; abaikan script/style/link tema lama
+            $container = null;
             foreach ($body->childNodes as $c) {
+                if ($c->nodeType === XML_ELEMENT_NODE
+                    && in_array(strtolower($c->nodeName), ['div', 'main', 'section'], true)
+                    && stripos($c->getAttribute('class'), 'container') !== false) {
+                    $container = $c;
+                    break;
+                }
+            }
+
+            $source = $container !== null ? $container : $body;
+            foreach ($source->childNodes as $c) {
+                if ($c->nodeType === XML_ELEMENT_NODE
+                    && in_array(strtolower($c->nodeName), ['script', 'style', 'link', 'noscript'], true)) {
+                    continue;
+                }
                 $inner .= $doc->saveHTML($c);
             }
         }
     }
+    // Jika bukan dokumen penuh, gunakan $rawHtml langsung sebagai fragmen HTML
 
     session_write_close();
 
-    // Sanitasi ulang untuk keamanan (meski file seharusnya sudah bersih)
+    // Sanitasi ulang untuk keamanan
     $bodyHtml = aimmSanitizeHtml($inner);
-    $html = aimmWrapHtml($title, $bodyHtml);
+    $html = aimmWrapWithTheme($bodyHtml, $title);
 
     aimmPreviewSecurityHeaders('text/html; charset=utf-8');
     echo $html;
@@ -152,9 +157,9 @@ if ($missing || $expired) {
 // Tutup session sebelum output supaya tidak terkunci selama iframe dimuat
 session_write_close();
 
-// Render dengan alur SAMA seperti submit: sanitasi fragmen -> bungkus dokumen
+// Render dengan theme wrapper (konsisten dengan generate)
 $bodyHtml = aimmSanitizeHtml((string)$draft['html']);
-$html     = aimmWrapHtml((string)$draft['title'], $bodyHtml);
+$html     = aimmWrapWithTheme($bodyHtml, (string)$draft['title']);
 
 aimmPreviewSecurityHeaders('text/html; charset=utf-8');
 echo $html;

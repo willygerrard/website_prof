@@ -58,6 +58,35 @@ const AIQ_RETRY_MAX   = 3;
 const AIQ_RETRY_DELAY = 3;
 
 /**
+ * Kumpulkan teks dari SEMUA parts kandidat.
+ *
+ * Model Gemini (thinking) dapat mengembalikan jawaban terpecah menjadi beberapa
+ * parts, sebagian bertanda thought=true. Mengambil hanya parts[0] membuat
+ * jawaban terpotong drastis (mis. 26 karakter padahal candidatesTokenCount
+ * ribuan). Fungsi ini menggabungkan seluruh part teks non-thought; bila semua
+ * part bertanda thought, teks thought dipakai sebagai fallback.
+ */
+function geminiCollectText(array $cand): string {
+    $parts = $cand['content']['parts'] ?? [];
+    if (!is_array($parts)) {
+        return '';
+    }
+    $text    = '';
+    $thought = '';
+    foreach ($parts as $p) {
+        if (!is_array($p) || !isset($p['text']) || !is_string($p['text'])) {
+            continue;
+        }
+        if (!empty($p['thought'])) {
+            $thought .= $p['text'];
+            continue;
+        }
+        $text .= $p['text'];
+    }
+    return $text !== '' ? $text : $thought;
+}
+
+/**
  * Panggil Gemini dengan JSON schema. Backward compatible:
  * $maxOutputTokens dan $maxTries opsional di akhir (default = perilaku lama).
  *
@@ -132,7 +161,7 @@ function geminiJson(
     $data         = json_decode((string)$resp, true);
     $cand         = $data['candidates'][0] ?? [];
     $parts        = $cand['content']['parts'] ?? [];
-    $txt          = $parts[0]['text'] ?? null;
+    $txt          = geminiCollectText($cand);
     $finishReason = $cand['finishReason'] ?? null;
 
     // Diagnostik opsional ($logTag kosong = perilaku lama persis).
@@ -245,19 +274,21 @@ function geminiText(
     $data         = json_decode((string)$resp, true);
     $cand         = $data['candidates'][0] ?? [];
     $finishReason = $cand['finishReason'] ?? null;
-    $txt          = $cand['content']['parts'][0]['text'] ?? '';
+    $parts        = $cand['content']['parts'] ?? [];
+    $txt          = geminiCollectText($cand);
 
     // Diagnostik: satu baris per panggilan, tanpa isi prompt/modul.
     if ($logTag !== '') {
         $usage = $data['usageMetadata'] ?? [];
         error_log(sprintf(
-            '[%s] model=%s finishReason=%s promptTokenCount=%s candidatesTokenCount=%s thoughtsTokenCount=%s textLen=%d',
+            '[%s] model=%s finishReason=%s promptTokenCount=%s candidatesTokenCount=%s thoughtsTokenCount=%s parts=%d textLen=%d',
             $logTag,
             $model,
             (string)($finishReason ?? 'null'),
             (string)($usage['promptTokenCount'] ?? 'null'),
             (string)($usage['candidatesTokenCount'] ?? 'null'),
             (string)($usage['thoughtsTokenCount'] ?? 'null'),
+            is_array($parts) ? count($parts) : 0,
             is_string($txt) ? strlen($txt) : 0
         ));
     }
@@ -450,4 +481,25 @@ function aimmWrapHtml(string $title, string $bodyHtml): string {
 </body>
 </html>
 HTML;
+}
+
+/**
+ * Bungkus HTML fragmen dengan theme template (templates/theme_modul_default.php)
+ * menggunakan output buffering.
+ * Fungsi ini dipakai oleh ai_module_maker.php, ai_module_preview.php, view_modul.php
+ */
+function aimmWrapWithTheme(string $htmlContent, string $title): string {
+    $themePath = __DIR__ . '/templates/theme_modul_default.php';
+    if (!is_file($themePath)) {
+        // Fallback ke aimmWrapHtml jika template tidak ditemukan
+        return aimmWrapHtml($title, $htmlContent);
+    }
+    
+    // Variabel yang dibutuhkan template
+    $html_content = $htmlContent;
+    // $title sudah tersedia sebagai parameter
+    
+    ob_start();
+    include $themePath;
+    return ob_get_clean();
 }

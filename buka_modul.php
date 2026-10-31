@@ -72,6 +72,16 @@ if ($cek_sesi === 'aktif') {
 }
 
 $fileUrl = trim($modul['file_path']);
+
+// Baca konten file modul (HTML mentah AI yang sudah disanitasi)
+$modulContent = '';
+if (file_exists($fileUrl) && is_readable($fileUrl)) {
+    $modulContent = file_get_contents($fileUrl);
+}
+
+// Bungkus dengan theme wrapper
+require_once 'ai_helper.php'; // untuk aimmWrapWithTheme
+$wrappedContent = aimmWrapWithTheme($modulContent, $modul['title'] ?? 'Modul Pembelajaran');
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -112,7 +122,7 @@ $fileUrl = trim($modul['file_path']);
     </div>
 
     <div class="d-grid gap-2">
-        <a id="bukaModulBtn" class="btn btn-primary btn-lg fw-bold" href="<?= htmlspecialchars($fileUrl) ?>" target="_blank" rel="noopener noreferrer">
+        <a id="bukaModulBtn" class="btn btn-primary btn-lg fw-bold" href="view_modul.php?id=<?= (int)$modul_id ?>" target="_blank" rel="noopener noreferrer">
             📂 Buka Modul di Tab Baru
         </a>
 
