@@ -138,31 +138,30 @@ $now_ts = time();
 $expired_ts = $sesi ? strtotime($sesi['expired_at']) : false;
 
 $boleh_tampil_konfirmasi = ($sesi && $sesi['status'] === 'buka' && $expired_ts !== false && $now_ts <= $expired_ts);
+$topbar_page = 'Absensi QR';
+
+$html_lang  = 'id';
+$page_title = 'Absensi QR - Pusat Pembelajaran SIJA';
+$body_class = 'bg-light';
+$extra_head = '<link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />';
+
+include __DIR__ . '/includes/head.php';
 ?>
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Absensi QR - Pusat Pembelajaran SIJA</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-light">
 
-<nav class="navbar navbar-expand-lg navbar-light bg-light">
-    <div class="container">
-        <a class="navbar-brand" href="index.php">Pusat Pembelajaran SIJA</a>
-        <div class="d-flex gap-3 align-items-center">
-            <?php if (isset($_SESSION['username'])) : ?>
-                <span class="text-secondary fw-medium d-none d-md-inline small">
-                    👋 Hai, <strong class="text-dark"><?= htmlspecialchars($_SESSION['username'], ENT_QUOTES, 'UTF-8'); ?></strong>
-                </span>
-            <?php endif; ?>
-        </div>
-    </div>
-</nav>
+<!-- Bungkus dengan shell untuk sidebar -->
+<div class="sj-shell flex-grow-1">
 
-<div class="container py-4" style="max-width: 520px;">
+    <!-- Include Sidebar -->
+    <?php include __DIR__ . '/includes/sidebar.php'; ?>
+
+    <!-- Konten Utama -->
+    <main class="sj-main bg-light pb-5">
+
+        <?php include __DIR__ . '/includes/topbar.php'; ?>
+
+<div class="container py-4" style="max-width: 560px;">
 
     <?php if (empty($_SESSION['is_login']) || $_SESSION['is_login'] !== true): ?>
         <div class="alert alert-warning">Login dulu, lalu scan ulang QR.</div>
@@ -222,6 +221,8 @@ $boleh_tampil_konfirmasi = ($sesi && $sesi['status'] === 'buka' && $expired_ts !
     <div class="text-center mt-4">
         <a href="index.php" class="text-muted small text-decoration-none">← Kembali ke Beranda</a>
     </div>
+</div>
+    </main>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>

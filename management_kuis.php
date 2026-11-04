@@ -64,230 +64,239 @@ $level_badge = [
 $stmt_alt = $pdo->prepare("SELECT jawaban_alternatif FROM kuis_soal_alternatif_isian WHERE soal_id = ? ORDER BY id ASC");
 
 $delete_token = csrf_token();
+
+$topbar_page = 'Manage Kuis';
+
+$html_lang  = 'id';
+$page_title = 'Manage Kuis - Pusat Pembelajaran SIJA';
+$body_class = 'bg-light';
+$extra_head = '<link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />';
+
+include __DIR__ . '/includes/head.php';
 ?>
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Kuis - Pusat Pembelajaran SIJA</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-</head>
-<body class="bg-light">
 
-    <?php include __DIR__ . '/includes/admin_header.php'; ?>
+<!-- Bungkus dengan shell untuk sidebar -->
+<div class="sj-shell flex-grow-1">
 
-    <!-- KONTEN -->
-    <div class="container mt-5 mb-5">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h4 class="fw-bold m-0 text-dark">📋 Daftar Soal Kuis</h4>
-            <div class="btn-group gap-2">
-                <a href="index.php" class="btn btn-outline-secondary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Kembali ke Beranda">
-                    <i class="bi bi-arrow-counterclockwise"></i>
-                </a>
-                <a href="deploy_kuis.php" class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Deploy Kuis">
-                    <i class="bi bi-rocket-takeoff"></i>
-                </a>
-                <a href="tambah_soal.php" class="btn btn-success rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Tambah Soal Baru">
-                    <i class="bi bi-plus-lg"></i>
-                </a>
-                <a href="rekap_nilai.php" class="btn btn-success rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Lihat Rekap Nilai">
-                    <i class="bi bi-bar-chart"></i>
-                </a>
-                <a href="review_jawaban_isian.php" class="btn btn-info rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Review Jawaban Isian">
-                    <i class="bi bi-chat-square-text"></i>
-                </a>
-                <button type="submit" form="bulkDeleteForm" formaction="bulk_edit.php" class="btn btn-warning rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Edit Massal Soal Terpilih">
-                    <i class="bi bi-pencil-square"></i>
-                </button>
-                <button type="submit" form="bulkDeleteForm" formaction="bulkdelete.php" class="btn btn-danger rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Hapus Masal Soal Terpilih">
-                    <i class="bi bi-trash"></i>
-                </button>
+    <!-- Include Sidebar -->
+    <?php include __DIR__ . '/includes/sidebar.php'; ?>
+
+    <!-- Konten Utama -->
+    <main class="sj-main bg-light pb-5">
+
+        <?php include __DIR__ . '/includes/topbar.php'; ?>
+
+        <div class="container-fluid px-4 pt-4 pb-5">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="fw-bold m-0 text-dark">📋 Daftar Soal Kuis</h4>
+                <div class="btn-group gap-2">
+                    <a href="index.php" class="btn btn-outline-secondary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Kembali ke Beranda">
+                        <i class="bi bi-arrow-counterclockwise"></i>
+                    </a>
+                    <a href="deploy_kuis.php" class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Deploy Kuis">
+                        <i class="bi bi-rocket-takeoff"></i>
+                    </a>
+                    <a href="tambah_soal.php" class="btn btn-success rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Tambah Soal Baru">
+                        <i class="bi bi-plus-lg"></i>
+                    </a>
+                    <a href="rekap_nilai.php" class="btn btn-success rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Lihat Rekap Nilai">
+                        <i class="bi bi-bar-chart"></i>
+                    </a>
+                    <a href="review_jawaban_isian.php" class="btn btn-info rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Review Jawaban Isian">
+                        <i class="bi bi-chat-square-text"></i>
+                    </a>
+                    <button type="submit" form="bulkDeleteForm" formaction="bulk_edit.php" class="btn btn-warning rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Edit Massal Soal Terpilih">
+                        <i class="bi bi-pencil-square"></i>
+                    </button>
+                    <button type="submit" form="bulkDeleteForm" formaction="bulkdelete.php" class="btn btn-danger rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Hapus Masal Soal Terpilih">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
             </div>
-        </div>
 
-        <!-- Filter Kategori -->
-        <div class="mb-2 d-flex gap-2 flex-wrap align-items-center">
-            <span class="text-muted small fw-semibold me-1">Kategori:</span>
-            <a href="?level=<?= urlencode($level_filter) ?>&materi=<?= urlencode($materi_filter) ?>" class="btn btn-sm <?= !$kategori_filter ? 'btn-dark' : 'btn-outline-dark' ?>">Semua</a>
-            <?php
-            $kategori_list = $pdo->query("SELECT DISTINCT kategori FROM kuis_soal ORDER BY kategori");
-            while ($kat = $kategori_list->fetch(PDO::FETCH_ASSOC)) :
-                $active = $kategori_filter === $kat['kategori'] ? 'btn-info text-white' : 'btn-outline-info';
-            ?>
-            <a href="?kategori=<?= urlencode($kat['kategori']) ?>&level=<?= urlencode($level_filter) ?>&materi=<?= urlencode($materi_filter) ?>" class="btn btn-sm <?= $active ?>">
-                <?= htmlspecialchars($kat['kategori']) ?>
-            </a>
-            <?php endwhile; ?>
-        </div>
+            <!-- Filter Kategori -->
+            <div class="mb-2 d-flex gap-2 flex-wrap align-items-center">
+                <span class="text-muted small fw-semibold me-1">Kategori:</span>
+                <a href="?level=<?= urlencode($level_filter) ?>&materi=<?= urlencode($materi_filter) ?>" class="btn btn-sm <?= !$kategori_filter ? 'btn-dark' : 'btn-outline-dark' ?>">Semua</a>
+                <?php
+                $kategori_list = $pdo->query("SELECT DISTINCT kategori FROM kuis_soal ORDER BY kategori");
+                while ($kat = $kategori_list->fetch(PDO::FETCH_ASSOC)) :
+                    $active = $kategori_filter === $kat['kategori'] ? 'btn-info text-white' : 'btn-outline-info';
+                ?>
+                <a href="?kategori=<?= urlencode($kat['kategori']) ?>&level=<?= urlencode($level_filter) ?>&materi=<?= urlencode($materi_filter) ?>" class="btn btn-sm <?= $active ?>">
+                    <?= htmlspecialchars($kat['kategori']) ?>
+                </a>
+                <?php endwhile; ?>
+            </div>
 
-        <!-- Filter Level -->
-        <div class="mb-2 d-flex gap-2 flex-wrap align-items-center">
-            <span class="text-muted small fw-semibold me-1">Level:</span>
-            <a href="?kategori=<?= urlencode($kategori_filter) ?>&materi=<?= urlencode($materi_filter) ?>" class="btn btn-sm <?= !$level_filter ? 'btn-dark' : 'btn-outline-dark' ?>">Semua</a>
-            <?php foreach ($level_badge as $key => $val):
-                $active = $level_filter === $key ? 'btn-' . $val[1] . ' text-white' : 'btn-outline-' . $val[1];
-            ?>
-            <a href="?kategori=<?= urlencode($kategori_filter) ?>&level=<?= $key ?>&materi=<?= urlencode($materi_filter) ?>" class="btn btn-sm <?= $active ?>">
-                <?= $val[0] ?>
-            </a>
-            <?php endforeach; ?>
-        </div>
+            <!-- Filter Level -->
+            <div class="mb-2 d-flex gap-2 flex-wrap align-items-center">
+                <span class="text-muted small fw-semibold me-1">Level:</span>
+                <a href="?kategori=<?= urlencode($kategori_filter) ?>&materi=<?= urlencode($materi_filter) ?>" class="btn btn-sm <?= !$level_filter ? 'btn-dark' : 'btn-outline-dark' ?>">Semua</a>
+                <?php foreach ($level_badge as $key => $val):
+                    $active = $level_filter === $key ? 'btn-' . $val[1] . ' text-white' : 'btn-outline-' . $val[1];
+                ?>
+                <a href="?kategori=<?= urlencode($kategori_filter) ?>&level=<?= $key ?>&materi=<?= urlencode($materi_filter) ?>" class="btn btn-sm <?= $active ?>">
+                    <?= $val[0] ?>
+                </a>
+                <?php endforeach; ?>
+            </div>
 
-        <!-- Filter Materi -->
-        <div class="mb-3 d-flex gap-2 flex-wrap align-items-center">
-            <span class="text-muted small fw-semibold me-1">Materi:</span>
-            <a href="?kategori=<?= urlencode($kategori_filter) ?>&level=<?= urlencode($level_filter) ?>" class="btn btn-sm <?= !$materi_filter ? 'btn-dark' : 'btn-outline-dark' ?>">Semua</a>
-            <?php foreach ($materi_list_filter as $m):
-                $active = $materi_filter === $m ? 'btn-secondary text-white' : 'btn-outline-secondary';
-            ?>
-            <a href="?kategori=<?= urlencode($kategori_filter) ?>&level=<?= urlencode($level_filter) ?>&materi=<?= urlencode($m) ?>" class="btn btn-sm <?= $active ?>">
-                <?= htmlspecialchars($m) ?>
-            </a>
-            <?php endforeach; ?>
-        </div>
+            <!-- Filter Materi -->
+            <div class="mb-3 d-flex gap-2 flex-wrap align-items-center">
+                <span class="text-muted small fw-semibold me-1">Materi:</span>
+                <a href="?kategori=<?= urlencode($kategori_filter) ?>&level=<?= urlencode($level_filter) ?>" class="btn btn-sm <?= !$materi_filter ? 'btn-dark' : 'btn-outline-dark' ?>">Semua</a>
+                <?php foreach ($materi_list_filter as $m):
+                    $active = $materi_filter === $m ? 'btn-secondary text-white' : 'btn-outline-secondary';
+                ?>
+                <a href="?kategori=<?= urlencode($kategori_filter) ?>&level=<?= urlencode($level_filter) ?>&materi=<?= urlencode($m) ?>" class="btn btn-sm <?= $active ?>">
+                    <?= htmlspecialchars($m) ?>
+                </a>
+                <?php endforeach; ?>
+            </div>
 
-        <form id="bulkDeleteForm" method="POST">
-        <?= csrf_field() ?>
-        <div class="table-responsive bg-white p-4 rounded-3 shadow-sm border">
-            <table class="table table-hover align-middle m-0">
-                <thead class="table-light">
-                    <tr>
-                        <th style="width: 4%"><input type="checkbox" class="form-check-input" id="checkAll" title="Pilih semua"></th>
-                        <th style="width: 4%">No</th>
-                        <th style="width: 26%">Pertanyaan</th>
-                        <th style="width: 10%">Kategori</th>
-                        <th style="width: 10%">Level</th>
-                        <th style="width: 12%">Materi</th>
-                        <th style="width: 10%">Jenis</th>
-                        <th style="width: 14%">Jawaban</th>
-                        <th style="width: 10%" class="text-center">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php $no = 1; while ($row = $query->fetch(PDO::FETCH_ASSOC)) :
-                        $lvl = $level_badge[$row['level']] ?? ['-', 'secondary'];
-                        $jenis = $row['jenis_soal'] ?? 'pilgan';
-                    ?>
-                    <tr>
-                        <td>
-                            <input type="checkbox" class="form-check-input soal-check" name="ids[]" value="<?= (int)$row['id']; ?>">
-                        </td>
-                        <td><?= $no++; ?></td>
-                        <td class="fw-semibold text-secondary"><?= htmlspecialchars($row['pertanyaan'] ?? ''); ?></td>
-                        <td><span class="badge bg-info text-dark px-2 py-1"><?= htmlspecialchars($row['kategori'] ?? ''); ?></span></td>
-                        <td><span class="badge bg-<?= $lvl[1] ?>"><?= $lvl[0] ?></span></td>
-                        <td>
-                            <?php if (!empty($row['materi'])): ?>
-                                <span class="badge bg-secondary"><?= htmlspecialchars($row['materi']) ?></span>
-                            <?php else: ?>
-                                <span class="badge bg-light text-muted border">Belum Ditandai</span>
-                            <?php endif; ?>
-                        </td>
-                        <td>
-                            <?php if ($jenis === 'isian'): ?>
-                                <span class="badge bg-primary"><i class="bi bi-pencil-square me-1"></i>Isian</span>
-                            <?php else: ?>
-                                <span class="badge bg-dark"><i class="bi bi-list-check me-1"></i>Pilgan</span>
-                            <?php endif; ?>
-                        </td>
-                        <td>
-                            <?php if ($jenis === 'isian'): ?>
-                                <?php
-                                $stmt_alt->execute([$row['id']]);
-                                $alternatif_list = $stmt_alt->fetchAll(PDO::FETCH_COLUMN);
-                                ?>
-                                <?php if (!empty($alternatif_list)): ?>
-                                    <div class="d-flex flex-wrap gap-1">
-                                        <?php foreach ($alternatif_list as $alt): ?>
-                                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle">
-                                                <?= htmlspecialchars($alt) ?>
-                                            </span>
-                                        <?php endforeach; ?>
-                                    </div>
+            <form id="bulkDeleteForm" method="POST">
+            <?= csrf_field() ?>
+            <div class="table-responsive bg-white p-4 rounded-3 shadow-sm border">
+                <table class="table table-hover align-middle m-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 4%"><input type="checkbox" class="form-check-input" id="checkAll" title="Pilih semua"></th>
+                            <th style="width: 4%">No</th>
+                            <th style="width: 26%">Pertanyaan</th>
+                            <th style="width: 10%">Kategori</th>
+                            <th style="width: 10%">Level</th>
+                            <th style="width: 12%">Materi</th>
+                            <th style="width: 10%">Jenis</th>
+                            <th style="width: 14%">Jawaban</th>
+                            <th style="width: 10%" class="text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php $no = 1; while ($row = $query->fetch(PDO::FETCH_ASSOC)) :
+                            $lvl = $level_badge[$row['level']] ?? ['-', 'secondary'];
+                            $jenis = $row['jenis_soal'] ?? 'pilgan';
+                        ?>
+                        <tr>
+                            <td>
+                                <input type="checkbox" class="form-check-input soal-check" name="ids[]" value="<?= (int)$row['id']; ?>">
+                            </td>
+                            <td><?= $no++; ?></td>
+                            <td class="fw-semibold text-secondary"><?= htmlspecialchars($row['pertanyaan'] ?? ''); ?></td>
+                            <td><span class="badge bg-info text-dark px-2 py-1"><?= htmlspecialchars($row['kategori'] ?? ''); ?></span></td>
+                            <td><span class="badge bg-<?= $lvl[1] ?>"><?= $lvl[0] ?></span></td>
+                            <td>
+                                <?php if (!empty($row['materi'])): ?>
+                                    <span class="badge bg-secondary"><?= htmlspecialchars($row['materi']) ?></span>
                                 <?php else: ?>
-                                    <span class="badge bg-warning text-dark">Belum ada alternatif</span>
+                                    <span class="badge bg-light text-muted border">Belum Ditandai</span>
                                 <?php endif; ?>
-                            <?php else: ?>
-                                <?php
-                                $jwb = strtolower(trim((string)($row['jawaban'] ?? '')));
-                                if (in_array($jwb, ['a', 'b', 'c', 'd'], true)):
-                                    $pilihanKey = 'pilihan_' . $jwb;
-                                ?>
-                                    <span class="badge bg-success">
-                                        <?= strtoupper($jwb) ?>. <?= htmlspecialchars($row[$pilihanKey] ?? '', ENT_QUOTES, 'UTF-8') ?>
-                                    </span>
+                            </td>
+                            <td>
+                                <?php if ($jenis === 'isian'): ?>
+                                    <span class="badge bg-primary"><i class="bi bi-pencil-square me-1"></i>Isian</span>
                                 <?php else: ?>
-                                    <span class="badge bg-warning text-dark">
-                                        <?= htmlspecialchars($row['jawaban'] ?? '-', ENT_QUOTES, 'UTF-8') ?>
-                                    </span>
+                                    <span class="badge bg-dark"><i class="bi bi-list-check me-1"></i>Pilgan</span>
                                 <?php endif; ?>
-                            <?php endif; ?>
-                        </td>
-                        <td class="text-center">
-                            <div class="btn-group btn-group-sm">
-                                <a href="edit-soal-sija?id=<?= (int)$row['id']; ?>" class="btn btn-warning fw-bold text-dark px-2" title="Edit">E</a>
-                                <form method="POST" action="" style="display:inline;" onsubmit="return confirm('Yakin hapus soal ini?')">
-                                    <input type="hidden" name="hapus" value="<?= (int)$row['id']; ?>">
-                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($delete_token) ?>">
-                                    <button type="submit" class="btn btn-danger fw-bold px-2" title="Hapus" style="border:none;background:none;padding:0;margin:0;cursor:pointer;"><i class="bi bi-trash"></i></button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                    <?php endwhile; ?>
-                    <?php if ($no === 1): ?>
-                    <tr>
-                        <td colspan="9" class="text-center text-muted py-4">Belum ada soal untuk filter ini.</td>
-                    </tr>
-                    <?php endif; ?>
-                </tbody>
-            </table>
+                            </td>
+                            <td>
+                                <?php if ($jenis === 'isian'): ?>
+                                    <?php
+                                    $stmt_alt->execute([$row['id']]);
+                                    $alternatif_list = $stmt_alt->fetchAll(PDO::FETCH_COLUMN);
+                                    ?>
+                                    <?php if (!empty($alternatif_list)): ?>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            <?php foreach ($alternatif_list as $alt): ?>
+                                                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle">
+                                                    <?= htmlspecialchars($alt) ?>
+                                                </span>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    <?php else: ?>
+                                        <span class="badge bg-warning text-dark">Belum ada alternatif</span>
+                                    <?php endif; ?>
+                                <?php else: ?>
+                                    <?php
+                                    $jwb = strtolower(trim((string)($row['jawaban'] ?? '')));
+                                    if (in_array($jwb, ['a', 'b', 'c', 'd'], true)):
+                                        $pilihanKey = 'pilihan_' . $jwb;
+                                    ?>
+                                        <span class="badge bg-success">
+                                            <?= strtoupper($jwb) ?>. <?= htmlspecialchars($row[$pilihanKey] ?? '', ENT_QUOTES, 'UTF-8') ?>
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="badge bg-warning text-dark">
+                                            <?= htmlspecialchars($row['jawaban'] ?? '-', ENT_QUOTES, 'UTF-8') ?>
+                                        </span>
+                                    <?php endif; ?>
+                                <?php endif; ?>
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group btn-group-sm">
+                                    <a href="edit-soal-sija?id=<?= (int)$row['id']; ?>" class="btn btn-warning fw-bold text-dark px-2" title="Edit">E</a>
+                                    <form method="POST" action="" style="display:inline;" onsubmit="return confirm('Yakin hapus soal ini?')">
+                                        <input type="hidden" name="hapus" value="<?= (int)$row['id']; ?>">
+                                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($delete_token) ?>">
+                                        <button type="submit" class="btn btn-danger fw-bold px-2" title="Hapus" style="border:none;background:none;padding:0;margin:0;cursor:pointer;"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php endwhile; ?>
+                        <?php if ($no === 1): ?>
+                        <tr>
+                            <td colspan="9" class="text-center text-muted py-4">Belum ada soal untuk filter ini.</td>
+                        </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+            </form>
         </div>
-        </form>
-    </div>
+    </main>
+</div>
 
-    <?php include __DIR__ . '/includes/footer.php'; ?>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Centang / hilangkan centang semua checkbox soal
-        document.getElementById('checkAll').addEventListener('change', function () {
-            document.querySelectorAll('.soal-check').forEach(function (cb) {
-                cb.checked = this.checked;
-            }.bind(this));
-        });
-
-        // Jika salah satu checkbox baris diubah, sinkronkan status "Pilih semua"
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Centang / hilangkan centang semua checkbox soal
+    document.getElementById('checkAll').addEventListener('change', function () {
         document.querySelectorAll('.soal-check').forEach(function (cb) {
-            cb.addEventListener('change', function () {
-                var all = document.querySelectorAll('.soal-check');
-                var checked = document.querySelectorAll('.soal-check:checked');
-                document.getElementById('checkAll').checked = all.length === checked.length;
-            });
+            cb.checked = this.checked;
+        }.bind(this));
+    });
+
+    // Jika salah satu checkbox baris diubah, sinkronkan status "Pilih semua"
+    document.querySelectorAll('.soal-check').forEach(function (cb) {
+        cb.addEventListener('change', function () {
+            var all = document.querySelectorAll('.soal-check');
+            var checked = document.querySelectorAll('.soal-check:checked');
+            document.getElementById('checkAll').checked = all.length === checked.length;
         });
+    });
 
-        // Validasi sebelum submit bulk action (baik edit maupun hapus)
-        document.getElementById('bulkDeleteForm').addEventListener('submit', function (e) {
-            var checked = this.querySelectorAll('.soal-check:checked');
-            if (checked.length === 0) {
-                e.preventDefault();
-                alert('Pilih minimal 1 soal terlebih dahulu.');
-                return;
-            }
+    // Validasi sebelum submit bulk action (baik edit maupun hapus)
+    document.getElementById('bulkDeleteForm').addEventListener('submit', function (e) {
+        var checked = this.querySelectorAll('.soal-check:checked');
+        if (checked.length === 0) {
+            e.preventDefault();
+            alert('Pilih minimal 1 soal terlebih dahulu.');
+            return;
+        }
 
-            var submitter = e.submitter; // tombol yang dipencet (edit / hapus)
-            var isDelete = submitter && submitter.formAction.indexOf('bulkdelete.php') !== -1;
+        var submitter = e.submitter; // tombol yang dipencet (edit / hapus)
+        var isDelete = submitter && submitter.formAction.indexOf('bulkdelete.php') !== -1;
 
-            var pesan = isDelete
-                ? 'Yakin ingin menghapus ' + checked.length + ' soal terpilih?'
-                : 'Lanjut edit massal untuk ' + checked.length + ' soal terpilih?';
+        var pesan = isDelete
+            ? 'Yakin ingin menghapus ' + checked.length + ' soal terpilih?'
+            : 'Lanjut edit massal untuk ' + checked.length + ' soal terpilih?';
 
-            if (!confirm(pesan)) {
-                e.preventDefault();
-            }
-        });
-    </script>
+        if (!confirm(pesan)) {
+            e.preventDefault();
+        }
+    });
+</script>
 </body>
 </html>

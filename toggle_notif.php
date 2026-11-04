@@ -19,36 +19,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle'])) {
     csrf_require_valid_post();
     
     $status_baru = $_POST['toggle'] === 'aktif' ? 'aktif' : 'nonaktif';
+    $now = date('Y-m-d H:i:s');
+
+    $row_id = $pdo->query("SELECT id FROM notifikasi_sesi ORDER BY id DESC LIMIT 1")->fetchColumn();
+
+    if ($row_id === false) {
+        $stmt = $pdo->prepare("INSERT INTO notifikasi_sesi (status, diaktifkan_at, dinonaktifkan_at) VALUES (?, ?, ?)");
+        $stmt->execute([
+            $status_baru,
+            $status_baru === 'aktif' ? $now : null,
+            $status_baru === 'aktif' ? null : $now,
+        ]);
+    } elseif ($status_baru === 'aktif') {
+        $stmt = $pdo->prepare("UPDATE notifikasi_sesi SET status = 'aktif', diaktifkan_at = ? WHERE id = ?");
+        $stmt->execute([$now, (int)$row_id]);
+    } else {
+        $stmt = $pdo->prepare("UPDATE notifikasi_sesi SET status = 'nonaktif', dinonaktifkan_at = ? WHERE id = ?");
+        $stmt->execute([$now, (int)$row_id]);
+    }
 
     if ($status_baru === 'aktif') {
-        $pdo->exec("UPDATE notifikasi_sesi SET status = 'aktif', diaktifkan_at = NOW() WHERE id = (SELECT id FROM (SELECT id FROM notifikasi_sesi ORDER BY id DESC LIMIT 1) t)");
         $pesan = "🟢 Notifikasi WA modul AKTIF. Siswa yang buka modul sekarang akan mengirim WA ke ortu.";
         $pesan_type = 'success';
     } else {
-        $pdo->exec("UPDATE notifikasi_sesi SET status = 'nonaktif', dinonaktifkan_at = NOW() WHERE id = (SELECT id FROM (SELECT id FROM notifikasi_sesi ORDER BY id DESC LIMIT 1) t)");
         $pesan = "🔴 Notifikasi WA modul NONAKTIF. Siswa tetap bisa akses modul bebas, tapi WA tidak terkirim.";
         $pesan_type = 'secondary';
     }
 }
 
 // Ambil status terkini
-$status_sekarang = $pdo->query("SELECT status, diaktifkan_at, dinonaktifkan_at FROM notifikasi_sesi ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+$status_sekarang = $pdo->query("SELECT status, diaktifkan_at, dinonaktifkan_at FROM notifikasi_sesi ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC) ?: [];
 $is_aktif = ($status_sekarang['status'] ?? 'nonaktif') === 'aktif';
-?>
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Toggle Notifikasi WA - Pusat Pembelajaran SIJA</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-    <?php include 'includes/admin_header.php'; ?>
 
-    <!-- KONTEN -->
-    <div class="container mt-5 mb-5" style="max-width: 500px;">
+$topbar_page = 'Toggle Notifikasi WA';
+
+$html_lang  = 'id';
+$page_title = 'Toggle Notifikasi WA - Pusat Pembelajaran SIJA';
+$body_class = 'bg-light';
+$extra_head = '<link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />';
+
+include __DIR__ . '/includes/head.php';
+?>
+
+<!-- Bungkus dengan shell untuk sidebar -->
+<div class="sj-shell flex-grow-1">
+
+    <!-- Include Sidebar -->
+    <?php include __DIR__ . '/includes/sidebar.php'; ?>
+
+    <!-- Konten Utama -->
+    <main class="sj-main bg-light pb-5">
+
+        <?php include __DIR__ . '/includes/topbar.php'; ?>
+
+        <!-- KONTEN -->
+        <div class="container py-4 mx-auto" style="max-width: 560px;">
 
         <?php if ($pesan): ?>
         <div class="alert alert-<?= $pesan_type ?> alert-dismissible fade show" role="alert">
@@ -75,7 +102,7 @@ $is_aktif = ($status_sekarang['status'] ?? 'nonaktif') === 'aktif';
                     </span>
                 </div>
 
-                <?php if ($status_sekarang['diaktifkan_at'] && $is_aktif): ?>
+                <?php if (!empty($status_sekarang['diaktifkan_at']) && $is_aktif): ?>
                 <p class="text-muted small">Diaktifkan pada: <?= date('d M Y, H:i', strtotime($status_sekarang['diaktifkan_at'])) ?></p>
                 <?php endif; ?>
 
@@ -99,9 +126,9 @@ $is_aktif = ($status_sekarang['status'] ?? 'nonaktif') === 'aktif';
         <div class="text-center mt-3">
             <a href="index.php" class="text-muted small text-decoration-none">← Kembali ke Beranda</a>
         </div>
-    </div>
-
-    <?php include 'includes/footer.php'; ?>
+        </div>
+    </main>
+</div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

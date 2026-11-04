@@ -93,146 +93,148 @@ if (isset($_POST['hapus_game'])) {
 $stmt = $pdo->query("SELECT * FROM games ORDER BY id DESC");
 $games = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Set hero header variables for admin_header
-$hero_title = "Manajemen Game Edukasi 🎮";
-$hero_subtitle = "Kelola dan upload game HTML edukasi untuk siswa";
+$topbar_page = 'Manage Game';
+
+$html_lang  = 'id';
+$page_title = 'Manage Game Edukasi - Admin Panel';
+$body_class = 'bg-light';
+$extra_head = '<link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />';
+
+include __DIR__ . '/includes/head.php';
 ?>
 
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <title>Manage Game Edukasi - Admin Panel</title>
-    <!-- Favicon-->
-    <link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" />
-    <!-- Bootstrap Icons -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css" rel="stylesheet" />
-</head>
-<body class="bg-light">
-    <?php include 'includes/admin_header.php'; ?>
+<!-- Bungkus dengan shell untuk sidebar -->
+<div class="sj-shell flex-grow-1">
 
-    <div class="container pb-5">
-       
-        <?= $pesan ?>
-        <?php if (isset($_GET['status']) && $_GET['status'] == 'deleted'): ?>
-            <div class="alert alert-warning alert-dismissible fade show" role="alert">
-                🗑️ Data game beserta file HTML di server berhasil dihapus bersih!
-                <button type='button' class='btn-close' data-bs-dismiss='alert'></button>
+    <!-- Include Sidebar -->
+    <?php include __DIR__ . '/includes/sidebar.php'; ?>
+
+    <!-- Konten Utama -->
+    <main class="sj-main bg-light pb-5">
+
+        <?php include __DIR__ . '/includes/topbar.php'; ?>
+
+        <div class="container-fluid px-4 pt-4 pb-5">
+
+            <?= $pesan ?>
+            <?php if (isset($_GET['status']) && $_GET['status'] == 'deleted'): ?>
+                <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                    🗑️ Data game beserta file HTML di server berhasil dihapus bersih!
+                    <button type='button' class='btn-close' data-bs-dismiss='alert'></button>
+                </div>
+            <?php endif; ?>
+
+            <!-- Form Upload Game Baru -->
+            <div class="card shadow-sm border-0 rounded-4 mb-4">
+                <div class="card-header bg-primary text-white fw-bold py-3 rounded-top-4">
+                    <i class="bi bi-cloud-arrow-up-fill me-2"></i> Upload Game HTML Baru
+                </div>
+                <div class="card-body p-4">
+                    <!-- PENTING: enctype="multipart/form-data" wajib ada untuk upload file -->
+                    <form action="" method="POST" enctype="multipart/form-data">
+                        <?= csrf_field(); ?>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Judul Game <span class="text-danger">*</span></label>
+                                <input type="text" name="title" class="form-control" placeholder="Contoh: Sorting Proses Bisnis TKJ" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Kategori Materi</label>
+                                <input type="text" name="category" class="form-control" value="Teknologi & Jaringan">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Deskripsi / Instruksi Singkat</label>
+                            <textarea name="description" class="form-control" rows="2" placeholder="Jelaskan cara main atau tujuan game edukasi ini..."></textarea>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Pilih File Game (.html) <span class="text-danger">*</span></label>
+                                <input type="file" name="game_file" class="form-control" accept=".html,.htm" required>
+                                <div class="form-text small">Upload file HTML tunggal yang sudah berisi script game (Maksimal sesuai limit server).</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">URL Cover Gambar (Opsional)</label>
+                                <input type="url" name="image_path" class="form-control" placeholder="https://... (Kosongkan jika ingin pakai gambar default)">
+                                <div class="form-text small">Bisa pakai link gambar dari Unsplash atau biarkan kosong.</div>
+                            </div>
+                        </div>
+
+                        <button type="submit" name="tambah_game" class="btn btn-primary px-4 fw-bold shadow-sm">
+                            <i class="bi bi-save me-1"></i> Simpan & Publikasikan Game
+                        </button>
+                    </form>
+                </div>
             </div>
-        <?php endif; ?>
 
-        <!-- Form Upload Game Baru -->
-        <div class="card shadow-sm border-0 rounded-3 mb-5">
-            <div class="card-header bg-primary text-white fw-bold py-3">
-                <i class="bi bi-cloud-arrow-up-fill me-2"></i> Upload Game HTML Baru
-            </div>
-            <div class="card-body p-4">
-                <!-- PENTING: enctype="multipart/form-data" wajib ada untuk upload file -->
-                <form action="" method="POST" enctype="multipart/form-data">
-                    <?= csrf_field(); ?>
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Judul Game <span class="text-danger">*</span></label>
-                            <input type="text" name="title" class="form-control" placeholder="Contoh: Sorting Proses Bisnis TKJ" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Kategori Materi</label>
-                            <input type="text" name="category" class="form-control" value="Teknologi & Jaringan">
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Deskripsi / Instruksi Singkat</label>
-                        <textarea name="description" class="form-control" rows="2" placeholder="Jelaskan cara main atau tujuan game edukasi ini..."></textarea>
-                    </div>
-
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Pilih File Game (.html) <span class="text-danger">*</span></label>
-                            <input type="file" name="game_file" class="form-control" accept=".html,.htm" required>
-                            <div class="form-text small">Upload file HTML tunggal yang sudah berisi script game (Maksimal sesuai limit server).</div>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">URL Cover Gambar (Opsional)</label>
-                            <input type="url" name="image_path" class="form-control" placeholder="https://... (Kosongkan jika ingin pakai gambar default)">
-                            <div class="form-text small">Bisa pakai link gambar dari Unsplash atau biarkan kosong.</div>
-                        </div>
-                    </div>
-
-                    <button type="submit" name="tambah_game" class="btn btn-primary px-4 fw-bold shadow-sm">
-                        <i class="bi bi-save me-1"></i> Simpan & Publikasikan Game
-                    </button>
-                </form>
+            <!-- Tabel Daftar Game Tersimpan -->
+            <div class="card shadow-sm border-0 rounded-4">
+                <div class="card-header bg-white fw-bold py-3 d-flex justify-content-between align-items-center rounded-top-4">
+                    <span>Daftar Game Tersimpan (<?= count($games) ?>)</span>
+                    <span class="badge bg-secondary">Folder: /games_data/</span>
+                </div>
+                <div class="card-body p-0 table-responsive">
+                    <table class="table table-hover table-bordered mb-0 align-middle">
+                        <thead class="table-light text-center">
+                            <tr>
+                                <th width="5%">No</th>
+                                <th width="22%">Judul Game</th>
+                                <th width="28%">Deskripsi</th>
+                                <th width="15%">Kategori</th>
+                                <th width="18%">File Path (Server)</th>
+                                <th width="12%">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if(empty($games)): ?>
+                                <tr>
+                                    <td colspan="6" class="text-center py-5 text-muted">
+                                        <i class="bi bi-folder-x display-6 d-block mb-2 text-secondary"></i>
+                                        Belum ada game edukasi yang diupload.
+                                    </td>
+                                </tr>
+                            <?php else: ?>
+                                <?php $no = 1; foreach($games as $g): ?>
+                                <tr>
+                                    <td class="text-center fw-semibold"><?= $no++ ?></td>
+                                    <td class="fw-bold text-primary"><?= htmlspecialchars($g['title']) ?></td>
+                                    <td class="small text-muted"><?= htmlspecialchars($g['description']) ?></td>
+                                    <td class="text-center"><span class="badge bg-info text-dark"><?= htmlspecialchars($g['category']) ?></span></td>
+                                    <td class="small font-monospace text-muted">
+                                        <i class="bi bi-file-earmark-code me-1"></i><?= htmlspecialchars($g['file_path']) ?>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group" role="group">
+                                            <!-- Tombol Test Mainkan Game -->
+                                            <a href="<?= htmlspecialchars($g['file_path']) ?>" target="_blank" class="btn btn-sm btn-success" title="Tes Mainkan">
+                                                <i class="bi bi-play-fill"></i> Tes
+                                            </a>
+                                            <!-- Tombol Hapus via POST form -->
+                                            <form method="POST" action="" style="display:inline;" onsubmit="return confirm('Yakin ingin menghapus game ini?');">
+                                                <input type="hidden" name="hapus_game" value="<?= (int)$g['id'] ?>">
+                                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>">
+                                                <button type="submit" class="btn btn-sm btn-danger" title="Hapus Game">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
+    </main>
+</div>
 
-        <!-- Tabel Daftar Game Tersimpan -->
-        <div class="card shadow-sm border-0 rounded-3">
-            <div class="card-header bg-white fw-bold py-3 d-flex justify-content-between align-items-center">
-                <span>Daftar Game Tersimpan (<?= count($games) ?>)</span>
-                <span class="badge bg-secondary">Folder: /games_data/</span>
-            </div>
-            <div class="card-body p-0 table-responsive">
-                <table class="table table-hover table-bordered mb-0 align-middle">
-                    <thead class="table-light text-center">
-                        <tr>
-                            <th width="5%">No</th>
-                            <th width="22%">Judul Game</th>
-                            <th width="28%">Deskripsi</th>
-                            <th width="15%">Kategori</th>
-                            <th width="18%">File Path (Server)</th>
-                            <th width="12%">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if(empty($games)): ?>
-                            <tr>
-                                <td colspan="6" class="text-center py-5 text-muted">
-                                    <i class="bi bi-folder-x display-6 d-block mb-2 text-secondary"></i>
-                                    Belum ada game edukasi yang diupload.
-                                </td>
-                            </tr>
-                        <?php else: ?>
-                            <?php $no = 1; foreach($games as $g): ?>
-                            <tr>
-                                <td class="text-center fw-semibold"><?= $no++ ?></td>
-                                <td class="fw-bold text-primary"><?= htmlspecialchars($g['title']) ?></td>
-                                <td class="small text-muted"><?= htmlspecialchars($g['description']) ?></td>
-                                <td class="text-center"><span class="badge bg-info text-dark"><?= htmlspecialchars($g['category']) ?></span></td>
-                                <td class="small font-monospace text-muted">
-                                    <i class="bi bi-file-earmark-code me-1"></i><?= htmlspecialchars($g['file_path']) ?>
-                                </td>
-                                <td class="text-center">
-                                    <div class="btn-group" role="group">
-                                        <!-- Tombol Test Mainkan Game -->
-                                        <a href="<?= htmlspecialchars($g['file_path']) ?>" target="_blank" class="btn btn-sm btn-success" title="Tes Mainkan">
-                                            <i class="bi bi-play-fill"></i> Tes
-                                        </a>
-                                        <!-- Tombol Hapus via POST form -->
-                                        <form method="POST" action="" style="display:inline;" onsubmit="return confirm('Yakin ingin menghapus game ini?');">
-                                            <input type="hidden" name="hapus_game" value="<?= (int)$g['id'] ?>">
-                                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>">
-                                            <button type="submit" class="btn btn-sm btn-danger" title="Hapus Game">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </form>
-                                    </div>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <?php include 'includes/footer.php'; ?>
-
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

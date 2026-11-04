@@ -87,23 +87,34 @@ function aimmTopicKeyByCategory(string $category): string {
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $csrf = csrf_token();
-        ?>
-        <!DOCTYPE html>
-        <html lang="id">
-        <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>AI Module Maker — Pusat Pembelajaran SIJA</title>
-            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-            <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
+        $topbar_page = 'AI Module Maker';
+
+        $html_lang  = 'id';
+        $page_title = 'AI Module Maker — Pusat Pembelajaran SIJA';
+        $body_class = 'bg-light';
+        $extra_head = '<link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
             <style>
                 #aimmPreviewFrame { width: 100%; height: 70vh; min-height: 420px; border: 0; background: #fff; }
-            </style>
-        </head>
-        <body class="bg-light">
-        <?php include __DIR__ . '/includes/admin_header.php'; ?>
+            </style>';
 
-        <div class="container py-4" style="max-width: 1100px;">
+        include __DIR__ . '/includes/head.php';
+        ?>
+
+        <!-- Bungkus dengan shell untuk sidebar -->
+        <div class="sj-shell flex-grow-1">
+
+            <!-- Include Sidebar -->
+            <?php include __DIR__ . '/includes/sidebar.php'; ?>
+
+            <!-- Konten Utama -->
+            <main class="sj-main bg-light pb-5">
+
+                <?php include __DIR__ . '/includes/topbar.php'; ?>
+
+                <div class="container-fluid px-4 pt-4 pb-5">
 
             <div class="d-flex align-items-center justify-content-between mb-4">
                 <div>
@@ -198,9 +209,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                 </div>
             </div>
 
+                </div>
+            </main>
         </div>
-
-        <?php include __DIR__ . '/includes/footer.php'; ?>
 
         <script>
         (function () {

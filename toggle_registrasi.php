@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle'])) {
 
     // Gunakan INSERT ON DUPLICATE KEY agar kalau key belum ada di DB, otomatis dibuatkan!
     $sql = "INSERT INTO pengaturan (`key`, `value`) VALUES (?, ?) 
-            ON DUPLICATE KEY UPDATE `value` = VALUES(`value')";
+            ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)";
             
     $stmt = $pdo->prepare($sql);
     $stmt->execute(['registrasi_status', $status_baru]);
@@ -105,20 +105,31 @@ if ($status_log === false) {
 }
 $is_buka = ($status === 'buka');
 $is_log_aktif = ($status_log === 'buka');
-?>
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Toggle Registrasi Siswa - Pusat Pembelajaran SIJA</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-    <?php include 'includes/admin_header.php'; ?>
 
-    <div class="container mt-5 mb-5" style="max-width: 550px;">
+$topbar_page = 'Buka/Tutup Registrasi';
+
+$html_lang  = 'id';
+$page_title = 'Toggle Registrasi Siswa - Pusat Pembelajaran SIJA';
+$body_class = 'bg-light';
+$extra_head = '<link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />';
+
+include __DIR__ . '/includes/head.php';
+?>
+
+<!-- Bungkus dengan shell untuk sidebar -->
+<div class="sj-shell flex-grow-1">
+
+    <!-- Include Sidebar -->
+    <?php include __DIR__ . '/includes/sidebar.php'; ?>
+
+    <!-- Konten Utama -->
+    <main class="sj-main bg-light pb-5">
+
+        <?php include __DIR__ . '/includes/topbar.php'; ?>
+
+        <div class="container py-4 mx-auto" style="max-width: 600px;">
 
         <?php if ($pesan): ?>
         <div class="alert alert-<?= $pesan_type ?> alert-dismissible fade show" role="alert">
@@ -231,10 +242,9 @@ $is_log_aktif = ($status_log === 'buka');
             <span class="text-muted mx-2">|</span>
             <a href="pintu-belakang-sija" class="text-muted small text-decoration-none">Manage User</a>
         </div>
-
-    </div>
-
-    <?php include 'includes/footer.php'; ?>
+        </div>
+    </main>
+</div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

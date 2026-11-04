@@ -86,14 +86,14 @@ if (empty($soal_list)) {
         $rawtext_prefill = implode("\n\n", $rawtext_blocks);
     }
 }
-?>
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <title>Edit Massal Soal - SIJA</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+$topbar_page = 'Edit Massal Soal';
+
+$html_lang  = 'id';
+$page_title = 'Edit Massal Soal - SIJA';
+$body_class = 'bg-light';
+$extra_head = '<link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
     <style>
         .card { border-radius: 15px; } .card-header { font-weight: 600; }
         #quizRawText { min-height: 350px; resize: vertical; white-space: pre-wrap; font-family: monospace; font-size: 13px; }
@@ -103,12 +103,23 @@ if (empty($soal_list)) {
         .field-unchanged { color: #6c757d; }
         .badge-isian  { background: #0d6efd; }
         .badge-pilgan { background: #6c757d; }
-    </style>
-</head>
-<body class="bg-light">
-    <?php $hero_subtitle = 'Edit soal massal (pilgan & isian)'; include __DIR__ . '/includes/admin_header.php'; ?>
+    </style>';
 
-    <div class="container mt-4 mb-5">
+include __DIR__ . '/includes/head.php';
+?>
+
+<!-- Bungkus dengan shell untuk sidebar -->
+<div class="sj-shell flex-grow-1">
+
+    <!-- Include Sidebar -->
+    <?php include __DIR__ . '/includes/sidebar.php'; ?>
+
+    <!-- Konten Utama -->
+    <main class="sj-main bg-light pb-5">
+
+        <?php include __DIR__ . '/includes/topbar.php'; ?>
+
+        <div class="container-fluid px-4 pt-4 pb-5">
         <div class="mb-3">
             <a href="/pintu-rahasia-sija" class="btn btn-outline-secondary">
                 <i class="bi bi-arrow-left"></i> Kembali
@@ -170,9 +181,11 @@ if (empty($soal_list)) {
             </div>
         </div>
         <?php endif; ?>
-    </div>
+        </div>
+    </main>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <?php if (!$error): ?>
     <script>

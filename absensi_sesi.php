@@ -243,25 +243,35 @@ if ($sesi_aktif) {
     $st_sw->execute([$sesi_aktif['kelas']]);
     $daftar_siswa_kelas = $st_sw->fetchAll(PDO::FETCH_ASSOC);
 }
-?>
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Absensi QR - Pusat Pembelajaran SIJA</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="assets/vendor/datatables/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+$topbar_page = 'Manage Absensi';
+
+$html_lang  = 'id';
+$page_title = 'Absensi QR - Pusat Pembelajaran SIJA';
+$body_class = 'bg-light';
+$extra_head = '<link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+    <link href="assets/vendor/datatables/css/dataTables.bootstrap5.min.css" rel="stylesheet" />
     <style>
         #qrBox { min-height: 260px; display: flex; align-items: center; justify-content: center; }
         #qrBox img { image-rendering: pixelated; }
-    </style>
-</head>
-<body class="bg-light">
-    <?php include 'includes/admin_header.php'; ?>
+    </style>';
 
-    <div class="container mt-4 mb-5">
+include __DIR__ . '/includes/head.php';
+?>
+
+<!-- Bungkus dengan shell untuk sidebar -->
+<div class="sj-shell flex-grow-1">
+
+    <!-- Include Sidebar -->
+    <?php include __DIR__ . '/includes/sidebar.php'; ?>
+
+    <!-- Konten Utama -->
+    <main class="sj-main bg-light pb-5">
+
+        <?php include __DIR__ . '/includes/topbar.php'; ?>
+
+        <div class="container-fluid px-4 pt-4 pb-5">
 
         <?php if ($pesan): ?>
         <div class="alert alert-<?= htmlspecialchars($pesan_type, ENT_QUOTES, 'UTF-8') ?> alert-dismissible fade show" role="alert">
@@ -487,9 +497,9 @@ if ($sesi_aktif) {
             </div>
         </div>
 
-    </div>
-
-    <?php include 'includes/footer.php'; ?>
+        </div>
+    </main>
+</div>
 
     <script src="assets/vendor/jquery-3.7.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>

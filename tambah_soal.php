@@ -66,15 +66,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori']) && !isset
         }
     }
 }
-?>
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tambah Soal Kuis - Pusat Pembelajaran SIJA</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+$topbar_page = 'Tambah Soal Kuis';
+
+$html_lang  = 'id';
+$page_title = 'Tambah Soal Kuis - Pusat Pembelajaran SIJA';
+$body_class = 'bg-light';
+$extra_head = '<link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
     <style>
         .card { border-radius: 15px; height: 100%; display: flex; flex-direction: column; }
         .card-body { flex: 1; display: flex; flex-direction: column; }
@@ -82,12 +81,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori']) && !isset
         #previewContainer { flex-grow: 1; min-height: 300px; overflow-y: auto; }
         #editSection { display: flex; flex-direction: column; width: 100%; text-align: left; }
         .card-header { font-weight: 600; }
-    </style>
-</head>
-<body class="bg-light">
-    <?php include 'includes/admin_header.php'; ?>
-    
-    <div class="container mt-4">
+    </style>';
+
+include __DIR__ . '/includes/head.php';
+?>
+
+<!-- Bungkus dengan shell untuk sidebar -->
+<div class="sj-shell flex-grow-1">
+
+    <!-- Include Sidebar -->
+    <?php include __DIR__ . '/includes/sidebar.php'; ?>
+
+    <!-- Konten Utama -->
+    <main class="sj-main bg-light pb-5">
+
+        <?php include __DIR__ . '/includes/topbar.php'; ?>
+
+        <div class="container-fluid px-4 pt-4 pb-5">
         <div class="mb-3">
             <a href="pintu-rahasia-sija" class="btn btn-outline-secondary">
                 <i class="bi bi-arrow-left"></i> Kembali
@@ -313,7 +323,9 @@ Answer: B" style="min-height: 250px; resize: vertical;"></textarea>
                 </div>
             </div>
         </div>
-    </div>
+        </div>
+    </main>
+</div>
 
     <script src="js/quiz_parser.js"></script>
     <script>
@@ -556,7 +568,6 @@ Answer: B" style="min-height: 250px; resize: vertical;"></textarea>
             return true;
         }
     </script>
-    <?php include 'includes/footer.php'; ?>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

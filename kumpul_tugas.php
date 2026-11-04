@@ -69,10 +69,14 @@ function compressImageToMaxSize(string $sourcePath, string $targetPath, int $max
             $data = ob_get_clean();
 
             if (strlen($data) <= $maxSize) {
-                file_put_contents($targetPath, $data);
+                if (file_put_contents($targetPath, $data) === false) {
                 imagedestroy($dst);
                 imagedestroy($src);
-                return true;
+                return false;
+            }
+            imagedestroy($dst);
+            imagedestroy($src);
+            return true;
             }
         }
         imagedestroy($dst);

@@ -163,19 +163,29 @@ $daftar_tugas = $pdo->query("
     ORDER BY t.created_at DESC
 ")->fetchAll(PDO::FETCH_ASSOC);
 
-// Include Head HTML & Navbar/Header Admin
-include 'includes/head.php';
-?>
-<!-- CSS Bootstrap & Custom Styles -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css">
+$topbar_page = 'Manage Tugas';
 
-<?php
-include 'includes/admin_header.php';
+$html_lang  = 'id';
+$extra_head = '<link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+    <link rel="stylesheet" href="css/styles.css" />';
+
+include __DIR__ . '/includes/head.php';
 ?>
 
-<div class="container py-4">
+<!-- Bungkus dengan shell untuk sidebar -->
+<div class="sj-shell flex-grow-1">
+
+    <!-- Include Sidebar -->
+    <?php include __DIR__ . '/includes/sidebar.php'; ?>
+
+    <!-- Konten Utama -->
+    <main class="sj-main bg-light pb-5">
+
+        <?php include __DIR__ . '/includes/topbar.php'; ?>
+
+        <div class="container-fluid px-4 pt-4 pb-5">
 
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h3 class="fw-bold m-0">📚 Management Tugas Siswa</h3>
@@ -250,6 +260,8 @@ include 'includes/admin_header.php';
             </div>
         </div>
     </div>
+        </div>
+    </main>
 </div>
 
 <!-- MODAL TAMBAH -->
@@ -310,7 +322,7 @@ include 'includes/admin_header.php';
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 function openEditModal(data) {
     document.getElementById('edit_tugas_id').value = data.id;
@@ -340,4 +352,5 @@ function openEditModal(data) {
 }
 </script>
 
-<?php include 'includes/footer.php'; ?>
+</body>
+</html>

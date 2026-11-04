@@ -515,27 +515,38 @@ try {
 $stat_kelas = count($daftar_kelas);
 
 $csrf_token = csrf_token();
-?>
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin - Management User</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+
+$topbar_page = 'Manage User';
+
+$html_lang  = 'id';
+$page_title = 'Admin - Management User';
+$body_class = 'bg-light';
+$extra_head = '<link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+    <link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet" />
     <style>
         .stat-card { transition: transform .15s ease, box-shadow .15s ease; cursor: pointer; text-decoration: none; color: inherit; }
         .stat-card:hover { transform: translateY(-3px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.1) !important; }
         .stat-card.static { cursor: default; }
         .stat-card.static:hover { transform: none; box-shadow: 0 .125rem .25rem rgba(0,0,0,.075) !important; }
-    </style>
-</head>
-<body class="bg-light">
-    <?php include 'includes/admin_header.php'; ?>
+    </style>';
 
-    <div class="container mt-5 mb-5">
+include __DIR__ . '/includes/head.php';
+?>
+
+<!-- Bungkus dengan shell untuk sidebar -->
+<div class="sj-shell flex-grow-1">
+
+    <!-- Include Sidebar -->
+    <?php include __DIR__ . '/includes/sidebar.php'; ?>
+
+    <!-- Konten Utama -->
+    <main class="sj-main bg-light pb-5">
+
+        <?php include __DIR__ . '/includes/topbar.php'; ?>
+
+        <div class="container-fluid px-4 pt-4 pb-5">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h4 class="fw-bold m-0 text-dark">👥 Management User</h4>
             <a href="index.php" class="btn btn-outline-secondary rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width:40px;height:40px;" title="Kembali">
@@ -823,12 +834,12 @@ $csrf_token = csrf_token();
                 </tbody>
             </table>
         </div>
-    </div>
-
-    <?php include 'includes/footer.php'; ?>
+        </div>
+    </main>
+</div>
 
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
     <script>
