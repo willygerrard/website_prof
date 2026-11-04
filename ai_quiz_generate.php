@@ -1,6 +1,7 @@
 <?php
 /**
  * ai_quiz_generate.php — AI Quiz Maker (KHUSUS ADMIN)
+ * Versi Gabungan: Stabil (Production) + Fitur Soal Isian
  */
 require_once 'session.php';
 require_once 'csrf_helper.php';
@@ -20,6 +21,10 @@ const AIQ_VERIFY_TIMEOUT = 20;
 const AIQ_COOLDOWN     = 8;   
 
 function jsonOut(array $d, int $code = 200): void {
+    // Pelindung agar header tidak gagal terkirim jika ada whitespace dari file lain
+    if (ob_get_length()) {
+        ob_clean();
+    }
     http_response_code($code);
     echo json_encode($d, JSON_UNESCAPED_UNICODE);
     exit;
@@ -124,7 +129,7 @@ $n = max(1, min(AIQ_MAX_SOAL, $n));
 
 $apiKey = aiqEnv('GEMINI_API_KEY');
 if ($apiKey === '') jsonOut(['status' => 'error', 'message' => 'GEMINI_API_KEY tidak terbaca oleh PHP.'], 500);
-$model = aiqEnv('GEMINI_QUIZ_MODEL') ?: 'gemini-1.5-flash';
+$model = aiqEnv('GEMINI_QUIZ_MODEL');
 
 // Konteks modul dari database
 $modulInfo = '';
@@ -153,7 +158,9 @@ if (mb_strlen($sumber) >= 100) {
     $baseRequired = ['pertanyaan', 'jawaban_benar', 'penjelasan'];
 }
 
-// BLOK PENENTUAN JENIS SOAL (INI KUNCI PERUBAHANNYA)
+// ==========================================
+// BLOK PENENTUAN JENIS SOAL (PILGAN VS ISIAN)
+// ==========================================
 if ($jenis_soal === 'isian') {
     $genPrompt = <<<TXT
 Kamu adalah guru SMK jurusan TKJ/SIJA yang menyusun soal ujian.
@@ -182,7 +189,7 @@ TXT;
                 'penjelasan'    => ['type' => 'STRING'],
                 'bukti'         => ['type' => 'STRING'],
             ],
-            'required' => $baseRequired, // TIDAK ADA 'opsi' DI SINI
+            'required' => $baseRequired, 
         ],
     ];
 } else {
@@ -215,7 +222,7 @@ TXT;
                 'penjelasan'    => ['type' => 'STRING'],
                 'bukti'         => ['type' => 'STRING'],
             ],
-            'required' => array_merge($baseRequired, ['opsi']), // WAJIB ADA 'opsi' UNTUK PILGAN
+            'required' => array_merge($baseRequired, ['opsi']),
         ],
     ];
 }
@@ -225,7 +232,7 @@ try {
     $raw = geminiJson($apiKey, $model, $genPrompt, $schemaSoal, AIQ_GEN_TIMEOUT, 0.7);
 } catch (Throwable $e) {
     error_log('[ai_quiz_generate] ' . $e->getMessage());
-    jsonOut(['status' => 'error', 'message' => 'AI gagal membuat soal (kuota habis atau koneksi bermasalah).'], 500);
+    jsonOut(['status' => 'error', 'message' => 'AI gagal membuat soal: ' . $e->getMessage()], 500);
 }
 
 // ---------------------------------------------------------------- validasi & normalisasi hasil
@@ -273,7 +280,7 @@ foreach ($raw as $r) {
         $seen[$norm($q)] = true;
         $soal[] = [
             'question_text'  => $q,
-            'options'        => [], // Opsi sengaja dikosongkan
+            'options'        => [], // Opsi dikosongkan untuk isian
             'correct_answer' => $key,
             'alternatif'     => array_values(array_unique(array_filter($alts))),
             'materi'         => '',
@@ -312,7 +319,6 @@ foreach ($raw as $r) {
     }
     
     $seen[$nq] = true;
-
     $correct = $opts[$keyIdx];
     shuffle($opts);
 
@@ -376,5 +382,6 @@ jsonOut([
         'tanpa_bukti'  => $tanpaBukti,
         'diverifikasi' => $verified,
         'model'        => $model,
+        'jenis_soal'   => $jenis_soal, // Tambahan info meta
     ],
 ]);
