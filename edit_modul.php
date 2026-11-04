@@ -28,6 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $category   = trim($_POST['category'] ?? '');
     $description       = trim($_POST['description'] ?? '');
     $file_path = trim($_POST['file_path'] ?? '');
+    if ($file_path === '') { $file_path = $data['file_path'] ?? ''; }
     $kelas_target = trim($_POST['kelas_target'] ?? 'semua');
     
     // 1. Ambil data lama dari database terlebih dahulu (Asumsi Bapak sudah melakukan SELECT dan disimpan di variabel $data)
@@ -181,7 +182,7 @@ include __DIR__ . '/includes/head.php';
 
                 <div class="mb-4">
                     <label for="file_path" class="form-label fw-semibold text-secondary">Link Google Drive Modul</label>
-                    <input type="url" class="form-control p-2.5" id="file_path" name="file_path" value="<?= htmlspecialchars($data['file_path']); ?>" required>
+                    <input type="text" class="form-control p-2.5" id="file_path" name="file_path" value="<?= htmlspecialchars($data['file_path'] ?? ''); ?>">
                 </div>
 
                 <button type="submit" class="btn btn-warning w-100 py-2.5 fw-bold text-dark rounded-2 shadow-sm">
