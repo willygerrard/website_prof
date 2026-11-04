@@ -247,7 +247,6 @@ include __DIR__ . '/includes/head.php';
 
         <!-- Grid Modul -->
         <div class="container-fluid px-4">
-            <!-- row-cols-xl-4 agar di desktop ada 4 card sejajar seperti production -->
             <div class="row g-4 row-cols-1 row-cols-md-2 row-cols-xl-4" id="modulGrid">
                 <?php if (empty($all_modules)): ?>
                     <div class="col-12 text-center py-5">
@@ -258,6 +257,15 @@ include __DIR__ . '/includes/head.php';
                     </div>
                 <?php else: ?>
                     <?php foreach ($all_modules as $modul): ?>
+                    <?php
+                        // Deteksi file HTML lokal (modul hasil AI) agar melewati wrapper tema view_modul.php
+                        $fp = trim($modul['file_path'] ?? '');
+                        $pakai_tema = $fp !== '' 
+                            && !preg_match('#^https?://#i', $fp) 
+                            && preg_match('/\.html?$/i', $fp);
+                        
+                        $href_modul = $pakai_tema ? 'view_modul.php?id=' . (int)$modul['id'] : $fp;
+                    ?>
                     <div class="col">
                         <div class="card h-100 shadow-sm border border-light-subtle rounded-4 position-relative bg-white">
                             
@@ -301,7 +309,7 @@ include __DIR__ . '/includes/head.php';
                                 <div class="d-grid gap-2">
                                     <!-- Tombol Buka Modul (Semua Role) -->
                                     <a class="btn btn-outline-dark fw-bold buka-modul-btn rounded-2 py-2" 
-                                       href="<?= htmlspecialchars($modul['file_path']) ?>" 
+                                       href="<?= htmlspecialchars($href_modul) ?>" 
                                        target="_blank" rel="noopener noreferrer" 
                                        data-id="<?= (int) $modul['id'] ?>">
                                         📂 Buka Modul
@@ -319,7 +327,7 @@ include __DIR__ . '/includes/head.php';
                                                 ⏳ Buka dan Baca Modul Terlebih Dahulu
                                             <?php endif; ?>
                                         </a>
-                                    <?php endif; ?> <!-- INI YANG TADI HILANG -->
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>

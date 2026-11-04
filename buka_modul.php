@@ -1,6 +1,7 @@
 <?php
 require_once 'session.php'; 
 require 'koneksi.php';
+if (!defined('AIMM_PUBLIC_DIR')) define('AIMM_PUBLIC_DIR', __DIR__ . '/modul');
 require_once 'fonnte.php';
 require_once 'log_aktivitas.php';
 
@@ -77,6 +78,8 @@ $fileUrl = trim($modul['file_path']);
 $modulContent = '';
 if (file_exists($fileUrl) && is_readable($fileUrl)) {
     $modulContent = file_get_contents($fileUrl);
+} elseif (file_exists(AIMM_PUBLIC_DIR . '/' . basename($fileUrl)) && is_readable(AIMM_PUBLIC_DIR . '/' . basename($fileUrl))) {
+    $modulContent = file_get_contents(AIMM_PUBLIC_DIR . '/' . basename($fileUrl));
 }
 
 // Bungkus dengan theme wrapper

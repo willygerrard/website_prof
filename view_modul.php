@@ -9,6 +9,7 @@
 require_once 'session.php';
 require_once 'ai_helper.php';
 require 'koneksi.php';
+if (!defined('AIMM_PUBLIC_DIR')) define('AIMM_PUBLIC_DIR', __DIR__ . '/modul');
 
 checkLogin();
 
@@ -40,6 +41,8 @@ $filePath = $modul['file_path'];
 $modulContent = '';
 if (file_exists($filePath) && is_readable($filePath)) {
     $modulContent = file_get_contents($filePath);
+} elseif (file_exists(AIMM_PUBLIC_DIR . '/' . basename($filePath)) && is_readable(AIMM_PUBLIC_DIR . '/' . basename($filePath))) {
+    $modulContent = file_get_contents(AIMM_PUBLIC_DIR . '/' . basename($filePath));
 }
 
 // Bungkus dengan theme wrapper
