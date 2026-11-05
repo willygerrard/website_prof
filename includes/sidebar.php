@@ -161,7 +161,7 @@ $sj_brand_href = ($sj_is_admin && !empty($sj_has_dashboard)) ? 'dashboard_admin.
     .sj-brand-text small { font-size: 12px; font-weight: 500; color: #5b6675; }
     .sj-toggle { min-height: 40px; min-width: 40px; border: 1px solid #c9d1dc; border-radius: 8px; background: #fff; color: #1b2430; font-size: 20px; line-height: 1; }
     .sj-nav { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 2px; }
-    .sj-title { padding: 16px 12px 6px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #5b6675; }
+    .sj-title { margin: 16px 4px 6px; padding: 6px 10px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #1a4fa8; background: #f3f7fe; border-left: 3px solid #1a5fd0; border-radius: 0 6px 6px 0; }
     .sj-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; color: #3a4553; text-decoration: none; font-size: 14px; font-weight: 500; line-height: 20px; }
     .sj-item:hover { background: #f1f4f8; color: #1b2430; }
     .sj-item.active { background: #e8f0fd; color: #1a5fd0; font-weight: 600; }
