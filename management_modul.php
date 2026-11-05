@@ -52,12 +52,16 @@ include __DIR__ . '/includes/head.php';
                     <a href="tambah_modul.php" class="btn btn-success rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Tambah Modul Baru">
                         <i class="bi bi-plus-lg"></i>
                     </a>
+                    <?php if (is_file(__DIR__ . '/ai_module_maker.php')): ?>
                     <a href="ai_module_maker.php" class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="AI Module Maker">
                         <i class="bi bi-robot"></i>
                     </a>
+                    <?php endif; ?>
+                    <?php if (is_file(__DIR__ . '/management_pending.php')): ?>
                     <a href="management_pending.php" class="btn btn-warning rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Kelola Modul Pending (AI)">
                         <i class="bi bi-hourglass-split"></i>
                     </a>
+                    <?php endif; ?>
                 </div>
             </div>
 
