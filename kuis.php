@@ -54,22 +54,31 @@ foreach ($sesi_list as &$sesi) {
     $sesi['info_cap'] = !$sesi['sudah_lulus'] && ($sesi['total_attempt'] + 1) >= 2;
 }
 unset($sesi);
+$topbar_page = 'Kuis';
+
+$html_lang  = 'id';
+$page_title = 'Kuis - Pusat Pembelajaran SIJA';
+$body_class = 'bg-light';
+$extra_head = '<link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />';
+
+include __DIR__ . '/includes/head.php';
 ?>
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kuis - Pusat Pembelajaran SIJA</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-</head>
-<body class="bg-light">
 
-    <?php include 'includes/admin_header.php'; ?>
+<!-- Bungkus dengan shell untuk sidebar -->
+<div class="sj-shell flex-grow-1">
 
-    <!-- KONTEN -->
-    <div class="container mt-5 mb-5">
+    <!-- Include Sidebar -->
+    <?php include __DIR__ . '/includes/sidebar.php'; ?>
+
+    <!-- Konten Utama -->
+    <main class="sj-main bg-light pb-5">
+
+        <?php include __DIR__ . '/includes/topbar.php'; ?>
+
+        <!-- KONTEN -->
+        <div class="container-fluid px-4 pt-4 pb-5">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h4 class="fw-bold m-0 text-dark">📝 Kuis yang Sedang Berlangsung</h4>
             <span class="badge bg-dark"><?= htmlspecialchars($kelas_siswa) ?></span>
@@ -128,9 +137,9 @@ unset($sesi);
         </div>
 
         <?php endif; ?>
-    </div>
-
-    <?php include 'includes/footer.php'; ?>
+        </div>
+    </main>
+</div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

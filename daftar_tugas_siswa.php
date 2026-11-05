@@ -33,15 +33,26 @@ $daftar_tugas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $html_lang  = 'en';
 $page_title = 'Tugas Aktif - Pusat Pembelajaran SIJA';
 $body_class = 'bg-light';
-$extra_head = '<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css" rel="stylesheet" />
+$extra_head = '<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
     <link href="css/styles.css" rel="stylesheet" />';
+
+$topbar_page = 'Tugas Aktif';
 
 include __DIR__ . '/includes/head.php';
 ?>
 
-<?php include __DIR__ . '/includes/navbar.php'; ?>
+<!-- Bungkus dengan shell untuk sidebar -->
+<div class="sj-shell flex-grow-1">
 
-<section class="py-5">
+    <!-- Include Sidebar -->
+    <?php include __DIR__ . '/includes/sidebar.php'; ?>
+
+    <!-- Konten Utama -->
+    <main class="sj-main bg-light pb-5">
+
+        <?php include __DIR__ . '/includes/topbar.php'; ?>
+
+<section class="py-4">
     <div class="container" style="max-width: 800px;">
         <h3 class="fw-bold mb-1">📋 Tugas Aktif</h3>
         <p class="text-muted mb-4">Daftar tugas untuk kelas <?= htmlspecialchars($kelas_siswa) ?>.</p>
@@ -118,10 +129,8 @@ include __DIR__ . '/includes/head.php';
         <?php endif; ?>
     </div>
 </section>
-
-<footer class="py-5 bg-dark">
-    <div class="container"><p class="m-0 text-center text-white">Copyright &copy; SIJA Website 2026</p></div>
-</footer>
+    </main>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

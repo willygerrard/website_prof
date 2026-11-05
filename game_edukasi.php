@@ -17,60 +17,30 @@ $query_str .= " ORDER BY id DESC";
 $stmt = $pdo->prepare($query_str);
 $stmt->execute($params);
 $all_games = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$topbar_page = 'Game Edukasi';
+
+$html_lang  = 'id';
+$page_title = 'Game Edukasi - Pusat Pembelajaran SIJA';
+$body_class = 'bg-light';
+$extra_head = '<link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+    <link href="css/styles.css" rel="stylesheet" />';
+
+include __DIR__ . '/includes/head.php';
 ?>
 
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <title>Game Edukasi - Pusat Pembelajaran SIJA</title>
-    <link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css" rel="stylesheet" />
-    <link href="css/styles.css" rel="stylesheet" />
-</head>
-<body>
-    <!-- Navigation (Sama dengan Index) -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
-        <div class="container px-4 px-lg-5">
-            <a class="navbar-brand" href="index.php">Pusat Pembelajaran SIJA</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"><span class="navbar-toggler-icon"></span></button>
-            <div class="collapse navbar-collapse" id="navbarSupportedContent">
-                <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4">
-                    <li class="nav-item"><a class="nav-link" href="index.php">Materi</a></li>
-                    <li class="nav-item"><a class="nav-link" href="https://acesse.one/3xcdcbh">Pengumpulan Tugas</a></li>
-                    <li class="nav-item"><a class="nav-link" href="kuis.php">Kuis</a></li>
-                    <li class="nav-item"><a class="nav-link active fw-bold text-primary" href="game_edukasi.php">🎮 Game Edukasi</a></li>
-                </ul>
-                <div class="d-flex align-items-center gap-3">
-                    <?php if (isset($_SESSION['username'])) : ?>
-                        <span class="text-secondary fw-medium d-none d-md-inline small">
-                            👋 Hai, <strong class="text-dark"><?= htmlspecialchars($_SESSION['username']); ?></strong>
-                        </span>
-                    <?php endif; ?>
-                    <a href="logout.php" class="btn btn-outline-danger btn-sm d-flex align-items-center gap-2">
-                        <i class="bi bi-box-arrow-right"></i><span>Exit</span>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </nav>
+<!-- Bungkus dengan shell untuk sidebar -->
+<div class="sj-shell flex-grow-1">
 
-    <!-- Header Banner -->
-    <header class="py-5" style="
-        background: linear-gradient(to bottom, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.9)), 
-                    url('https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=800'); 
-        background-size: cover; background-position: center;">
-        <div class="container px-4 px-lg-5 my-4">
-            <div class="text-center text-white">
-                <h1 class="display-5 fw-bolder">🎮 Portal Game Edukasi SIJA</h1>
-                <p class="lead fw-normal text-white-50 mb-0">Asah logika dan pemahaman jaringanmu lewat interaktif mini-games berbasis HTML</p>
-            </div>
-        </div>
-    </header>
+    <!-- Include Sidebar -->
+    <?php include __DIR__ . '/includes/sidebar.php'; ?>
 
-    <!-- Content Section -->
-    <section class="py-5">
+    <!-- Konten Utama -->
+    <main class="sj-main bg-light pb-5">
+
+        <?php include __DIR__ . '/includes/topbar.php'; ?>
+
+        <section class="py-4">
         <div class="container px-4 px-lg-5 mt-1 mb-1">
             <!-- Form Pencarian -->
             <div class="row justify-content-center">
@@ -134,10 +104,9 @@ $all_games = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
         </div>
     </section>
+    </main>
+</div>
 
-    <footer class="py-5 bg-dark">
-        <div class="container"><p class="m-0 text-center text-white">Copyright &copy; SIJA Website 2026</p></div>
-    </footer>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
