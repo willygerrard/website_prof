@@ -149,24 +149,21 @@ $extra_head = '<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/f
 include __DIR__ . '/includes/head.php';
 ?>
 
-<?php include __DIR__ . '/includes/navbar.php'; ?>
+$topbar_page = 'Rapor Saya';
 
-<!-- HEADER -->
-<header class="py-5" style="
-    background: linear-gradient(to bottom, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.9)),
-                url('https://images.unsplash.com/photo-1558494949-ef010cbdcc31?q=80&w=800');
-    background-size: cover;
-    background-position: center;">
-    <div class="container px-4 px-lg-5 my-5">
-        <div class="text-center text-white">
-            <h1 class="display-4 fw-bolder">Pusat Pembelajaran SIJA</h1>
-            <p class="lead fw-normal text-white-50 mb-0">Selamat datang di portal lab kendali materi mandiri</p>
-        </div>
-    </div>
-</header>
+<!-- Bungkus dengan shell untuk sidebar -->
+<div class="sj-shell flex-grow-1">
+
+    <!-- Include Sidebar -->
+    <?php include __DIR__ . '/includes/sidebar.php'; ?>
+
+    <!-- Konten Utama -->
+    <main class="sj-main bg-light pb-5">
+
+        <?php include __DIR__ . '/includes/topbar.php'; ?>
 
 <!-- KONTEN -->
-<div class="container mt-5 mb-5">
+<div class="container-fluid px-4 pt-4 pb-5">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
         <h4 class="fw-bold m-0 text-dark">🎓 Rapor Saya — <?= $e($siswa['username']) ?></h4>
         <div class="d-flex align-items-center gap-2">
@@ -341,11 +338,8 @@ include __DIR__ . '/includes/head.php';
         <?php endif; ?>
     </section>
 </div>
-
-<!-- FOOTER -->
-<footer class="py-5 bg-dark">
-    <div class="container"><p class="m-0 text-center text-white">Copyright &copy; SIJA Website 2026</p></div>
-</footer>
+    </main>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>

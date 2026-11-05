@@ -102,13 +102,24 @@ if ($_SESSION['role'] === 'siswa') {
     }
 }
 
+$topbar_page = 'Akun Saya';
+
 include __DIR__ . '/includes/head.php';
 ?>
 
-    <?php include __DIR__ . '/includes/navbar.php'; ?>
+<!-- Bungkus dengan shell untuk sidebar -->
+<div class="sj-shell flex-grow-1">
 
-    <!-- KONTEN -->
-    <div class="container mt-5 mb-5" style="max-width: 500px;">
+    <!-- Include Sidebar -->
+    <?php include __DIR__ . '/includes/sidebar.php'; ?>
+
+    <!-- Konten Utama -->
+    <main class="sj-main bg-light pb-5">
+
+        <?php include __DIR__ . '/includes/topbar.php'; ?>
+
+        <!-- KONTEN -->
+        <div class="container py-4 mx-auto" style="max-width: 560px;">
 
         <?php if ($pesan): ?>
         <div class="alert alert-<?= $pesan_type ?> alert-dismissible fade show" role="alert">
@@ -182,9 +193,10 @@ include __DIR__ . '/includes/head.php';
             </a>
         </div>
 
-    </div>
+        </div>
+    </main>
+</div>
 
-    <?php include __DIR__ . '/includes/footer.php'; ?>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

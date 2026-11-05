@@ -139,14 +139,14 @@ foreach ($rekap as $r) {
 $total_belum_upload = $total_siswa - $total_upload;
 $total_belum_nilai  = $total_upload - $total_dinilai;
 $rata_nilai         = $total_dinilai > 0 ? round($sum_nilai / $total_dinilai, 2) : 0;
-?>
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <title>Rekap Nilai: <?= htmlspecialchars($tugas['judul']) ?></title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+$topbar_page = 'Rekap Nilai Tugas';
+
+$html_lang  = 'id';
+$page_title = 'Rekap Nilai: ' . ($tugas['judul'] ?? 'Tugas');
+$body_class = 'bg-light';
+$extra_head = '<link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
     <style>
         body { background: #f4f6f9; }
         .nilai-input { max-width: 80px; text-align: center; font-weight: 600; }
@@ -164,10 +164,23 @@ $rata_nilai         = $total_dinilai > 0 ? round($sum_nilai / $total_dinilai, 2)
         .stat-lambat  { border-color: #dc3545; }
         .catatan-cell { max-width: 200px; }
         .ketepatan-cell { font-size: 11px; }
-    </style>
-</head>
-<body>
-<div class="container-fluid py-4 px-4">
+    </style>';
+
+include __DIR__ . '/includes/head.php';
+?>
+
+<!-- Bungkus dengan shell untuk sidebar -->
+<div class="sj-shell flex-grow-1">
+
+    <!-- Include Sidebar -->
+    <?php include __DIR__ . '/includes/sidebar.php'; ?>
+
+    <!-- Konten Utama -->
+    <main class="sj-main bg-light pb-5">
+
+        <?php include __DIR__ . '/includes/topbar.php'; ?>
+
+        <div class="container-fluid px-4 pt-4 pb-5">
 
     <!-- HEADER -->
     <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
@@ -404,6 +417,8 @@ $rata_nilai         = $total_dinilai > 0 ? round($sum_nilai / $total_dinilai, 2)
         <span class="text-success">Hijau</span> = sudah dinilai · 
         <span class="text-danger">Merah</span> = belum upload.
     </p>
+        </div>
+    </main>
 </div>
 
 <script>

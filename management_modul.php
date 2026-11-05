@@ -18,67 +18,89 @@ $stmt = $pdo->prepare("SELECT * FROM modules ORDER BY id DESC");
 $stmt->execute();
 $query = $stmt;
 $delete_token = csrf_token();
-?>
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Module - Pusat Pembelajaran SIJA</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-</head>
-<body class="bg-light">
 
-    <?php include __DIR__ . '/includes/admin_header.php'; ?>
-    <!-- 3. KONTEN UTAMA (Kartu materi hilang, ganti MENU TABEL MANAJEMEN) -->
-    <div class="container mt-5 mb-5">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h4 class="fw-bold m-0 text-dark">📋 Daftar Modul Pembelajaran</h4>
-            <div class="btn-group gap-2">
-                <a href="index.php" class="btn btn-outline-secondary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Kembali ke Beranda">
-                    <i class="bi bi-arrow-counterclockwise"></i>
-                </a>
-                <a href="tambah_modul.php" class="btn btn-success rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Tambah Modul Baru">
-                    <i class="bi bi-plus-lg"></i>
-                </a>
+$topbar_page = 'Manage Module';
+
+$html_lang  = 'id';
+$page_title = 'Manage Module - Pusat Pembelajaran SIJA';
+$body_class = 'bg-light';
+$extra_head = '<link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />';
+
+include __DIR__ . '/includes/head.php';
+?>
+
+<!-- Bungkus dengan shell untuk sidebar -->
+<div class="sj-shell flex-grow-1">
+
+    <!-- Include Sidebar -->
+    <?php include __DIR__ . '/includes/sidebar.php'; ?>
+
+    <!-- Konten Utama -->
+    <main class="sj-main bg-light pb-5">
+
+        <?php include __DIR__ . '/includes/topbar.php'; ?>
+
+        <div class="container-fluid px-4 pt-4 pb-5">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="fw-bold m-0 text-dark">📋 Daftar Modul Pembelajaran</h4>
+                <div class="btn-group gap-2">
+                    <a href="index.php" class="btn btn-outline-secondary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Kembali ke Beranda">
+                        <i class="bi bi-arrow-counterclockwise"></i>
+                    </a>
+                    <a href="tambah_modul.php" class="btn btn-success rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Tambah Modul Baru">
+                        <i class="bi bi-plus-lg"></i>
+                    </a>
+                    <?php if (is_file(__DIR__ . '/ai_module_maker.php')): ?>
+                    <a href="ai_module_maker.php" class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="AI Module Maker">
+                        <i class="bi bi-robot"></i>
+                    </a>
+                    <?php endif; ?>
+                    <?php if (is_file(__DIR__ . '/management_pending.php')): ?>
+                    <a href="management_pending.php" class="btn btn-warning rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Kelola Modul Pending (AI)">
+                        <i class="bi bi-hourglass-split"></i>
+                    </a>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <div class="table-responsive bg-white p-4 rounded-3 shadow-sm border">
+                <table class="table table-hover align-middle m-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 8%">No</th>
+                            <th style="width: 57%">Nama Modul</th>
+                            <th style="width: 20%">Kategori</th>
+                            <th style="width: 15%" class="text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php $no = 1; while ($row = $query->fetch(PDO::FETCH_ASSOC)) : ?>
+                        <tr>
+                            <td><?= $no++; ?></td>
+                            <td class="fw-semibold text-secondary"><?= htmlspecialchars($row['title'] ?? ''); ?></td>
+                            <td><span class="badge bg-info text-dark px-2.5 py-1.5"><?= htmlspecialchars($row['category'] ?? ''); ?></span></td>
+                            <td class="text-center">
+                                <div class="btn-group btn-group-sm">
+                                    <a href="edit_modul.php?id=<?= (int)$row['id']; ?>" class="btn btn-warning fw-bold text-dark px-2.5">E</a>
+                                    <form method="POST" action="hapus.php" style="display:inline;" onsubmit="return confirm('Yakin hapus, Pak?')">
+                                        <input type="hidden" name="id" value="<?= (int)$row['id']; ?>">
+                                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($delete_token); ?>">
+                                        <button type="submit" class="btn btn-danger fw-bold px-2.5" title="Hapus"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php endwhile; ?>
+                    </tbody>
+                </table>
             </div>
         </div>
+    </main>
+</div>
 
-        <div class="table-responsive bg-white p-4 rounded-3 shadow-sm border">
-            <table class="table table-hover align-middle m-0">
-                <thead class="table-light">
-                    <tr>
-                        <th style="width: 8%">No</th>
-                        <th style="width: 57%">Nama Modul</th>
-                        <th style="width: 20%">Kategori</th>
-                        <th style="width: 15%" class="text-center">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php $no = 1; while ($row = $query->fetch(PDO::FETCH_ASSOC)) : ?>
-                    <tr>
-                        <td><?= $no++; ?></td>
-                        <td class="fw-semibold text-secondary"><?= htmlspecialchars($row['title'] ?? ''); ?></td>
-                        <td><span class="badge bg-info text-dark px-2.5 py-1.5"><?= htmlspecialchars($row['category'] ?? ''); ?></span></td>
-                        <td class="text-center">
-                            <div class="btn-group btn-group-sm">
-                                <a href="edit_modul.php?id=<?= (int)$row['id']; ?>" class="btn btn-warning fw-bold text-dark px-2.5">E</a>
-                                <form method="POST" action="hapus.php" style="display:inline;" onsubmit="return confirm('Yakin hapus, Pak?')">
-                                    <input type="hidden" name="id" value="<?= (int)$row['id']; ?>">
-                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($delete_token); ?>">
-                                    <button type="submit" class="btn btn-danger fw-bold px-2.5" title="Hapus"><i class="bi bi-trash"></i></button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                    <?php endwhile; ?>
-                </tbody>
-            </table>
-        </div>
-    </div>
-    <?php include __DIR__ . '/includes/footer.php'; ?>
-        <!-- Bootstrap core JS-->
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Bootstrap core JS-->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
