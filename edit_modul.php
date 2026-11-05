@@ -28,6 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $category   = trim($_POST['category'] ?? '');
     $description       = trim($_POST['description'] ?? '');
     $file_path = trim($_POST['file_path'] ?? '');
+    if ($file_path === '') { $file_path = $data['file_path'] ?? ''; }
     $kelas_target = trim($_POST['kelas_target'] ?? 'semua');
     
     // 1. Ambil data lama dari database terlebih dahulu (Asumsi Bapak sudah melakukan SELECT dan disimpan di variabel $data)
@@ -99,30 +100,30 @@ try {
         db_error($e);
     }
 }
+$topbar_page = 'Edit Modul';
+
+$html_lang  = 'id';
+$page_title = 'Edit Modul - Pusat Pembelajaran SIJA';
+$body_class = 'bg-light';
+$extra_head = '<link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />';
+
+include __DIR__ . '/includes/head.php';
 ?>
 
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit Modul - Pusat Pembelajaran SIJA</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <style>
-        .hero-banner {
-            background: linear-gradient(rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.85)), url('assets/img/server-bg.jpg') no-repeat center center;
-            background-size: cover;
-            color: white;
-            padding: 60px 0;
-            text-align: center;
-        }
-    </style>
-</head>
-<body class="bg-light">
-    <?php include 'includes/admin_header.php'; ?>
+<!-- Bungkus dengan shell untuk sidebar -->
+<div class="sj-shell flex-grow-1">
 
-    <div class="container mt-5 mb-5" style="max-width: 650px;">
+    <!-- Include Sidebar -->
+    <?php include __DIR__ . '/includes/sidebar.php'; ?>
+
+    <!-- Konten Utama -->
+    <main class="sj-main bg-light pb-5">
+
+        <?php include __DIR__ . '/includes/topbar.php'; ?>
+
+        <div class="container py-4 mx-auto" style="max-width: 700px;">
         <div class="d-flex align-items-center justify-content-between mb-4">
             <h4 class="fw-bold m-0 text-dark">📝 Edit Modul Praktik</h4>
             <a href="gerbang-rahasia-sija" class="btn btn-outline-secondary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
@@ -181,7 +182,7 @@ try {
 
                 <div class="mb-4">
                     <label for="file_path" class="form-label fw-semibold text-secondary">Link Google Drive Modul</label>
-                    <input type="url" class="form-control p-2.5" id="file_path" name="file_path" value="<?= htmlspecialchars($data['file_path']); ?>" required>
+                    <input type="text" class="form-control p-2.5" id="file_path" name="file_path" value="<?= htmlspecialchars($data['file_path'] ?? ''); ?>">
                 </div>
 
                 <button type="submit" class="btn btn-warning w-100 py-2.5 fw-bold text-dark rounded-2 shadow-sm">
@@ -189,10 +190,10 @@ try {
                 </button>
             </form>
         </div>
-    </div>
+        </div>
+    </main>
+</div>
 
-    <?php include 'includes/footer.php'; ?>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

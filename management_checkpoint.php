@@ -106,161 +106,146 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $deleteToken = csrf_token();
+
+$topbar_page = 'Manage Cekpoint';
+
+$html_lang  = 'id';
+$page_title = 'Manage Checkpoint Modul - Pusat Pembelajaran SIJA';
+$body_class = 'bg-light';
+$extra_head = '<link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />';
+
+include __DIR__ . '/includes/head.php';
 ?>
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Checkpoint Modul - Pusat Pembelajaran SIJA</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-</head>
-<body class="bg-light">
 
-<nav class="navbar navbar-expand-lg navbar-light bg-light">
-    <div class="container px-4 px-lg-5">
-        <a class="navbar-brand" href="index.php">Modul Pembelajaran SIJA</a>
-        <div class="ms-auto d-flex align-items-center gap-3">
-            <?php if (isset($_SESSION['username'])) : ?>
-                <span class="text-secondary fw-medium d-none d-md-inline small">👋 Hai, <strong class="text-dark"><?= htmlspecialchars($_SESSION['username']); ?></strong></span>
+<!-- Bungkus dengan shell untuk sidebar -->
+<div class="sj-shell flex-grow-1">
+
+    <!-- Include Sidebar -->
+    <?php include __DIR__ . '/includes/sidebar.php'; ?>
+
+    <!-- Konten Utama -->
+    <main class="sj-main bg-light pb-5">
+
+        <?php include __DIR__ . '/includes/topbar.php'; ?>
+
+        <div class="container-fluid px-4 pt-4 pb-5">
+
+            <?php if ($pesan): ?>
+                <div class="alert alert-<?= htmlspecialchars($pesan_type) ?>"><?= htmlspecialchars($pesan) ?></div>
             <?php endif; ?>
-        </div>
-    </div>
-</nav>
 
+            <div class="row g-4">
+                <div class="col-lg-5">
+                    <div class="card shadow-sm border-0 rounded-4">
+                        <div class="card-header bg-primary text-white py-3 rounded-top-4">
+                            <h5 class="mb-0 fw-bold"><?= ($mode === 'edit') ? 'Edit Checkpoint' : 'Tambah/Update Checkpoint' ?></h5>
+                        </div>
+                        <div class="card-body p-4">
+                            <form method="POST">
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>">
+                                <input type="hidden" name="mode" value="<?= htmlspecialchars($mode) ?>">
 
-<header class="py-5" style="
-    background: linear-gradient(to bottom, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.9)),
-                url('https://images.unsplash.com/photo-1558494949-ef010cbdcc31?q=80&w=800');
-    background-size: cover;
-    background-position: center;">
-    <div class="container px-4 px-lg-5 my-5">
-        <div class="text-center text-white">
-            <h1 class="display-4 fw-bolder">Manage Checkpoint Modul</h1>
-            <p class="lead fw-normal text-white-50 mb-0">Kelola 1 pertanyaan checkpoint (opsi A/B) per modul</p>
-        </div>
-    </div>
-</header>
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">Modul</label>
+                                    <select class="form-select" name="modul_id" required>
+                                        <option value="" selected disabled>-- Pilih Modul --</option>
+                                        <?php foreach ($modules as $m): ?>
+                                            <option value="<?= (int)$m['id'] ?>" <?= ((string)($form['modul_id'] ?? '') === (string)$m['id']) ? 'selected' : '' ?> ><?= htmlspecialchars($m['title']) ?></option>
 
-<div class="container my-4" style="max-width: 1100px;">
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
 
-    <?php if ($pesan): ?>
-        <div class="alert alert-<?= htmlspecialchars($pesan_type) ?>"><?= htmlspecialchars($pesan) ?></div>
-    <?php endif; ?>
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">Pertanyaan Checkpoint</label>
+                                    <textarea class="form-control" name="pertanyaan" rows="3" required><?= htmlspecialchars($form['pertanyaan']) ?></textarea>
+                                </div>
 
-    <div class="row g-4">
-        <div class="col-lg-5">
-            <div class="card shadow-sm border-0 rounded-3">
-                <div class="card-header bg-primary text-white py-3">
-                    <h5 class="mb-0 fw-bold"><?= ($mode === 'edit') ? 'Edit Checkpoint' : 'Tambah/Update Checkpoint' ?></h5>
+                                <div class="row g-2">
+                                    <div class="col-12">
+                                        <label class="form-label fw-semibold">Opsi Atas (A)</label>
+                                        <textarea class="form-control" name="opsi_a" rows="2" required><?= htmlspecialchars($form['opsi_a']) ?></textarea>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label fw-semibold">Opsi Bawah (B)</label>
+                                        <textarea class="form-control" name="opsi_b" rows="2" required><?= htmlspecialchars($form['opsi_b']) ?></textarea>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3 mt-2">
+                                    <label class="form-label fw-semibold">Jawaban Benar</label>
+                                    <select class="form-select" name="jawaban_benar" required>
+                                        <option value="a" <?= $form['jawaban_benar'] === 'a' ? 'selected' : '' ?>>A (Opsi Atas)</option>
+                                        <option value="b" <?= $form['jawaban_benar'] === 'b' ? 'selected' : '' ?>>B (Opsi Bawah)</option>
+                                    </select>
+                                </div>
+
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-success fw-bold">
+                                        <i class="bi bi-save"></i> Simpan
+                                    </button>
+                                    <?php if ($mode === 'edit' && $edit_id): ?>
+                                        <a href="<?= htmlspecialchars($management_url) ?>" class="btn btn-outline-secondary">Batal Edit</a>
+                                    <?php endif; ?>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body p-4">
-                    <form method="POST">
-                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>">
-                        <input type="hidden" name="mode" value="<?= htmlspecialchars($mode) ?>">
 
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">Modul</label>
-                            <select class="form-select" name="modul_id" required>
-                                <option value="" selected disabled>-- Pilih Modul --</option>
-                                <?php foreach ($modules as $m): ?>
-                                    <option value="<?= (int)$m['id'] ?>" <?= ((string)($form['modul_id'] ?? '') === (string)$m['id']) ? 'selected' : '' ?> ><?= htmlspecialchars($m['title']) ?></option>
+                <div class="col-lg-7">
+                    <div class="card shadow-sm border-0 rounded-4">
 
-                                <?php endforeach; ?>
-                            </select>
+                        <div class="card-header bg-dark text-white py-3 rounded-top-4">
+                            <h5 class="mb-0 fw-bold">Daftar Checkpoint</h5>
                         </div>
-
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">Pertanyaan Checkpoint</label>
-                            <textarea class="form-control" name="pertanyaan" rows="3" required><?= htmlspecialchars($form['pertanyaan']) ?></textarea>
-                        </div>
-
-                        <div class="row g-2">
-                            <div class="col-12">
-                                <label class="form-label fw-semibold">Opsi Atas (A)</label>
-                                <textarea class="form-control" name="opsi_a" rows="2" required><?= htmlspecialchars($form['opsi_a']) ?></textarea>
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label fw-semibold">Opsi Bawah (B)</label>
-                                <textarea class="form-control" name="opsi_b" rows="2" required><?= htmlspecialchars($form['opsi_b']) ?></textarea>
-                            </div>
-                        </div>
-
-                        <div class="mb-3 mt-2">
-                            <label class="form-label fw-semibold">Jawaban Benar</label>
-                            <select class="form-select" name="jawaban_benar" required>
-                                <option value="a" <?= $form['jawaban_benar'] === 'a' ? 'selected' : '' ?>>A (Opsi Atas)</option>
-                                <option value="b" <?= $form['jawaban_benar'] === 'b' ? 'selected' : '' ?>>B (Opsi Bawah)</option>
-                            </select>
-                        </div>
-
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-success fw-bold">
-                                <i class="bi bi-save"></i> Simpan
-                            </button>
-                            <?php if ($mode === 'edit' && $edit_id): ?>
-                                <a href="<?= htmlspecialchars($management_url) ?>" class="btn btn-outline-secondary">Batal Edit</a>
-                            <?php endif; ?>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-7">
-            <div class="card shadow-sm border-0 rounded-3">
-
-                <div class="card-header bg-dark text-white py-3">
-                    <h5 class="mb-0 fw-bold">Daftar Checkpoint</h5>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle m-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th style="width: 8%">#</th>
-                                    <th style="width: 35%">Modul</th>
-                                    <th>Pertanyaan</th>
-                                    <th style="width: 12%">Benar</th>
-                                    <th style="width: 15%" class="text-center">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php if (empty($checkpoints)): ?>
-                                    <tr><td colspan="5" class="text-center text-muted py-4">Belum ada checkpoint.</td></tr>
-                                <?php else: ?>
-                                    <?php $no=1; foreach ($checkpoints as $c): ?>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle m-0">
+                                    <thead class="table-light">
                                         <tr>
-                                            <td><?= $no++ ?></td>
-                                            <td class="fw-semibold"><?= htmlspecialchars($c['title'] ?? ('Modul #' . $c['modul_id'])) ?></td>
-                                            <td class="text-secondary"><?= htmlspecialchars(mb_strimwidth($c['pertanyaan'] ?? '', 0, 90, '...')) ?></td>
-                                            <td>
-                                                <span class="badge bg-<?= ($c['jawaban_benar'] === 'a') ? 'primary' : 'secondary' ?>">
-                                                    <?= strtoupper($c['jawaban_benar']) ?>
-                                                </span>
-                                            </td>
-                                            <td class="text-center">
-                                                <div class="btn-group btn-group-sm">
-                                                    <a class="btn btn-warning" href="<?= htmlspecialchars($management_url) ?>?mode=edit&id=<?= (int)$c['id'] ?>">E</a>
-                                                    <a class="btn btn-danger" href="<?= htmlspecialchars($management_url) ?>?delete=<?= (int)$c['id'] ?>&token=<?= htmlspecialchars($deleteToken) ?>" onclick="return confirm('Hapus checkpoint modul ini?')">-</a>
-                                                </div>
-                                            </td>
+                                            <th style="width: 8%">#</th>
+                                            <th style="width: 35%">Modul</th>
+                                            <th>Pertanyaan</th>
+                                            <th style="width: 12%">Benar</th>
+                                            <th style="width: 15%" class="text-center">Aksi</th>
                                         </tr>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
+                                    </thead>
+                                    <tbody>
+                                        <?php if (empty($checkpoints)): ?>
+                                            <tr><td colspan="5" class="text-center text-muted py-4">Belum ada checkpoint.</td></tr>
+                                        <?php else: ?>
+                                            <?php $no=1; foreach ($checkpoints as $c): ?>
+                                                <tr>
+                                                    <td><?= $no++ ?></td>
+                                                    <td class="fw-semibold"><?= htmlspecialchars($c['title'] ?? ('Modul #' . $c['modul_id'])) ?></td>
+                                                    <td class="text-secondary"><?= htmlspecialchars(mb_strimwidth($c['pertanyaan'] ?? '', 0, 90, '...')) ?></td>
+                                                    <td>
+                                                        <span class="badge bg-<?= ($c['jawaban_benar'] === 'a') ? 'primary' : 'secondary' ?>">
+                                                            <?= strtoupper($c['jawaban_benar']) ?>
+                                                        </span>
+                                                    </td>
+                                                    <td class="text-center">
+                                                        <div class="btn-group btn-group-sm">
+                                                            <a class="btn btn-warning" href="<?= htmlspecialchars($management_url) ?>?mode=edit&id=<?= (int)$c['id'] ?>">E</a>
+                                                            <a class="btn btn-danger" href="<?= htmlspecialchars($management_url) ?>?delete=<?= (int)$c['id'] ?>&token=<?= htmlspecialchars($deleteToken) ?>" onclick="return confirm('Hapus checkpoint modul ini?')">-</a>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+    </main>
 </div>
-
-<footer class="py-5 bg-dark mt-5">
-    <div class="container"><p class="m-0 text-center text-white">Copyright &copy; SIJA Website 2026</p></div>
-</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

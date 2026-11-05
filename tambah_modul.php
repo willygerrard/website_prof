@@ -1,29 +1,31 @@
 <?php
 require_once 'session.php';      // session dulu
 require_once 'csrf_helper.php';  // baru helper
+$topbar_page = 'Tambah Modul';
+
+$html_lang  = 'id';
+$page_title = 'Manage Module - Pusat Pembelajaran SIJA';
+$body_class = 'bg-light';
+$extra_head = '<link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />';
+
+include __DIR__ . '/includes/head.php';
 ?>
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Module - Pusat Pembelajaran SIJA</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <style>
-        /* Style Jumbotron/Hero Banner penunjang gambar background server rack */
-        .hero-banner {
-            background: linear-gradient(rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.85)), url('path_gambar_server_bapak.jpg') no-repeat center center;
-            background-size: cover;
-            color: white;
-            padding: 80px 0;
-            text-align: center;
-        }
-    </style>
-</head>
-<body class="bg-light">
-    <?php include 'includes/admin_header.php'; ?>
-            <div class="card shadow-sm border-0 rounded-3">
+
+<!-- Bungkus dengan shell untuk sidebar -->
+<div class="sj-shell flex-grow-1">
+
+    <!-- Include Sidebar -->
+    <?php include __DIR__ . '/includes/sidebar.php'; ?>
+
+    <!-- Konten Utama -->
+    <main class="sj-main bg-light pb-5">
+
+        <?php include __DIR__ . '/includes/topbar.php'; ?>
+
+        <div class="container py-4 mx-auto" style="max-width: 760px;">
+            <div class="card shadow-sm border-0 rounded-4">
                 <div class="card-header bg-primary text-white py-3">
                     <h5 class="card-title mb-0 fw-bold">🚀 Tambah Modul Baru</h5>
                 </div>
@@ -93,8 +95,11 @@ require_once 'csrf_helper.php';  // baru helper
                         
                     </form>
                 </div>
-            </div> </div>
-    <?php include 'includes/footer.php'; ?>
+            </div>
+        </div>
+    </main>
+</div>
+
         <!-- Bootstrap core JS-->
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
