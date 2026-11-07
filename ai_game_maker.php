@@ -46,8 +46,8 @@ const AIGM_KATEGORI_DB   = ['Network', 'System Administration', 'Cloud Computing
 const AIGM_JENIS         = 'game';
 
 // Batas Gemini: harus < ~100 dtk (batas Cloudflare Tunnel).
-const AIGM_GEMINI_TIMEOUT = 90;
-const AIGM_MAX_TOKENS     = 16384;
+const AIGM_GEMINI_TIMEOUT = 85;
+const AIGM_MAX_TOKENS     = 8192;
 
 // ============================================================
 // HELPER
@@ -136,10 +136,25 @@ function aigmValidateHtml(string $h): ?string {
     return null;
 }
 
-/** Blok yang disuntikkan di awal <head>: CSP + shim + error overlay + heartbeat + watchdog. */
+/**
+ * Bersihkan panggilan API yang memicu SecurityError di iframe sandbox opaque origin
+ * (localStorage, sessionStorage, indexedDB, ServiceWorker, external script/link).
+ */
+function aigmSanitizeSandboxApis(string $html): string {
+    // Ganti localStorage & sessionStorage dengan in-memory shim window.__aigmStore
+    $html = preg_replace('/\b(window\.)?(localStorage|sessionStorage)\b/', 'window.__aigmStore', $html);
+    // Buang tag <script src="..."> dan <link rel="stylesheet" href="http..."> jika AI melanggar prompt
+    $html = preg_replace('/<script\b[^>]*\bsrc\s*=\s*["\x27][^"\x27]*["\x27][^>]*>\s*<\/script>/i', '', $html);
+    $html = preg_replace('/<link\b[^>]*\bhref\s*=\s*["\x27]https?:\/\/[^"\x27]*["\x27][^>]*>/i', '', $html);
+    return $html;
+}
+
+/** Blok yang disuntikkan di awal <head>: fallback style + shim + LMS helper + error overlay + heartbeat + watchdog. */
 function aigmGuardBlock(): string {
     return <<<'GUARD'
-<meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;">
+<style id="aigm-base-style">
+  html, body { min-height: 100vh; margin: 0; background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; opacity: 1 !important; visibility: visible !important; }
+</style>
 <script>
 /* AIGM-SHIM: berjalan sebelum script game */
 (function () {
@@ -157,13 +172,41 @@ function aigmGuardBlock(): string {
       get length() { return Object.keys(s).length; }
     };
   }
-  ['localStorage', 'sessionStorage'].forEach(function (n) {
-    var ok = true;
-    try { void window[n]; } catch (e) { ok = false; }
-    if (!ok) {
-      try { Object.defineProperty(window, n, { value: memStore(), configurable: true }); } catch (e) {}
+  window.__aigmStore = memStore();
+
+  /* Helper standar LMS untuk mempercepat kode AI (subnetting & utilitas) */
+  window.LMS = {
+    ipToInt: function (ip) {
+      return ip.split('.').reduce(function (acc, oct) { return ((acc << 8) + parseInt(oct, 10)) >>> 0; }, 0);
+    },
+    intToIp: function (int) {
+      return [(int >>> 24) & 255, (int >>> 16) & 255, (int >>> 8) & 255, int & 255].join('.');
+    },
+    subnetInfo: function (ip, cidr) {
+      var mask = cidr === 0 ? 0 : (~0 << (32 - cidr)) >>> 0;
+      var ipInt = this.ipToInt(ip);
+      var netInt = (ipInt & mask) >>> 0;
+      var bcastInt = (netInt | (~mask >>> 0)) >>> 0;
+      var hosts = cidr >= 31 ? 0 : Math.pow(2, 32 - cidr) - 2;
+      return {
+        network: this.intToIp(netInt),
+        broadcast: this.intToIp(bcastInt),
+        firstHost: cidr >= 31 ? '-' : this.intToIp((netInt + 1) >>> 0),
+        lastHost: cidr >= 31 ? '-' : this.intToIp((bcastInt - 1) >>> 0),
+        mask: this.intToIp(mask),
+        usableHosts: hosts
+      };
+    },
+    shuffle: function (arr) {
+      var a = arr.slice();
+      for (var i = a.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var t = a[i]; a[i] = a[j]; a[j] = t;
+      }
+      return a;
     }
-  });
+  };
+
   window.alert = function () {};
   window.confirm = function () { return true; };
   window.prompt = function () { return null; };
@@ -258,7 +301,7 @@ Game berjalan di iframe sandbox. Karena itu:
 - Layar: judul, area bermain, skor, nyawa atau batas waktu, dan layar Game Over (skor akhir + tombol Main Lagi).
 - Mekanik mengikuti konsep (kuis cepat, simulator terminal CLI, puzzle, drag-and-drop, pencocokan, dan sebagainya) dengan kesulitan yang naik bertahap.
 - Setelah setiap jawaban, tampilkan umpan balik singkat berisi penjelasan agar siswa belajar, bukan hanya benar atau salah.
-- Jawaban berupa hitungan (subnetting, biner, hex, kapasitas, dan sebagainya) MUST dihitung oleh kode JavaScript, bukan ditulis manual.
+- Jawaban berupa hitungan (subnetting, biner, hex, kapasitas, dan sebagainya) MUST dihitung oleh kode JavaScript. Gunakan objek global `window.LMS` yang sudah tersedia (`LMS.subnetInfo(ip, cidr)` -> `{network, broadcast, firstHost, lastHost, mask, usableHosts}`, `LMS.ipToInt(ip)`, `LMS.intToIp(int)`, `LMS.shuffle(array)`) agar kode lebih pendek dan akurat.
 - Fakta teknis yang kamu tidak yakin kebenarannya: jangan dimasukkan.
 - Bahasa antarmuka: Bahasa Indonesia; istilah teknis tetap dalam bahasa Inggris.
 - Responsif untuk HP 360px dan laptop; kontrol bisa lewat sentuhan/klik dan keyboard.
@@ -673,7 +716,7 @@ if ($action === 'generate') {
         ], 200);
     }
 
-    $gameHtml = aigmInjectGuard($gameHtml);
+    $gameHtml = aigmInjectGuard(aigmSanitizeSandboxApis($gameHtml));
 
     $title = 'Game ' . $topikSpesifik;
     if (preg_match('/<title>(.*?)<\/title>/is', $gameHtml, $mT)) {

@@ -5,18 +5,11 @@
  * Merender $_SESSION['aigm_draft']['game_html'] sebagai dokumen iframe `src`
  * (BUKAN `srcdoc`), supaya dokumen game TIDAK mewarisi CSP halaman induk.
  *
- * PENTING (lihat nginx-staging.conf.template):
- * Header CSP untuk endpoint ini dipasang di level nginx
- *   location = /ai_game_preview.php { add_header Content-Security-Policy "..."; }
- * karena CSP situs-lebar di server block dikirim ke SEMUA respons (add_header
- * always). Tanpa override di nginx, game akan tetap diblok dan tampil putih.
- *
- * CSP preview (di nginx):
- *   default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' blob:;
- *   style-src 'unsafe-inline'; img-src data: blob:; font-src data:;
- *   media-src data: blob:; connect-src 'none'; base-uri 'none';
- *   form-action 'none'; frame-ancestors 'self';
- *   sandbox allow-scripts allow-forms
+ * Perbaikan v2:
+ *  - Mengirim header Content-Security-Policy langsung dari PHP (dengan header_remove
+ *    terlebih dahulu) agar tidak bergantung penuh pada pencocokan path Nginx.
+ *  - Tetap disarankan menggunakan `fastcgi_hide_header Content-Security-Policy;`
+ *    atau override location di Nginx bila Nginx memakai `add_header ... always;`.
  */
 
 require_once 'session.php';
@@ -28,17 +21,22 @@ checkRole(['admin']);
 // Draft preview dianggap kedaluwarsa setelah 1 jam (samakan dgn pola modul).
 const AIGM_PREVIEW_TTL = 3600;
 
-function aigmpHeaders(string $contentType): void {
+function aigmpHeaders(string $contentType, bool $isHtml = false): void {
+    @header_remove('Content-Security-Policy');
+    @header_remove('X-Frame-Options');
     header('Content-Type: ' . $contentType);
-    header('Cache-Control: no-store');
+    header('Cache-Control: no-store, no-cache, must-revalidate');
     header('X-Content-Type-Options: nosniff');
     header('Referrer-Policy: no-referrer');
+    if ($isHtml) {
+        header("Content-Security-Policy: default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' blob: data:; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; connect-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self';");
+    }
 }
 
 // Hanya GET; metode lain -> 405
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
     http_response_code(405);
-    aigmpHeaders('text/plain; charset=utf-8');
+    aigmpHeaders('text/plain; charset=utf-8', false);
     echo 'Metode tidak diizinkan.';
     exit;
 }
@@ -55,7 +53,7 @@ if ($missing || $expired) {
     session_write_close();
 
     http_response_code(404);
-    aigmpHeaders('text/plain; charset=utf-8');
+    aigmpHeaders('text/plain; charset=utf-8', false);
     echo 'Draft game tidak ditemukan atau kedaluwarsa. Generate ulang.';
     exit;
 }
@@ -63,6 +61,6 @@ if ($missing || $expired) {
 // Tutup session sebelum output supaya lock tidak ditahan selama iframe dimuat.
 session_write_close();
 
-// game_html sudah dibungkus guard (meta CSP + shim + heartbeat) saat generate.
-aigmpHeaders('text/html; charset=utf-8');
+// game_html sudah dibungkus guard (shim + LMS helper + heartbeat) saat generate.
+aigmpHeaders('text/html; charset=utf-8', true);
 echo (string)$draft['game_html'];

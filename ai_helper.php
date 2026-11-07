@@ -225,12 +225,14 @@ function geminiText(
     ];
 
     // Thinking level rendah: kurangi token "thinking" agar anggaran output
-    // lebih banyak terpakai untuk isi modul.
+    // lebih banyak terpakai untuk isi modul/game dan tidak memicu timeout.
     $m = strtolower($model);
-    if (strpos($m, 'gemini-3') === 0) {
+    if (strpos($m, 'gemini-3') !== false) {
         $genConfig['thinkingConfig'] = ['thinkingLevel' => 'low'];
-    } elseif (strpos($m, 'gemini-2.5-flash') === 0) {
+    } elseif (strpos($m, 'gemini-2.5-flash') !== false) {
         $genConfig['thinkingConfig'] = ['thinkingBudget' => 0];
+    } elseif (strpos($m, 'gemini-2.5-pro') !== false) {
+        $genConfig['thinkingConfig'] = ['thinkingBudget' => 1024];
     }
 
     $payload = [

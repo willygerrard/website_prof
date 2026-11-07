@@ -42,6 +42,9 @@ services:
     
     networks: 
       - sija_net
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
 volumes:
   mariadb_data:
 networks:             
