@@ -10827,3 +10827,14 @@ textarea.form-control-lg {
 /* Sticky footer: lihat head.php (d-flex flex-column min-vh-100 di body)
    dan footer.php (mt-auto di footer) — kombinasi itu yang benar-benar
    mendorong footer ke dasar viewport kalau konten halaman pendek. */
+
+.module-card img,
+.module-card .card-icon {
+  transition: transform 0.25s ease-in-out;
+  will-change: transform;
+}
+
+.module-card:hover img,
+.module-card:hover .card-icon {
+  transform: scale(1.08);
+}

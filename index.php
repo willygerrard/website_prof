@@ -126,6 +126,7 @@ $body_class = 'bg-light';
 $extra_head = '<meta name="description" content="Pusat Pembelajaran SIJA" />
     <link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="css/styles.css" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css" rel="stylesheet" />';
 
 include __DIR__ . '/includes/head.php';
@@ -267,7 +268,7 @@ include __DIR__ . '/includes/head.php';
                         $href_modul = $pakai_tema ? 'view_modul.php?id=' . (int)$modul['id'] : $fp;
                     ?>
                     <div class="col">
-                        <div class="card h-100 shadow-sm border border-light-subtle rounded-4 position-relative bg-white">
+                        <div class="card h-100 shadow-sm border border-light-subtle rounded-4 position-relative bg-white module-card">
                             
                             <!-- Badge Kategori -->
                             <div class="position-absolute top-0 end-0 m-3 z-2">
@@ -290,7 +291,7 @@ include __DIR__ . '/includes/head.php';
                                 <?php if (!empty($modul['image_path'])): ?>
                                     <img src="<?= htmlspecialchars($modul['image_path']) ?>" class="w-100 h-100" style="object-fit: contain;" alt="Thumbnail">
                                 <?php else: ?>
-                                    <i class="bi bi-file-earmark-text text-secondary opacity-25" style="font-size: 5rem;"></i>
+                                    <i class="bi bi-file-earmark-text text-secondary opacity-25 card-icon" style="font-size: 5rem;"></i>
                                 <?php endif; ?>
                             </div>
 
