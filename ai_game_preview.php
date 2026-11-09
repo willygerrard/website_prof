@@ -1,9 +1,11 @@
 <?php
 /**
- * ai_game_preview.php — Endpoint preview draft game HTML5 AI (KHUSUS ADMIN).
+ * ai_game_preview.php — Endpoint preview sementara draft game HTML5 AI (KHUSUS ADMIN).
  *
  * Merender $_SESSION['aigm_draft']['game_html'] sebagai dokumen iframe `src`
  * (BUKAN `srcdoc`), supaya dokumen game TIDAK mewarisi CSP halaman induk.
+ * Endpoint GET ini hanya untuk preview; penyimpanan file dan INSERT ke tabel
+ * games dilakukan sekali oleh action submit di ai_game_maker.php.
  *
  * Perbaikan v2:
  *  - Mengirim header Content-Security-Policy langsung dari PHP (dengan header_remove
@@ -13,12 +15,11 @@
  */
 
 require_once 'session.php';
-require 'koneksi.php';
 
 checkLogin();
 checkRole(['admin']);
 
-// Draft preview dianggap kedaluwarsa setelah 1 jam (samakan dgn pola modul).
+// Draft preview dianggap kedaluwarsa setelah 1 jam.
 const AIGM_PREVIEW_TTL = 3600;
 
 function aigmpHeaders(string $contentType, bool $isHtml = false): void {

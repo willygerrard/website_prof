@@ -12,8 +12,8 @@
  *    heartbeat dari dalam game -> peringatan bila script tidak berjalan.
  *  - Guard: CSP longgar (tetap di iframe sandbox origin opaque), watchdog
  *    konten kosong, event resize setelah load.
- *  - Submit: detail error DB ditampilkan ke admin & dicatat di log.
- *    Nilai kolom jenis_resource diatur lewat konstanta AIGM_JENIS.
+ *  - Submit: file game disimpan di games_data/ lalu langsung dipublikasikan
+ *    melalui tabel games.
  *
  * Perubahan v5:
  *  - Preview game TIDAK lagi memakai iframe srcdoc (yang mewarisi CSP halaman
@@ -34,16 +34,13 @@ checkRole(['admin']);
 
 set_time_limit(240);
 
-const AIGM_PATH          = '/var/www/data_private/modul_ai/pending';
+const AIGM_PATH          = __DIR__ . '/games_data';
+const AIGM_RELATIVE_PATH = 'games_data';
 const AIGM_COOLDOWN      = 10;
 const AIGM_MAX_TOPIK_LEN = 500;
 const AIGM_MIN_HTML_LEN  = 1500;
 const AIGM_MAX_HTML_LEN  = 400000;
 const AIGM_KATEGORI_DB   = ['Network', 'System Administration', 'Cloud Computing', 'DevOps'];
-
-// Nilai kolom modules.jenis_resource untuk game. Samakan dengan nilai yang
-// dipakai halaman Kelola Game / ENUM di database (cek: SHOW COLUMNS FROM modules LIKE 'jenis_resource').
-const AIGM_JENIS         = 'game';
 
 // Batas Gemini: harus < ~100 dtk (batas Cloudflare Tunnel).
 const AIGM_GEMINI_TIMEOUT = 85;
@@ -357,8 +354,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             <h4 class="fw-bold mb-1"><i class="bi bi-controller text-primary"></i> AI Game HTML5 Maker</h4>
             <div class="text-muted small">Buat mini game/simulasi edukasi HTML5 interaktif secara otomatis.</div>
         </div>
-        <a href="gerbang-rahasia-sija" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-arrow-left"></i> Kelola Modul &amp; Game
+        <a href="pintu-game-sija" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i> Kelola Game
         </a>
     </div>
 
@@ -440,7 +437,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                         <i class="bi bi-arrow-clockwise"></i> Buat Ulang
                     </button>
                     <button type="button" class="btn btn-success fw-bold" id="aigmSubmitBtn">
-                        <i class="bi bi-check-circle"></i> Simpan &amp; Ajukan Game
+                        <i class="bi bi-check-circle"></i> Simpan &amp; Publikasikan Game
                     </button>
                 </div>
             </div>
@@ -583,14 +580,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     });
 
     submitBtn.addEventListener('click', async function () {
-        if (!confirm('Simpan game HTML5 ini ke pending approval?')) return;
+        if (!confirm('Simpan dan publikasikan game HTML5 ini sekarang?')) return;
 
         submitBtn.disabled = true;
         hideAlert();
         try {
             const r = await postAction({ action: 'submit' });
             if (r.ok && r.data.status === 'success') {
-                showAlert('success', 'Game berhasil disimpan sebagai Pending!');
+                showAlert('success', 'Game berhasil disimpan dan langsung tersedia di Manage Game / Game Edukasi.');
                 previewCard.classList.add('d-none');
                 formCard.classList.remove('d-none');
                 clearTimeout(aliveTimer);
@@ -767,46 +764,64 @@ if ($action === 'submit') {
         jsonOut(['status' => 'error', 'message' => 'Draft tidak valid. Generate ulang.'], 400);
     }
 
+    try {
+        $hasKelasTarget = $pdo->query("SHOW COLUMNS FROM games LIKE 'kelas_target'")->fetch(PDO::FETCH_ASSOC) !== false;
+    } catch (PDOException $e) {
+        error_log('[aigm-game] gagal memeriksa kolom games.kelas_target: ' . $e->getMessage());
+        jsonOut(['status' => 'error', 'code' => 'db_error', 'message' => 'Gagal memeriksa struktur tabel games.'], 200);
+    }
+
     if (!is_dir(AIGM_PATH) && !@mkdir(AIGM_PATH, 0775, true)) {
-        error_log('[aigm-game] folder pending tidak bisa dibuat: ' . AIGM_PATH);
+        error_log('[aigm-game] folder game tidak bisa dibuat: ' . AIGM_PATH);
         jsonOut(['status' => 'error', 'code' => 'storage_unavailable', 'message' => 'Folder penyimpanan tidak tersedia.'], 200);
     }
     if (!is_writable(AIGM_PATH)) {
-        error_log('[aigm-game] folder pending tidak writable: ' . AIGM_PATH);
+        error_log('[aigm-game] folder game tidak writable: ' . AIGM_PATH);
         jsonOut(['status' => 'error', 'code' => 'storage_readonly', 'message' => 'Folder penyimpanan tidak bisa ditulis (cek permission).'], 200);
     }
 
     $filename = 'game_' . aigmSlugify($title) . '_' . time() . '_' . bin2hex(random_bytes(3)) . '.html';
     $fullPath = rtrim(AIGM_PATH, '/') . '/' . $filename;
+    $relativePath = AIGM_RELATIVE_PATH . '/' . $filename;
 
-    if (file_put_contents($fullPath, $gameHtml, LOCK_EX) === false) {
+    $writtenBytes = file_put_contents($fullPath, $gameHtml, LOCK_EX);
+    if ($writtenBytes === false || $writtenBytes !== strlen($gameHtml)) {
+        if (is_file($fullPath)) {
+            @unlink($fullPath);
+        }
         jsonOut(['status' => 'error', 'code' => 'disk_write', 'message' => 'Gagal menyimpan file game ke disk.'], 200);
     }
     @chmod($fullPath, 0664);
 
     try {
+        $columns = ['title', 'description', 'category', 'image_path', 'file_path'];
+        $params = [
+            ':title'       => $title,
+            ':description' => 'Mini Game Edukasi: ' . $draft['topik_spesifik'],
+            ':category'    => $category,
+            ':image_path'  => null,
+            ':file_path'   => $relativePath,
+        ];
+        if ($hasKelasTarget) {
+            $columns[] = 'kelas_target';
+            $params[':kelas_target'] = $tingkat;
+        }
+        $placeholders = array_map(static fn(string $column): string => ':' . $column, $columns);
         $stmt = $pdo->prepare(
-            "INSERT INTO modules (title, category, description, image_path, ai_file, file_path, jenis_resource, kelas_target, status)
-             VALUES (:title, :category, :description, 'img/game_default.webp', :ai_file, :file_path, :jenis, :kelas_target, 'pending')"
+            'INSERT INTO games (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $placeholders) . ')'
         );
-        $stmt->execute([
-            ':title'        => $title,
-            ':category'     => $category,
-            ':description'  => 'Mini Game Edukasi: ' . $draft['topik_spesifik'],
-            ':ai_file'      => $filename,
-            ':file_path'    => $fullPath,
-            ':jenis'        => AIGM_JENIS,
-            ':kelas_target' => $tingkat,
-        ]);
-        $moduleId = (int)$pdo->lastInsertId();
+        $stmt->execute($params);
+        $gameId = (int)$pdo->lastInsertId();
     } catch (PDOException $e) {
         // Draf TIDAK dihapus: admin bisa submit ulang setelah masalah DB diperbaiki.
-        error_log('[aigm-game] INSERT modules gagal: ' . $e->getMessage());
-        @unlink($fullPath);
+        error_log('[aigm-game] INSERT games gagal: ' . $e->getMessage());
+        if (!@unlink($fullPath)) {
+            error_log('[aigm-game] file game gagal dibersihkan setelah INSERT games gagal: ' . $fullPath);
+        }
         jsonOut([
             'status'  => 'error',
             'code'    => 'db_error',
-            'message' => 'Gagal simpan ke DB: ' . mb_substr($e->getMessage(), 0, 220),
+            'message' => 'Gagal menyimpan metadata game. Silakan coba simpan lagi.',
         ], 200);
     }
 
@@ -815,8 +830,8 @@ if ($action === 'submit') {
 
     jsonOut([
         'status'    => 'success',
-        'message'   => 'Game tersimpan ke pending approval.',
-        'module_id' => $moduleId,
+        'message'   => 'Game berhasil dipublikasikan.',
+        'game_id'   => $gameId,
     ]);
 }
 
