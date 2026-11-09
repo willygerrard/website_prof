@@ -1,0 +1,507 @@
+<?php
+/**
+ * ai_helper.php — Shared helper untuk fitur AI (Gemini).
+ * Diekstrak dari ai_quiz_generate.php agar bisa dipakai
+ * ai_quiz_generate.php, ai_module_maker.php, dll.
+ */
+
+// ============================================================
+// KONSTANTA AI MODULE MAKER (dipakai bersama oleh handler & UI)
+// ============================================================
+
+// Kategori 'category' mengikuti verifikasi DB staging:
+// SELECT DISTINCT category -> 'Network', 'System Administration'.
+// 'Cloud Computing' & 'DevOps' ada di kosakata README.
+// webdev -> 'DevOps' adalah keputusan FINAL: isi modul web dev (HTML, PHP, JS)
+// masuk ke kategori 'DevOps'.
+const AIMM_TOPICS = [
+    'network'    => ['label' => 'Network',          'category' => 'Network'],
+    'sysadmin'   => ['label' => 'Sysadmin',         'category' => 'System Administration'],
+    'cloud'      => ['label' => 'Cloud Computing',  'category' => 'Cloud Computing'],
+    'webdev'     => ['label' => 'Web Dev',          'category' => 'DevOps'],
+];
+const AIMM_TINGKAT = ['semua', 'X', 'XI', 'XII'];
+
+function aiqEnvFiles(): array {
+    $staging = (getenv('APP_ENV') === 'staging')
+        || (strpos($_SERVER['HTTP_HOST'] ?? '', 'staging') !== false);
+    $files = $staging ? ['.env.staging', '.env'] : ['.env', '.env.staging'];
+    return array_map(fn($f) => __DIR__ . '/' . $f, $files);
+}
+
+function aiqEnvInfo(string $k): array {
+    foreach ([getenv($k), $_ENV[$k] ?? null, $_SERVER[$k] ?? null] as $v) {
+        if (is_string($v) && $v !== '') return [$v, 'environment'];
+    }
+    foreach (aiqEnvFiles() as $f) {
+        if (!is_readable($f)) continue;
+        foreach (file($f, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+            $line = trim($line);
+            if ($line === '' || $line[0] === '#' || strpos($line, '=') === false) continue;
+            if (strpos($line, 'export ') === 0) $line = substr($line, 7);
+            [$n, $val] = explode('=', $line, 2);
+            if (trim($n) === $k) {
+                $val = trim($val, " \t\n\r\0\x0B\"'");
+                if ($val !== '') return [$val, basename($f)];
+            }
+        }
+    }
+    return ['', ''];
+}
+
+function aiqEnv(string $k): string { return aiqEnvInfo($k)[0]; }
+
+
+// Retry otomatis untuk HTTP 503 (high demand) / 429 (rate limit).
+// Maksimal 3 percobaan total, jeda 3 detik antar percobaan.
+const AIQ_RETRY_MAX   = 3;
+const AIQ_RETRY_DELAY = 3;
+
+/**
+ * Kumpulkan teks dari SEMUA parts kandidat.
+ *
+ * Model Gemini (thinking) dapat mengembalikan jawaban terpecah menjadi beberapa
+ * parts, sebagian bertanda thought=true. Mengambil hanya parts[0] membuat
+ * jawaban terpotong drastis (mis. 26 karakter padahal candidatesTokenCount
+ * ribuan). Fungsi ini menggabungkan seluruh part teks non-thought; bila semua
+ * part bertanda thought, teks thought dipakai sebagai fallback.
+ */
+function geminiCollectText(array $cand): string {
+    $parts = $cand['content']['parts'] ?? [];
+    if (!is_array($parts)) {
+        return '';
+    }
+    $text    = '';
+    $thought = '';
+    foreach ($parts as $p) {
+        if (!is_array($p) || !isset($p['text']) || !is_string($p['text'])) {
+            continue;
+        }
+        if (!empty($p['thought'])) {
+            $thought .= $p['text'];
+            continue;
+        }
+        $text .= $p['text'];
+    }
+    return $text !== '' ? $text : $thought;
+}
+
+/**
+ * Panggil Gemini dengan JSON schema. Backward compatible:
+ * $maxOutputTokens dan $maxTries opsional di akhir (default = perilaku lama).
+ *
+ * Throws RuntimeException dengan pesan "Output AI terpotong, coba generate
+ * ulang" bila respons berakhir karena MAX_TOKENS / JSON tak bisa di-parse.
+ */
+function geminiJson(
+    string $key,
+    string $model,
+    string $text,
+    array $schema,
+    int $timeout,
+    float $temp,
+    int $maxOutputTokens = 0,
+    int $maxTries = 2,
+    string $logTag = ''
+): array {
+    $genConfig = [
+        'response_mime_type' => 'application/json',
+        'response_schema'    => $schema,
+        'temperature'        => $temp,
+    ];
+    if ($maxOutputTokens > 0) {
+        $genConfig['maxOutputTokens'] = $maxOutputTokens;
+    }
+
+    $payload = [
+        'contents'         => [['parts' => [['text' => $text]]]],
+        'generationConfig' => $genConfig,
+    ];
+    $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
+
+    $resp = '';
+    $code = 0;
+    $err  = '';
+    for ($try = 1; $try <= max(1, $maxTries); $try++) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => json_encode($payload, JSON_UNESCAPED_UNICODE),
+            CURLOPT_HTTPHEADER     => ['Content-Type: application/json', 'x-goog-api-key: ' . $key],
+            CURLOPT_TIMEOUT        => $timeout,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_IPRESOLVE      => CURL_IPRESOLVE_V4,
+        ]);
+        $resp = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err  = curl_error($ch);
+        curl_close($ch);
+
+        if (!$err && $code === 200) break;
+
+        // Retry khusus 503 (high demand) / 429 (rate limit): tunggu 3 detik,
+        // maksimal AIQ_RETRY_MAX percobaan. Error lain langsung dilempar.
+        $retryable = in_array($code, [429, 503], true);
+        if ($retryable && $try < AIQ_RETRY_MAX) {
+            error_log(sprintf(
+                '[geminiJson%s] retry %d/%d setelah HTTP %d, tunggu %ds',
+                $logTag !== '' ? ':' . $logTag : '',
+                $try,
+                AIQ_RETRY_MAX,
+                $code,
+                AIQ_RETRY_DELAY
+            ));
+            sleep(AIQ_RETRY_DELAY);
+            continue;
+        }
+        throw new RuntimeException($err ?: "HTTP $code: " . mb_substr((string)$resp, 0, 300));
+    }
+
+    $data         = json_decode((string)$resp, true);
+    $cand         = $data['candidates'][0] ?? [];
+    $parts        = $cand['content']['parts'] ?? [];
+    $txt          = geminiCollectText($cand);
+    $finishReason = $cand['finishReason'] ?? null;
+
+    // Diagnostik opsional ($logTag kosong = perilaku lama persis).
+    // Satu baris per panggilan; TIDAK memuat isi prompt atau konten modul.
+    if ($logTag !== '') {
+        $usage = $data['usageMetadata'] ?? [];
+        error_log(sprintf(
+            '[%s] model=%s finishReason=%s promptTokenCount=%s candidatesTokenCount=%s thoughtsTokenCount=%s parts=%d textLen=%d',
+            $logTag,
+            $model,
+            (string)($finishReason ?? 'null'),
+            (string)($usage['promptTokenCount'] ?? 'null'),
+            (string)($usage['candidatesTokenCount'] ?? 'null'),
+            (string)($usage['thoughtsTokenCount'] ?? 'null'),
+            is_array($parts) ? count($parts) : 0,
+            is_string($txt) ? strlen($txt) : 0
+        ));
+    }
+
+    if ($finishReason === 'MAX_TOKENS') {
+        throw new RuntimeException('Output AI terpotong, coba generate ulang');
+    }
+
+    $out = $txt ? json_decode($txt, true) : null;
+    if (!is_array($out)) {
+        // JSON tidak valid tapi finishReason bukan MAX_TOKENS — bisa saja
+        // respons terpotong tanpa flag; laporkan sebagai truncation bila ada
+        // teks yang gagal di-parse, bukan sekadar respons kosong.
+        if (is_string($txt) && trim($txt) !== '' && json_decode($txt) === null) {
+            throw new RuntimeException('Output AI terpotong atau tidak valid, coba generate ulang');
+        }
+        throw new RuntimeException('Respons AI bukan JSON yang valid');
+    }
+    return $out;
+}
+
+/**
+ * Panggil Gemini untuk output teks bebas (mis. Markdown modul).
+ *
+ * Thinking level rendah sesuai dokumentasi Gemini:
+ *  - Gemini 3.x        : generationConfig.thinkingConfig.thinkingLevel = 'low'
+ *  - Gemini 2.5 Flash  : generationConfig.thinkingConfig.thinkingBudget = 0
+ *  - Model lain        : tanpa thinkingConfig
+ *
+ * Throws RuntimeException bila HTTP gagal setelah retry, output terpotong
+ * (finishReason MAX_TOKENS), atau respons kosong.
+ */
+function geminiText(
+    string $key,
+    string $model,
+    string $text,
+    int $timeout = 75,
+    float $temp = 0.7,
+    int $maxOutputTokens = 16384,
+    int $maxTries = 3,
+    string $logTag = 'aimm'
+): string {
+    $genConfig = [
+        'temperature'     => $temp,
+        'maxOutputTokens' => $maxOutputTokens,
+    ];
+
+    // Thinking level rendah: kurangi token "thinking" agar anggaran output
+    // lebih banyak terpakai untuk isi modul/game dan tidak memicu timeout.
+    $m = strtolower($model);
+    if (strpos($m, 'gemini-3') !== false) {
+        $genConfig['thinkingConfig'] = ['thinkingLevel' => 'low'];
+    } elseif (strpos($m, 'gemini-2.5-flash') !== false) {
+        $genConfig['thinkingConfig'] = ['thinkingBudget' => 0];
+    } elseif (strpos($m, 'gemini-2.5-pro') !== false) {
+        $genConfig['thinkingConfig'] = ['thinkingBudget' => 1024];
+    }
+
+    $payload = [
+        'contents' => [['parts' => [['text' => $text]]]],
+        'generationConfig' => $genConfig,
+    ];
+
+    $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
+
+    $resp = '';
+    $code = 0;
+    $err  = '';
+
+    for ($try = 1; $try <= max(1, $maxTries); $try++) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => json_encode($payload, JSON_UNESCAPED_UNICODE),
+            CURLOPT_HTTPHEADER     => ['Content-Type: application/json', 'x-goog-api-key: ' . $key],
+            CURLOPT_TIMEOUT        => $timeout,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_IPRESOLVE      => CURL_IPRESOLVE_V4,
+        ]);
+        $resp = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err  = curl_error($ch);
+        curl_close($ch);
+
+        if (!$err && $code === 200) break;
+
+        if (in_array($code, [429, 503], true) && $try < $maxTries) {
+            error_log("[geminiText:{$logTag}] Retry {$try}/{$maxTries} setelah HTTP {$code}, sleep 4s...");
+            sleep(4);
+            continue;
+        }
+
+        throw new RuntimeException($err ?: "HTTP $code: " . mb_substr((string)$resp, 0, 300));
+    }
+
+    $data         = json_decode((string)$resp, true);
+    $cand         = $data['candidates'][0] ?? [];
+    $finishReason = $cand['finishReason'] ?? null;
+    $parts        = $cand['content']['parts'] ?? [];
+    $txt          = geminiCollectText($cand);
+
+    // Diagnostik: satu baris per panggilan, tanpa isi prompt/modul.
+    if ($logTag !== '') {
+        $usage = $data['usageMetadata'] ?? [];
+        error_log(sprintf(
+            '[%s] model=%s finishReason=%s promptTokenCount=%s candidatesTokenCount=%s thoughtsTokenCount=%s parts=%d textLen=%d',
+            $logTag,
+            $model,
+            (string)($finishReason ?? 'null'),
+            (string)($usage['promptTokenCount'] ?? 'null'),
+            (string)($usage['candidatesTokenCount'] ?? 'null'),
+            (string)($usage['thoughtsTokenCount'] ?? 'null'),
+            is_array($parts) ? count($parts) : 0,
+            is_string($txt) ? strlen($txt) : 0
+        ));
+    }
+
+    if ($finishReason === 'MAX_TOKENS') {
+        throw new RuntimeException('Output AI terpotong, coba generate ulang.');
+    }
+
+    if (trim((string)$txt) === '') {
+        throw new RuntimeException('Gemini mengembalikan respon kosong.');
+    }
+
+    return $txt;
+}
+
+/**
+ * Konversi Markdown ke HTML memakai Parsedown (lib/Parsedown.php, rilis 1.7.4).
+ *
+ * setSafeMode(true)      : blokir URL berbahaya (javascript:, data:, dll.)
+ * setMarkupEscaped(true) : HTML mentah di Markdown di-escape, bukan dirender.
+ *
+ * Hasil konversi TETAP harus dilewatkan ke aimmSanitizeHtml() sebelum
+ * ditampilkan/disimpan (allowlist tag & atribut).
+ */
+function aimmMarkdownToHtml(string $md): string {
+    require_once __DIR__ . '/lib/Parsedown.php';
+
+    $parsedown = new Parsedown();
+    $parsedown->setSafeMode(true);
+    $parsedown->setMarkupEscaped(true);
+
+    return $parsedown->text($md);
+}
+
+// ============================================================
+// SANITASI HTML MODUL AI (allowlist DOMDocument)
+// ============================================================
+
+const AIMM_ALLOWED_TAGS = [
+    'h1','h2','h3','h4','h5','h6','p','br','hr','ul','ol','li','strong','b','em','i','u',
+    'code','pre','blockquote','table','thead','tbody','tr','th','td','a','img','div','span',
+    'section','small','sup','sub',
+];
+
+// Tag berbahaya dibuang BESERTA isinya; tag lain di luar allowlist di-unwrap.
+const AIMM_DANGEROUS_TAGS = [
+    'script','style','iframe','object','embed','form','base','link','meta','svg','math',
+];
+
+function aimmAllowedAttrs(): array {
+    return [
+        'a'   => ['href', 'title', 'class'],
+        'img' => ['src', 'alt', 'width', 'height', 'class'],
+        '*'   => ['class'],
+    ];
+}
+
+/**
+ * Normalisasi nilai atribut URL: decode entity, buang whitespace & karakter
+ * kontrol (untuk menangkal "jav&#x09;ascript:" dsb), lalu cek skema.
+ */
+function aimmNormalizeUrl(string $val): string {
+    $decoded = html_entity_decode(trim($val), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $decoded = preg_replace('/[\x00-\x20\x7F]+/', '', $decoded);
+    return strtolower($decoded);
+}
+
+/**
+ * Sanitasi FRAGMEN HTML (bukan dokumen penuh) pakai allowlist DOMDocument.
+ * - Tag berbahaya (script, style, iframe, object, embed, form, base, link,
+ *   meta, svg, math) dibuang beserta isinya.
+ * - Tag di luar allowlist lain di-unwrap (isinya dipertahankan).
+ * - Atribut dibatasi allowlist; href hanya http/https/mailto/#, src img hanya
+ *   https atau data:image/png|jpeg|gif|webp. Semua atribut on* dan style dibuang.
+ * - <a> selalu mendapat rel="noopener noreferrer".
+ * - Tidak menambahkan <html>/<body> — keluaran tetap fragmen.
+ */
+function aimmSanitizeHtml(string $html): string {
+    $allowed  = AIMM_ALLOWED_TAGS;
+    $allowedL = array_map('strtolower', $allowed);
+    $danger   = array_map('strtolower', AIMM_DANGEROUS_TAGS);
+    $attrMap  = aimmAllowedAttrs();
+
+    $doc = new DOMDocument();
+    libxml_use_internal_errors(true);
+    // Trick encoding UTF-8: prefix XML declaration agar tidak dianggap ISO-8859-1.
+    $ok = $doc->loadHTML(
+        '<?xml encoding="utf-8"?><div id="aimm-root">' . $html . '</div>',
+        LIBXML_NOERROR | LIBXML_NOWARNING
+    );
+    libxml_clear_errors();
+    if (!$ok) {
+        return ''; // gagal parse -> buang semua (fail closed)
+    }
+
+    $root = $doc->getElementById('aimm-root');
+    if ($root === null) return '';
+
+    $clean = function (DOMNode $parent) use ($doc, &$clean, $allowedL, $danger, $attrMap) {
+        // Snapshot dulu — childNodes berubah saat modifikasi
+        $children = [];
+        foreach ($parent->childNodes as $c) $children[] = $c;
+
+        foreach ($children as $node) {
+            if ($node->nodeType === XML_COMMENT_NODE) {
+                $parent->removeChild($node);
+                continue;
+            }
+            if ($node->nodeType !== XML_ELEMENT_NODE) continue;
+
+            $tag = strtolower($node->nodeName);
+
+            // 1) Tag berbahaya: buang beserta seluruh isi
+            if (in_array($tag, $danger, true)) {
+                $parent->removeChild($node);
+                continue;
+            }
+
+            // 2) Tag di luar allowlist: unwrap — proses isinya, angkat ke atas
+            if (!in_array($tag, $allowedL, true)) {
+                $clean($node);
+                while ($node->firstChild !== null) {
+                    $parent->insertBefore($node->firstChild, $node);
+                }
+                $parent->removeChild($node);
+                continue;
+            }
+
+            // 3) Tag diizinkan: filter atribut
+            $tagAttrs = $attrMap[$tag] ?? $attrMap['*'];
+            $attrs = [];
+            foreach ($node->attributes as $a) $attrs[] = $a->nodeName;
+            foreach ($attrs as $name) {
+                $lname = strtolower($name);
+                if (!in_array($lname, $tagAttrs, true)) {
+                    $node->removeAttribute($name); // termasuk semua on* dan style
+                    continue;
+                }
+                if ($tag === 'a' && $lname === 'href') {
+                    $val = aimmNormalizeUrl($node->getAttribute($name));
+                    if (!preg_match('@^(https?://|mailto:|#)@', $val)) {
+                        $node->removeAttribute($name);
+                    }
+                }
+                if ($tag === 'img' && $lname === 'src') {
+                    $val = aimmNormalizeUrl($node->getAttribute($name));
+                    if (!preg_match('#^(https://|data:image/(png|jpeg|gif|webp);)#', $val)) {
+                        $node->removeAttribute($name);
+                    }
+                }
+            }
+            if ($tag === 'a') {
+                $node->setAttribute('rel', 'noopener noreferrer');
+            }
+
+            // 4) Rekursi ke anak
+            $clean($node);
+        }
+    };
+
+    $clean($root);
+
+    // Serialisasi hanya anak-anak root — fragmen, tanpa wrapper <div>
+    $out = '';
+    foreach ($root->childNodes as $child) {
+        $out .= $doc->saveHTML($child);
+    }
+    return trim($out);
+}
+
+/**
+ * Bungkus fragmen yang SUDAH disanitasi menjadi dokumen HTML standalone
+ * dengan Bootstrap 5 (versi dipin) untuk disimpan ke disk / dirender iframe.
+ */
+function aimmWrapHtml(string $title, string $bodyHtml): string {
+    $titleEsc = htmlspecialchars($title, ENT_QUOTES, 'UTF-8');
+    return <<<HTML
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{$titleEsc}</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container py-4">
+{$bodyHtml}
+</div>
+</body>
+</html>
+HTML;
+}
+
+/**
+ * Bungkus HTML fragmen dengan theme template (templates/theme_modul_default.php)
+ * menggunakan output buffering.
+ * Fungsi ini dipakai oleh ai_module_maker.php, ai_module_preview.php, view_modul.php
+ */
+function aimmWrapWithTheme(string $htmlContent, string $title): string {
+    $themePath = __DIR__ . '/templates/theme_modul_default.php';
+    if (!is_file($themePath)) {
+        // Fallback ke aimmWrapHtml jika template tidak ditemukan
+        return aimmWrapHtml($title, $htmlContent);
+    }
+    
+    // Variabel yang dibutuhkan template
+    $html_content = $htmlContent;
+    // $title sudah tersedia sebagai parameter
+    
+    ob_start();
+    include $themePath;
+    return ob_get_clean();
+}
