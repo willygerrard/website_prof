@@ -128,8 +128,11 @@ include __DIR__ . '/includes/head.php';
 
             <!-- Form Upload Game Baru -->
             <div class="card shadow-sm border-0 rounded-4 mb-4">
-                <div class="card-header bg-primary text-white fw-bold py-3 rounded-top-4">
-                    <i class="bi bi-cloud-arrow-up-fill me-2"></i> Upload Game HTML Baru
+                <div class="card-header bg-primary text-white fw-bold py-3 rounded-top-4 d-flex justify-content-between align-items-center gap-2">
+                    <span><i class="bi bi-cloud-arrow-up-fill me-2"></i> Upload Game HTML Baru</span>
+                    <a href="ai_game_maker.php" class="btn btn-light btn-sm fw-bold text-primary text-nowrap" title="Buka AI Game Maker">
+                        <i class="bi bi-controller me-1"></i> AI Game Maker
+                    </a>
                 </div>
                 <div class="card-body p-4">
                     <!-- PENTING: enctype="multipart/form-data" wajib ada untuk upload file -->
